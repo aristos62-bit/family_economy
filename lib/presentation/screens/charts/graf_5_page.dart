@@ -171,7 +171,7 @@ class _Graf5PageState extends State<Graf5Page> {
       if (mounted) {
         final stats = _calculateStats(transactionsProvider, categoriesProvider);
         final totalExpense = stats['total'] as double;
-        DebugConfig.print('GRAF5 💰 total expense=$totalExpense');
+        DebugConfig.print('GRAF5 💰 total expense=${totalExpense.toStringAsFixed(2)}');
         _announceDataUpdate(totalExpense, stats['subcategories'] as List<Map<String, dynamic>>);
       }
     } catch (e) {

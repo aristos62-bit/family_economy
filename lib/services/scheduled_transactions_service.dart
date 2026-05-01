@@ -326,6 +326,7 @@ class ScheduledTransactionsService {
       final today = DateTime(now.year, now.month, now.day);
       final executed = <Map<String, dynamic>>[];
 
+      final todayStart = Timestamp.fromDate(today);
       final query = await _firestore
           .collection('users')
           .doc(userId)
@@ -333,6 +334,7 @@ class ScheduledTransactionsService {
           .where('is_scheduled', isEqualTo: true)
           .where('is_executed', isEqualTo: false)
           .where('deleted', isEqualTo: false)
+          .where('scheduled_for_date', isLessThanOrEqualTo: todayStart)
           .get();
 
       for (final doc in query.docs) {

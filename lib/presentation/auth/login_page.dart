@@ -97,6 +97,7 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         }
         user = await _authService.register(email, password);
       }
+      if (!mounted) return;
       final bool isNewUser = !_isLogin;
 
       final uid = user?.uid;

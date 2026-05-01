@@ -126,7 +126,7 @@ class _Graf1PageState extends State<Graf1Page> {
           .getTotalExpense(widget.selectedPeriod, categoryTypes)
           .abs();
 
-      DebugConfig.print('GRAF1 💰 totals income=$income expense=$expense');
+      DebugConfig.print('GRAF1 💰 totals income=${income.toStringAsFixed(2)} expense=${expense.toStringAsFixed(2)}');
 
       if (mounted) {
         _announceDataUpdate(income, expense);

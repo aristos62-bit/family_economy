@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 class DebugConfig {
 
   /// 🔧 Κεντρικός διακόπτης logs
-  static const bool _debug = false;   // true = logs ON, false = logs OFF
+  static const bool _debug = true;   // true = logs ON, false = logs OFF
 
   static bool get isDebug => _debug;
 

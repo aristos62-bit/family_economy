@@ -11,6 +11,7 @@ import 'package:family_economy/core/theme/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:flutter_phoenix/flutter_phoenix.dart';
 
 // ✅ Offline support imports
 import 'package:family_economy/core/services/connectivity_service.dart';
@@ -123,6 +124,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
+    widget.connectivityService.onSyncComplete = null;
     super.dispose();
   }
 
@@ -130,43 +132,45 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     final tp = context.watch<ThemeProvider>();
 
-    return MaterialApp(
-      // ✅ ΝΕΟΣ: Global navigator key
-      navigatorKey: navigatorKey,
-      debugShowCheckedModeBanner: false,
+    return Phoenix(
+      child: MaterialApp(
+        // ✅ ΝΕΟΣ: Global navigator key
+        navigatorKey: navigatorKey,
+        debugShowCheckedModeBanner: false,
 
-      // ✅ Localization support for Greek
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('el', 'GR'), // Greek
-        Locale('en', 'US'), // English (fallback)
-      ],
+        // ✅ Localization support for Greek
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('el', 'GR'), // Greek
+          Locale('en', 'US'), // English (fallback)
+        ],
 
-      // ✅ Χρησιμοποιούμε τα themes σου
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: tp.themeMode,
+        // ✅ Χρησιμοποιούμε τα themes σου
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: tp.themeMode,
 
-      // ✅ Προστασία text scaling + Offline Banner
-      builder: (context, child) {
-        final mediaQuery = MediaQuery.of(context);
-        final textScaler = TextScaler.linear(
-          mediaQuery.textScaler.scale(1.0).clamp(0.85, 1.45),
-        );
+        // ✅ Προστασία text scaling + Offline Banner
+        builder: (context, child) {
+          final mediaQuery = MediaQuery.of(context);
+          final textScaler = TextScaler.linear(
+            mediaQuery.textScaler.scale(1.0).clamp(0.85, 1.45),
+          );
 
-        return MediaQuery(
-          data: mediaQuery.copyWith(textScaler: textScaler),
-          child: AnnouncementOverlay(
-            child: child ?? const SizedBox.shrink(),
-          ),
-        );
-      },
+          return MediaQuery(
+            data: mediaQuery.copyWith(textScaler: textScaler),
+            child: AnnouncementOverlay(
+              child: child ?? const SizedBox.shrink(),
+            ),
+          );
+        },
 
-      home: const SplashScreen(),
+        home: const SplashScreen(),
+      ),
     );
   }
 }
@@ -230,8 +234,7 @@ class ErrorApp extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () =>
-                        DebugConfig.print('User requested app restart'),
+                    onPressed: () => Phoenix.rebirth(context),
                     icon: const Icon(Icons.refresh),
                     label: const Text('Επανεκκίνηση'),
                     style: ElevatedButton.styleFrom(
