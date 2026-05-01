@@ -82,7 +82,9 @@ class _SplashScreenState extends State<SplashScreen>
         AccessibilityService.announcePolite(
           'Εκκίνηση εφαρμογής Οικογενειακός Προϋπολογισμός. Παρακαλώ περιμένετε.',
         );
-        await Future.delayed(const Duration(milliseconds: 2500));
+        if (MediaQuery.of(context).accessibleNavigation) {
+          await Future.delayed(const Duration(milliseconds: 2500));
+        }
       }
 
       if (!mounted) return;

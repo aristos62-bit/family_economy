@@ -115,7 +115,7 @@ class _Graf2PageState extends State<Graf2Page> {
       final stats = _calculateStats(transactionsProvider, categoriesProvider);
       final totalIncome = stats['total'] as double;
 
-      DebugConfig.print('GRAF2 💰 total income=$totalIncome');
+      DebugConfig.print('GRAF2 💰 total income=${totalIncome.toStringAsFixed(2)}');
 
       if (mounted) {
         _announceDataUpdate(

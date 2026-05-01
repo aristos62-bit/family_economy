@@ -131,7 +131,7 @@ class _Graf3PageState extends State<Graf3Page> {
 
       final totalExpense = stats['total'] as double;
 
-      DebugConfig.print('GRAF3 💰 total expense=$totalExpense');
+      DebugConfig.print('GRAF3 💰 total expense=${totalExpense.toStringAsFixed(2)}');
 
       if (mounted) {
         final categoryStats = stats['categories'] as List<Map<String, dynamic>>;

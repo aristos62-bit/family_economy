@@ -22,6 +22,7 @@ import 'package:uuid/uuid.dart';
 class TransactionsActionsService {
   final FirebaseFirestore _db;
   final Uuid _uuid;
+  String? _transferCategoryCache;
 
   TransactionsActionsService({
     FirebaseFirestore? db,
@@ -833,18 +834,14 @@ class TransactionsActionsService {
 
   /// Προσπαθεί να κάνει query στο server, αν αποτύχει χρησιμοποιεί cache
   Future<QuerySnapshot<Map<String, dynamic>>> _getQueryWithCacheFallback(
-      Query<Map<String, dynamic>> query,
-      ) async {
-    try {
-      return await query.get(const GetOptions(source: Source.server));
-    } catch (_) {
-      return await query.get(const GetOptions(source: Source.cache));
-    }
+      Query<Map<String, dynamic>> query) async {
+    return await query.get();
   }
 
   /// Get or create special "Transfer" category (system/hidden)
   Future<String> _getOrCreateTransferCategory(String userId) async {
-    // Check if transfer category exists
+    if (_transferCategoryCache != null) return _transferCategoryCache!;
+
     final query = await _getQueryWithCacheFallback(
       _db
           .collection('users')
@@ -856,10 +853,10 @@ class TransactionsActionsService {
     );
 
     if (query.docs.isNotEmpty) {
-      return query.docs.first.id;
+      _transferCategoryCache = query.docs.first.id;
+      return _transferCategoryCache!;
     }
 
-    // Create transfer category
     final categoryUuid = _uuid.v4();
     final now = DateTime.now();
 
@@ -883,16 +880,13 @@ class TransactionsActionsService {
       'deleted': false,
     });
 
+    _transferCategoryCache = categoryUuid;
     return categoryUuid;
   }
+
   Future<DocumentSnapshot<Map<String, dynamic>>> _getDocWithCacheFallback(
-      DocumentReference<Map<String, dynamic>> ref,
-      ) async {
-    try {
-      return await ref.get(const GetOptions(source: Source.server));
-    } catch (_) {
-      return await ref.get(const GetOptions(source: Source.cache));
-    }
+      DocumentReference<Map<String, dynamic>> ref) async {
+    return await ref.get();
   }
 
 }

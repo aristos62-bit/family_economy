@@ -9,6 +9,7 @@ import 'package:family_economy/core/utils/debug_config.dart';
 
 import 'package:family_economy/core/session/session.dart';
 import 'package:family_economy/core/session/session_scope.dart';
+import 'package:family_economy/core/accessibility/accessibility_service.dart';
 
 import 'package:family_economy/services/notifications_service.dart';
 
@@ -139,6 +140,9 @@ class _AppStartState extends State<AppStart> {
         _error = e.toString();
         _loading = false;
       });
+      AccessibilityService.announceError(
+        'Απαιτείται ταυτοποίηση: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
     }
   }
 
