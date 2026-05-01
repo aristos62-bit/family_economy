@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 🔐 USERS ROOT DOCUMENT
+    match /users/{userId} {
+      // ✅ Προσθήκη ελέγχου userId != "" για αποφυγή denials κατά το initialization της εφαρμογής
+      allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+
+      // ✅ TAGS
+      match /tags/{tagId} {
+        allow read, create, update, delete:
+          if isSignedIn() && request.auth.uid == userId && userId != "";
+      }
+
+      // ✅ ACCOUNTS
+      match /accounts/{accountId} {
+        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+      }
+
+      // ✅ CATEGORIES & SUBCATEGORIES (Βελτιωμένο με recursive wildcard)
+      match /categories/{categoryId} {
+        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+
+        // ✅ Καλύπτει τις subcategories και οποιαδήποτε άλλη υπο-συλλογή
+        match /{allSubcollections=**} {
+          allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        }
+      }
+
+      // ✅ TRANSACTIONS
+      match /transactions/{transactionId} {
+        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+      }
+
+      // ✅ BUDGETS
+      match /budgets/{budgetId} {
+        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+      }
+
+      // ✅ NOTIFICATIONS
+      match /notifications/{notificationId} {
+        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+      }
+
+      // ✅ TRANSACTION SPLITS
+      match /transaction_splits/{splitId} {
+        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+      }
+
+      // ✅ TRANSACTION TAGS
+      match /transaction_tags/{tagLinkId} {
+        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+      }
+
+      // ✅ ATTACHMENTS
+      match /attachments/{attachmentId} {
+        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+      }
+
+      // ✅ ACCOUNT SNAPSHOTS
+      match /account_snapshots/{snapshotId} {
+        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+      }
+
+      // ✅ SETTINGS
+            match /settings/{settingId} {
+              allow read, write:
+                if isSignedIn() && request.auth.uid == userId && userId != "";
+            }
+
+            // ✅ OIL PURCHASES
+            match /oil_purchases/{purchaseId} {
+              allow read, create, update, delete:
+                if isSignedIn() && request.auth.uid == userId && userId != "";
+            }
+          }
+
+    // ✅ EXCHANGE RATES (read-only για όλους)
+    match /exchange_rates/{rateId} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

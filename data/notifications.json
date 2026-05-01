@@ -1,0 +1,19 @@
+[
+  {
+    "uuid": "notif_001",
+    "user_id": "user_001",
+    "device_id": "dev_001",
+    "type": "budget_alert",
+    "title": "Groceries Budget Limit",
+    "message": "You have spent 90% of your groceries budget.",
+    "related_id": "budget_001",
+    "related_type": "budget",
+    "delivered_at": "2024-01-30T08:00:00Z",
+    "read_at": null,
+    "dismissed_at": null,
+    "created_at": "2024-01-30T08:00:00Z",
+    "updated_at": "2024-01-30T08:00:00Z",
+    "last_modified_device_id": "dev_001",
+    "deleted": false
+  }
+]

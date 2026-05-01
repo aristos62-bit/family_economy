@@ -1,0 +1,14 @@
+[
+  {
+    "transaction_id": "txn_0001",
+    "tag_id": "tag_001"
+  },
+  {
+    "transaction_id": "txn_0001",
+    "tag_id": "tag_002"
+  },
+  {
+    "transaction_id": "txn_0002",
+    "tag_id": "tag_001"
+  }
+]

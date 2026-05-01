@@ -1,0 +1,22 @@
+[
+  {
+    "uuid": "rate_001",
+    "from_currency": "EUR",
+    "to_currency": "USD",
+    "rate": 1.08,
+    "valid_from": "2024-01-01",
+    "valid_to": null,
+    "source": "ECB",
+    "created_at": "2024-01-01T10:00:00Z"
+  },
+  {
+    "uuid": "rate_002",
+    "from_currency": "USD",
+    "to_currency": "JPY",
+    "rate": 148.30,
+    "valid_from": "2024-01-01",
+    "valid_to": "2024-01-31",
+    "source": "Manual",
+    "created_at": "2024-01-01T10:05:00Z"
+  }
+]

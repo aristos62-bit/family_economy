@@ -1,0 +1,32 @@
+[
+  {
+    "uuid": "cat_001",
+    "user_id": "user_001",
+    "name": "Food",
+    "type": "expense",
+    "icon_index": 3,
+    "color": "#FF5722",
+    "is_system": false,
+    "hidden": false,
+    "display_order": 0,
+    "created_at": "2024-01-01T10:00:00Z",
+    "updated_at": "2024-01-01T10:00:00Z",
+    "last_modified_device_id": "dev_001",
+    "deleted": false
+  },
+  {
+    "uuid": "cat_002",
+    "user_id": "user_001",
+    "name": "Salary",
+    "type": "income",
+    "icon_index": 5,
+    "color": "#4CAF50",
+    "is_system": false,
+    "hidden": false,
+    "display_order": 1,
+    "created_at": "2024-01-02T08:00:00Z",
+    "updated_at": "2024-01-02T08:00:00Z",
+    "last_modified_device_id": "dev_001",
+    "deleted": false
+  }
+]

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "121444943855",
+    "project_id": "family-economy-d1b4d",
+    "storage_bucket": "family-economy-d1b4d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:121444943855:android:e586a3a9ed09874be3581a",
+        "android_client_info": {
+          "package_name": "com.example.family_economy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA69a9OvQtObOfq5XDwhrZRuZbf6bMCXcg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
