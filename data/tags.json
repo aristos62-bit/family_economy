@@ -1,0 +1,22 @@
+[
+  {
+    "uuid": "tag_001",
+    "user_id": "user_001",
+    "name": "Groceries",
+    "color": "#4CAF50",
+    "created_at": "2024-01-01T10:00:00Z",
+    "updated_at": "2024-01-01T10:00:00Z",
+    "last_modified_device_id": "dev_001",
+    "deleted": false
+  },
+  {
+    "uuid": "tag_002",
+    "user_id": "user_001",
+    "name": "Family",
+    "color": "#FF9800",
+    "created_at": "2024-01-02T08:00:00Z",
+    "updated_at": "2024-01-02T08:00:00Z",
+    "last_modified_device_id": "dev_001",
+    "deleted": false
+  }
+]

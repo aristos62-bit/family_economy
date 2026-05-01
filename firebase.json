@@ -1,0 +1,31 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "europe-west8",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "family-economy-d1b4d",
+          "appId": "1:121444943855:android:e586a3a9ed09874be3581a",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "family-economy-d1b4d",
+          "configurations": {
+            "android": "1:121444943855:android:e586a3a9ed09874be3581a",
+            "ios": "1:121444943855:ios:32481f9213ac99fae3581a",
+            "macos": "1:121444943855:ios:32481f9213ac99fae3581a",
+            "web": "1:121444943855:web:c67d4300c2825136e3581a",
+            "windows": "1:121444943855:web:8b58acc255cb188ce3581a"
+          }
+        }
+      }
+    }
+  }
+}

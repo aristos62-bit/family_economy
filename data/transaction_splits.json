@@ -1,0 +1,18 @@
+[
+  {
+    "uuid": "split_001",
+    "parent_transaction_id": "txn_0001",
+    "category_id": "cat_001",
+    "subcategory_id": "subcat_001",
+    "amount": -35.50,
+    "notes": "Groceries"
+  },
+  {
+    "uuid": "split_002",
+    "parent_transaction_id": "txn_0001",
+    "category_id": "cat_001",
+    "subcategory_id": "subcat_002",
+    "amount": -14.50,
+    "notes": "Cleaning Supplies"
+  }
+]
