@@ -98,7 +98,17 @@ class _CustomCurrencyFieldState extends State<CustomCurrencyField> {
   void didUpdateWidget(covariant CustomCurrencyField oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // ✅ Αν αλλάξει initialValue από parent, συγχρονίζουμε το UI
+    // ✅ Αν αλλάξει controller από parent, ανανεώνουμε την αναφορά
+    if (widget.controller != oldWidget.controller) {
+      if (_isInternalController) {
+        _controller.dispose();
+        _isInternalController = false;
+      }
+      _controller = widget.controller ?? TextEditingController();
+      _isInternalController = widget.controller == null;
+    }
+
+    // ✅ Αν αλλάξει initialValue, συγχρονίζουμε το UI
     if (oldWidget.initialValue != widget.initialValue) {
       final newVal = widget.initialValue;
 
@@ -143,9 +153,6 @@ class _CustomCurrencyFieldState extends State<CustomCurrencyField> {
         baseOffset: 0,
         extentOffset: _controller.text.length,
       );
-
-      // ✅ ενημέρωσε το parent ότι το ποσό άδειασε
-      widget.onChanged?.call(null);
 
       AccessibilityService.announcePolite(
         '${widget.label ?? 'Ποσό'}. Εισάγετε ποσό σε ${widget.currency}.',

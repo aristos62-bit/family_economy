@@ -27,6 +27,8 @@ class BudgetsProvider extends ChangeNotifier {
   bool _isLoading = true;
   String? _error;
 
+  bool _orphanCleanupDone = false;
+
   // Cache for spent amounts (calculated dynamically)
   final Map<String, double> _spentAmountCache = {};
 
@@ -112,7 +114,18 @@ class BudgetsProvider extends ChangeNotifier {
 
       DebugConfig.print('✅ Budgets loaded: ${_budgets.length}');
 
+      // ✅ Τρέχει μόνο όταν έχουμε πράγματι subcategory budgets να ελέγξουμε
+      // Αν είμαστε offline και cache κενό, θα τρέξει την επόμενη φορά που έρθουν data
+      if (!_orphanCleanupDone) {
+        final hasSubs = _budgets.any((b) => !b.deleted && b.isActive && b.isSubcategoryBudget);
+        if (hasSubs) {
+          _orphanCleanupDone = true;
+          Future.microtask(() => _cleanupOrphanedSubcategoryBudgets());
+        }
+      }
+
       notifyListeners();
+
     } catch (e) {
       DebugConfig.print('🔴 Error parsing budgets: $e');
       _error = e.toString();
@@ -127,6 +140,42 @@ class BudgetsProvider extends ChangeNotifier {
     _error = error.toString();
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// ✅ FIX: Διαγράφει subcategory budgets χωρίς parent category budget
+  Future<void> _cleanupOrphanedSubcategoryBudgets() async {
+    try {
+      final all = _budgets.where((b) => !b.deleted && b.isActive).toList();
+      final categoryBudgets = all.where((b) => !b.isSubcategoryBudget).toList();
+      final subcategoryBudgets = all.where((b) => b.isSubcategoryBudget).toList();
+
+      if (subcategoryBudgets.isEmpty) return;
+
+      final orphanedUuids = <String>[];
+
+      for (final sub in subcategoryBudgets) {
+        final hasParent = categoryBudgets.any(
+              (cat) =>
+          cat.name == sub.name &&
+              cat.accountId == sub.accountId &&
+              cat.categoryId == sub.categoryId &&
+              cat.startDate.isAtSameMomentAs(sub.startDate) &&
+              cat.endDate.isAtSameMomentAs(sub.endDate),
+        );
+
+        if (!hasParent) {
+          orphanedUuids.add(sub.uuid);
+          debugPrint('[BudgetsProvider] Ορφανό subcategory budget: ${sub.uuid} cat=${sub.categoryId}');
+        }
+      }
+
+      if (orphanedUuids.isNotEmpty) {
+        debugPrint('[BudgetsProvider] Καθαρισμός ${orphanedUuids.length} ορφανών subcategory budgets');
+        await deleteBudgetBatch(orphanedUuids);
+      }
+    } catch (e) {
+      debugPrint('[BudgetsProvider] Σφάλμα cleanup ορφανών: $e');
+    }
   }
 
   // ============================================================
