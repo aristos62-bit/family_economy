@@ -267,15 +267,33 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
   // BUILD PIE CHART
   // ============================================================
 
-  List<PieChartSectionData> _buildPieChartSections(double totalIncome) {
-    final List<PieChartSectionData> sections = [];
+  List<PieChartSectionData> _buildPieChartSections(
+      double totalIncome, {
+        CategoriesProvider? categoriesP,
+      }) {
+    final bool isFiltered =
+        _selectedCategoryFilter != null && _selectedCategoryFilter != '-1';
 
+    final List<PieChartSectionData> sections = [];
     double totalBudget = 0.0;
-    for (final v in _categoryAmounts.values) {
-      totalBudget += v;
+
+    // Μάζεψε τα subcategory UUIDs της φιλτραρισμένης κατηγορίας
+    final Set<String> allowedSubcatIds = {};
+    if (isFiltered && categoriesP != null) {
+      final subcats =
+      categoriesP.getSubcategoriesForCategory(_selectedCategoryFilter!);
+      for (final sc in subcats) {
+        allowedSubcatIds.add(sc.uuid);
+      }
     }
-    for (final v in _subcategoryAmounts.values) {
-      totalBudget += v;
+
+    for (final entry in _categoryAmounts.entries) {
+      if (isFiltered && entry.key != _selectedCategoryFilter) continue;
+      totalBudget += entry.value;
+    }
+    for (final entry in _subcategoryAmounts.entries) {
+      if (isFiltered && !allowedSubcatIds.contains(entry.key)) continue;
+      totalBudget += entry.value;
     }
 
     if (totalBudget == 0) {
@@ -298,6 +316,7 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
     int idx = 0;
     _categoryAmounts.forEach((catId, amount) {
       if (amount <= 0) return;
+      if (isFiltered && catId != _selectedCategoryFilter) return;
       final colorIndex = idx % budgetColors.length;
       idx++;
 
@@ -332,11 +351,15 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
   }
 
   List<Widget> _buildLegend(CategoriesProvider categoriesP) {
+    final bool isFiltered =
+        _selectedCategoryFilter != null && _selectedCategoryFilter != '-1';
+
     final List<Widget> items = [];
 
     int idx = 0;
     _categoryAmounts.forEach((catId, amount) {
       if (amount <= 0) return;
+      if (isFiltered && catId != _selectedCategoryFilter) return;
 
       final colorIndex = idx % budgetColors.length;
       idx++;
@@ -363,7 +386,9 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
               Expanded(
                 child: Text(
                   name,
-                  style: TextStyle(fontSize: 14, color: Colors.black.withValues(alpha: 0.85)),
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black.withValues(alpha: 0.85)),
                 ),
               ),
               Text(
@@ -896,7 +921,9 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                       ),
                     ),
 
-                    if (income > 0 && _buildPieChartSections(income).isNotEmpty)
+                    if (income > 0 &&
+                        _buildPieChartSections(income, categoriesP: categoriesP)
+                            .isNotEmpty)
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -923,7 +950,8 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                                 child: ExcludeSemantics(
                                   child: PieChart(
                                     PieChartData(
-                                      sections: _buildPieChartSections(income),
+                                      sections:
+                                      _buildPieChartSections(income, categoriesP: categoriesP),
                                       centerSpaceRadius: 10,
                                       sectionsSpace: 2,
                                     ),

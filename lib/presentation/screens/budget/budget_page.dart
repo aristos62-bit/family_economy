@@ -255,7 +255,20 @@ class _BudgetPageState extends State<BudgetPage> {
     if (shouldDelete != true || !mounted) return;
 
     try {
-      final uuids = groupBudgets.map((e) => e.budgetUuid).toList();
+      // ✅ FIX: Βρες ΟΛΑ τα budgets του group (category + subcategory)
+      // ώστε να μην μένουν ορφανά subcategory records στο Firestore
+      final firstModel = groupBudgets.first.model;
+      final allGroupBudgets = budgetsProvider.budgets.where((b) {
+        final sameName = b.name == firstModel.name;
+        final sameAccount = b.accountId == firstModel.accountId;
+        final sameStart = b.startDate.isAtSameMomentAs(firstModel.startDate);
+        final sameEnd = b.endDate.isAtSameMomentAs(firstModel.endDate);
+        return sameName && sameAccount && sameStart && sameEnd;
+      }).toList();
+
+      final uuids = allGroupBudgets.map((e) => e.uuid).toList();
+
+      debugPrint('[DELETE] Διαγραφή ${uuids.length} budgets (category + subcategory)');
 
       // ✅ Δείξε άμεσα feedback (δουλεύει και σε offline)
       if (!mounted) return;
@@ -497,10 +510,27 @@ class _BudgetPageState extends State<BudgetPage> {
     if (result != true || newStartDate == null || newEndDate == null) return;
 
     try {
-      final models = groupBudgets.map((e) => e.model).toList();
+      final firstModel = groupBudgets.first.model;
+      final allGroupBudgets = budgetsProvider.budgets.where((b) {
+        final sameName = b.name == firstModel.name;
+        final sameAccount = b.accountId == firstModel.accountId;
+        final sameStart = b.startDate.isAtSameMomentAs(firstModel.startDate);
+        final sameEnd = b.endDate.isAtSameMomentAs(firstModel.endDate);
+        return sameName && sameAccount && sameStart && sameEnd;
+      }).toList();
+
+      // DEBUG - ΑΦΑΙΡΕΣΕ ΜΕΤΑ
+      debugPrint('[MOVE] groupBudgets (visible): ${groupBudgets.length}');
+      for (final b in groupBudgets) {
+        debugPrint('  [visible] uuid=${b.budgetUuid} cat=${b.categoryName} sub=${b.subcategoryId} amount=${b.amount}');
+      }
+      debugPrint('[MOVE] allGroupBudgets (queried): ${allGroupBudgets.length}');
+      for (final b in allGroupBudgets) {
+        debugPrint('  [all] uuid=${b.uuid} type=${b.budgetType} cat=${b.categoryId} sub=${b.subcategoryId} amount=${b.amount}');
+      }
 
       await budgetsProvider.updateBudgetDates(
-        groupBudgets: models,
+        groupBudgets: allGroupBudgets,
         newStartDate: newStartDate!,
         newEndDate: newEndDate!,
       );

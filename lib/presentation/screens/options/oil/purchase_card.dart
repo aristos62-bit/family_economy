@@ -68,6 +68,7 @@ class _PurchaseCardState extends State<PurchaseCard> {
     final price = oil_utils.parseDouble(_priceCtrl.text) ?? 0;
 
     if (liters <= 0 || price <= 0) {
+      if (!mounted)return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Συμπληρώστε τιμή ανά λίτρο και λίτρα αγοράς.'),
@@ -78,7 +79,7 @@ class _PurchaseCardState extends State<PurchaseCard> {
       );
       return;
     }
-
+    if (!mounted)return;
     final connectivity = context.read<ConnectivityService>();
     if (connectivity.isOffline) {
       ScaffoldMessenger.of(context).showSnackBar(
