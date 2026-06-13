@@ -166,7 +166,7 @@ class _Stats2AveragesPageState extends State<Stats2AveragesPage> {
       return daysInRange / totalDaysInMonth;
     }
 
-    return fullMonths + firstMonthWeight + lastMonthWeight;
+    return (fullMonths - 1) + firstMonthWeight + lastMonthWeight;
   }
 
   String _formatPeriod(DateTime from, DateTime to) {
