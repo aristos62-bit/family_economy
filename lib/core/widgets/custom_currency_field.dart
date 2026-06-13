@@ -271,6 +271,7 @@ class _CustomCurrencyFieldState extends State<CustomCurrencyField> {
             _formatInput();
             _validate();
             widget.onEditingComplete?.call();
+            FocusScope.of(context).unfocus();
           },
           style: TypographyUI.bodyLarge(brightness),
           decoration: InputDecoration(

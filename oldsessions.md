@@ -133,3 +133,9 @@
 **Διόρθωση που εφαρμόστηκε:**
 - `budgets_provider.dart:127-129` — Αφαιρέθηκε η διπλή (τυχαία) `notifyListeners()` στη `_onBudgetsChanged`
 - Το θέμα έκλεισε ✅
+
+### Future fix: Αργή πρώτη φόρτωση Budgets σελίδας
+
+**Αιτία:** Κάθε `calculateSpentAmount()` κάνει ξεχωριστό Firestore query, αγνοώντας τα transactions που ήδη έχει κατεβάσει το `TransactionsProvider` για το `BUDGETS_PAGE`. Για Ν budgets → Ν επιπλέον queries στη Firestore.
+
+**Πρόταση:** Το recalc loop (`budget_page.dart:649`) να δέχεται τα transactions από `transactionsP.getTransactionsForPeriod('BUDGETS_PAGE')` και να τα φιλτράρει in-memory, αντί να καλεί `calculateSpentAmount()` που κάνει δικά της Firestore queries.

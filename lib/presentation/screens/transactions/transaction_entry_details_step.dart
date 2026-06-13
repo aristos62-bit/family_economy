@@ -621,6 +621,7 @@ class _SaveButton extends StatelessWidget {
         label: 'Αποθήκευση κίνησης',
         child: ElevatedButton(
           onPressed: () async {
+            FocusScope.of(context).unfocus();
             // ============================================================
             // VALIDATION
             // ============================================================
