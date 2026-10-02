@@ -5,6 +5,7 @@
 // ============================================================
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:family_economy/providers/transactions_provider.dart';
 
 class BudgetModel {
   final String uuid;
@@ -183,5 +184,17 @@ class BudgetModel {
       lastModifiedDeviceId: lastModifiedDeviceId ?? this.lastModifiedDeviceId,
       deleted: deleted ?? this.deleted,
     );
+  }
+
+  /// Ελέγχει αν μια συναλλαγή αντιστοιχεί σε αυτόν τον προϋπολογισμό
+  /// (ημερομηνία, λογαριασμός, budget type).
+  /// ΔΕΝ ελέγχει income/expense/transfer — o caller κάνει skip.
+  bool matchesTransaction(TransactionModel tx) {
+    if (tx.date.isBefore(startDate) || tx.date.isAfter(endDate)) return false;
+    if (accountId != null && tx.accountId != accountId) return false;
+    if (isTotalBudget) return true;
+    if (isSubcategoryBudget) return tx.categoryId == categoryId && tx.subcategoryId == subcategoryId;
+    if (isCategoryBudget) return tx.categoryId == categoryId;
+    return false;
   }
 }

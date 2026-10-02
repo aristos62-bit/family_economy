@@ -245,12 +245,13 @@ class CategoriesProvider extends ChangeNotifier {
         .collection('users')
         .doc(uid)
         .collection('categories')
+        .where('deleted', isEqualTo: false)
         .snapshots()
         .listen(
       _onCategoriesChanged,
       onError: _onError,
     );
-    DebugConfig.print('→ CategoriesProvider: listener initialized for userId=$userId');
+    DebugConfig.print('→ CategoriesProvider: listener (FILTERED: deleted=false) initialized for userId=$userId');
   }
 
 

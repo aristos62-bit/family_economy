@@ -1,0 +1,82 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:family_economy/core/utils/currency_formatter.dart';
+
+void main() {
+  group('CurrencyFormatter.format', () {
+    test('formats Greek style with symbol', () {
+      final s = CurrencyFormatter.format(1500.5);
+      expect(s.contains('€'), isTrue);
+      expect(s.contains('1.500'), isTrue);
+    });
+
+    test('hides symbol on demand', () {
+      final s = CurrencyFormatter.format(1500.5, showCurrency: false);
+      expect(s.contains('€'), isFalse);
+      expect(s.contains('1.500'), isTrue);
+    });
+  });
+
+  group('CurrencyFormatter.formatCompact', () {
+    test('thousands use χιλ.', () {
+      expect(CurrencyFormatter.formatCompact(1500), contains('χιλ.'));
+    });
+
+    test('millions use εκ.', () {
+      expect(CurrencyFormatter.formatCompact(2400000), contains('εκ.'));
+    });
+
+    test('below 1000 shows plain number', () {
+      expect(CurrencyFormatter.formatCompact(500), contains('500'));
+    });
+  });
+
+  group('CurrencyFormatter.parseAmount', () {
+    test('parses European format', () {
+      expect(CurrencyFormatter.parseAmount('1.500,50'), 1500.5);
+    });
+
+    test('returns null for empty/garbage', () {
+      expect(CurrencyFormatter.parseAmount(''), isNull);
+      expect(CurrencyFormatter.parseAmount('abc'), isNull);
+    });
+  });
+
+  group('CurrencyFormatter arithmetic', () {
+    test('add rounds to 2 decimals', () {
+      expect(CurrencyFormatter.add(0.1, 0.2), 0.3);
+    });
+
+    test('divide by zero returns 0', () {
+      expect(CurrencyFormatter.divide(10, 0), 0.0);
+    });
+  });
+
+  group('CurrencyFormatter.covers', () {
+    test('exact amount is covered', () {
+      expect(CurrencyFormatter.covers(100.0, 100.0), isTrue);
+    });
+
+    test('float dust does not block exact amount', () {
+      expect(CurrencyFormatter.covers(99.9999999, 100.0), isTrue);
+      expect(CurrencyFormatter.covers(100.0, 99.9999999), isTrue);
+    });
+
+    test('genuinely insufficient fails', () {
+      expect(CurrencyFormatter.covers(99.99, 100.0), isFalse);
+    });
+  });
+
+  group('CurrencyFormatter.isOverspent', () {
+    test('exact spend is not overspend', () {
+      expect(CurrencyFormatter.isOverspent(100.0, 100.0), isFalse);
+    });
+
+    test('float dust is not overspend', () {
+      expect(CurrencyFormatter.isOverspent(100.0000001, 100.0), isFalse);
+    });
+
+    test('real overspend detected', () {
+      expect(CurrencyFormatter.isOverspent(100.01, 100.0), isTrue);
+    });
+  });
+}

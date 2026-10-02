@@ -10,6 +10,7 @@ import 'package:family_economy/presentation/screens/charts/graf_3_page.dart';
 import 'package:family_economy/presentation/screens/charts/graf_4_page.dart';
 import 'package:family_economy/presentation/screens/charts/graf_5_page.dart';
 import 'package:family_economy/presentation/screens/charts/graf_6_page.dart';
+import 'package:family_economy/presentation/screens/charts/graf_7_monthly_trend_page.dart';
 
 class ChartItem {
   final String id;
@@ -45,6 +46,11 @@ final List<ChartItem> availableCharts = [
     id: 'graf_5',
     name: 'Υποκατηγορίες Εξόδων',
     builder: (period) => Graf5Page(selectedPeriod: period),
+  ),
+  ChartItem(
+    id: 'graf_7',
+    name: 'Πορεία ανά Μήνα',
+    builder: (_) => const Graf7MonthlyTrendPage(),
   ),
   ChartItem(
     id: 'graf_6',

@@ -14,6 +14,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:family_economy/models/budget_model.dart';
+import 'package:family_economy/providers/transactions_provider.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
 
@@ -287,6 +288,45 @@ class BudgetsProvider extends ChangeNotifier {
       DebugConfig.print('🔴 Error recalculating spent amounts: $e');
       rethrow;
     }
+  }
+
+  /// Υπολογίζει spent amounts για ΟΛΑ τα budgets από ήδη φορτωμένες συναλλαγές
+  /// (in-memory, χωρίς Firestore queries).
+  /// [transactions]: λίστα από TransactionsProvider (περίοδος BUDGETS_PAGE)
+  /// [categoryTypes]: categoryId → type ('income'/'expense'), από CategoriesProvider
+  void calculateSpentAmountsFromCache(
+    List<TransactionModel> transactions, {
+    Map<String, String>? categoryTypes,
+  }) {
+    DebugConfig.print('📊 BudgetsProvider: calculating spent amounts from cache (${transactions.length} transactions, ${_budgets.length} budgets)');
+
+    int matchedCount = 0;
+
+    for (final budget in _budgets.where((b) => !b.deleted && b.isActive)) {
+      double total = 0;
+
+      for (final tx in transactions) {
+        // ← skip transfers
+        if (tx.isTransfer) continue;
+
+        // ← skip income (αν έχουμε category types)
+        if (categoryTypes != null && tx.categoryId != null) {
+          final catType = categoryTypes[tx.categoryId];
+          if (catType == 'income') continue;
+        }
+
+        // ← budget matching (ημερομηνία, account, budgetType)
+        if (!budget.matchesTransaction(tx)) continue;
+
+        total += tx.amount.abs();
+        matchedCount++;
+      }
+
+      _spentAmountCache[budget.uuid] = CurrencyFormatter.round(total);
+    }
+
+    DebugConfig.print('✅ BudgetsProvider: cache updated — $matchedCount transaction matches across ${_budgets.length} budgets');
+    notifyListeners();
   }
 
   // ============================================================

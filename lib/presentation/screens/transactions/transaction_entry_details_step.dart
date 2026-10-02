@@ -677,7 +677,7 @@ class _SaveButton extends StatelessWidget {
               final amountToCheck = state.amount!.abs();
 
               if ((state.isExpense || state.isTransfer) &&
-                  amountToCheck > currentBalance) {
+                  !CurrencyFormatter.covers(currentBalance, amountToCheck)) {
                 AccessibilityService.announceError('Το υπόλοιπο δεν επαρκεί');
                 ScaffoldMessenger.of(context)
                   ..hideCurrentSnackBar()
@@ -733,7 +733,7 @@ class _SaveButton extends StatelessWidget {
                 final amountToCheck = amountSnap.abs();
 
                 if ((isTransferSnap || (!isIncomeSnap && !isTransferSnap)) &&
-                    amountToCheck > currentBalance) {
+                    !CurrencyFormatter.covers(currentBalance, amountToCheck)) {
                   AccessibilityService.announceError('Το υπόλοιπο δεν επαρκεί');
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()

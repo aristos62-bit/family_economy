@@ -14,6 +14,7 @@ import 'package:family_economy/core/utils/debug_config.dart';
 
 import 'package:family_economy/providers/transactions_provider.dart';
 import 'package:family_economy/providers/categories_provider.dart';
+import 'package:family_economy/providers/accounts_provider.dart';
 
 // ✅ Notifications
 import 'package:family_economy/models/notification_model.dart';
@@ -657,6 +658,7 @@ class _CalendarPageState extends State<CalendarPage> {
     final transactionsProvider = context.read<TransactionsProvider>();
     final categoriesProvider = context.read<CategoriesProvider>();
     final notificationsProvider = context.read<NotificationsProvider>();
+    final accountsProvider = context.read<AccountsProvider>();
 
     final periodKey = _getPeriodKey(_selectedMonth);
     final transactions = transactionsProvider.getTransactionsForPeriod(
@@ -667,6 +669,32 @@ class _CalendarPageState extends State<CalendarPage> {
     for (final category in categoriesProvider.allCategories) {
       categoryTypes[category.uuid] = category.type;
     }
+
+    // ✅ Φιλτράρισμα transactions της συγκεκριμένης ημέρας (χωρίς transfers)
+    final dayTransactions = transactions.where((tx) {
+      if (tx.isTransfer) return false;
+      if (!_isSameDay(tx.date, day)) return false;
+      final ct = tx.categoryId != null ? categoryTypes[tx.categoryId] : null;
+      return ct == 'income' || ct == 'expense';
+    }).toList();
+
+    DebugConfig.print(
+      '📅 [CALENDAR] Day $day: ${dayTransactions.length} transactions (excl. transfers)',
+    );
+
+    final incomeTransactions = dayTransactions.where((tx) {
+      final ct = tx.categoryId != null ? categoryTypes[tx.categoryId] : null;
+      return ct == 'income';
+    }).toList();
+
+    final expenseTransactions = dayTransactions.where((tx) {
+      final ct = tx.categoryId != null ? categoryTypes[tx.categoryId] : null;
+      return ct == 'expense';
+    }).toList();
+
+    DebugConfig.print(
+      '📅 [CALENDAR] Income: ${incomeTransactions.length}, Expense: ${expenseTransactions.length}',
+    );
 
     final dayTotalsMap = _buildDayTotalsMap(transactions, categoryTypes);
     final dayKey = _dateKey(day);
@@ -681,6 +709,10 @@ class _CalendarPageState extends State<CalendarPage> {
         day: day,
         isPastDay: isPastDay,
         dayData: dayData,
+        incomeTransactions: incomeTransactions,
+        expenseTransactions: expenseTransactions,
+        categoriesProvider: categoriesProvider,
+        accountsProvider: accountsProvider,
         dayNotifications: dayNotifications,
         notificationsProvider: notificationsProvider, // ✅ Περνάμε τον provider
       ),
@@ -707,6 +739,10 @@ class _DayDetailsDialog extends StatefulWidget {
   final DateTime day;
   final bool isPastDay;
   final _DayData dayData;
+  final List<TransactionModel> incomeTransactions;
+  final List<TransactionModel> expenseTransactions;
+  final CategoriesProvider categoriesProvider;
+  final AccountsProvider accountsProvider;
   final List<NotificationModel> dayNotifications;
   final NotificationsProvider notificationsProvider;
 
@@ -714,6 +750,10 @@ class _DayDetailsDialog extends StatefulWidget {
     required this.day,
     required this.isPastDay,
     required this.dayData,
+    required this.incomeTransactions,
+    required this.expenseTransactions,
+    required this.categoriesProvider,
+    required this.accountsProvider,
     required this.dayNotifications,
     required this.notificationsProvider,
   });
@@ -1055,6 +1095,35 @@ class _DayDetailsDialogState extends State<_DayDetailsDialog>
     });
   }
 
+  void _showTransactionList({required String type}) {
+    final transactions = type == 'income'
+        ? widget.incomeTransactions
+        : widget.expenseTransactions;
+
+    if (transactions.isEmpty) return;
+
+    final label = type == 'income' ? 'Έσοδα' : 'Έξοδα';
+
+    DebugConfig.print(
+      '📅 [BOTTOM_SHEET] Showing $label transactions: ${transactions.length} items',
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: ColorsUI.getSurface(Theme.of(context).brightness),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => _TransactionListSheet(
+        type: type,
+        transactions: transactions,
+        categoriesProvider: widget.categoriesProvider,
+        accountsProvider: widget.accountsProvider,
+      ),
+    );
+  }
+
   String _formatSelectedDate(DateTime date) {
     const weekdays = [
       'Δευτέρα',
@@ -1139,6 +1208,9 @@ class _DayDetailsDialogState extends State<_DayDetailsDialog>
                         amount: widget.dayData.income,
                         color: ColorsUI.getIncomeColor(context.brightness),
                         icon: Icons.add_circle,
+                        onTap: widget.dayData.income > 0
+                            ? () => _showTransactionList(type: 'income')
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1149,6 +1221,9 @@ class _DayDetailsDialogState extends State<_DayDetailsDialog>
                         amount: widget.dayData.expense,
                         color: ColorsUI.getExpenseColor(context.brightness),
                         icon: Icons.remove_circle,
+                        onTap: widget.dayData.expense > 0
+                            ? () => _showTransactionList(type: 'expense')
+                            : null,
                       ),
                     ),
                   ],
@@ -1309,39 +1384,265 @@ class _DayDetailsDialogState extends State<_DayDetailsDialog>
     required double amount,
     required Color color,
     required IconData icon,
+    VoidCallback? onTap,
   }) {
     final formattedAmount = CurrencyFormatter.format(amount);
 
     return Semantics(
-      label: '$label: $formattedAmount',
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+      label: '$label: $formattedAmount${onTap != null ? ". Πατήστε για λεπτομέρειες" : ""}',
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ExcludeSemantics(
+                    child: Icon(icon, color: color, size: 20),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: TypographyUI.labelLarge(context.brightness).copyWith(color: color),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                formattedAmount,
+                style: TypographyUI.currencySmall(
+                  context.brightness,
+                ).copyWith(color: color, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// TRANSACTION LIST SHEET (calendar day detail)
+// ============================================================
+
+class _TransactionListSheet extends StatelessWidget {
+  final String type; // 'income' | 'expense'
+  final List<TransactionModel> transactions;
+  final CategoriesProvider categoriesProvider;
+  final AccountsProvider accountsProvider;
+
+  const _TransactionListSheet({
+    required this.type,
+    required this.transactions,
+    required this.categoriesProvider,
+    required this.accountsProvider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final label = type == 'income' ? 'Έσοδα' : 'Έξοδα';
+    final color = type == 'income'
+        ? ColorsUI.getIncomeColor(brightness)
+        : ColorsUI.getExpenseColor(brightness);
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 16),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // Handle
+            ExcludeSemantics(
+              child: Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: ColorsUI.getDivider(brightness),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Title
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ExcludeSemantics(
-                  child: Icon(icon, color: color, size: 20),
+                Icon(
+                  type == 'income' ? Icons.add_circle : Icons.remove_circle,
+                  color: color,
+                  size: 24,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  label,
-                  style: TypographyUI.labelLarge(context.brightness).copyWith(color: color),
+                  '$label — ${transactions.length} κινήσεις',
+                  style: TypographyUI.titleMedium(brightness).copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                Semantics(
+                  button: true,
+                  label: 'Κλείσιμο',
+                  child: IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: ExcludeSemantics(
+                      child: Icon(
+                        Icons.close,
+                        color: ColorsUI.getTextSecondary(brightness),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              formattedAmount,
-              style: TypographyUI.currencySmall(
-                context.brightness,
-              ).copyWith(color: color, fontWeight: FontWeight.w700),
+            const SizedBox(height: 12),
+
+            // Transaction list
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.5,
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const BouncingScrollPhysics(),
+                itemCount: transactions.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final tx = transactions[index];
+                  final absAmount = tx.amount.abs();
+                  final formattedAmount = CurrencyFormatter.format(absAmount);
+
+                  // Category name
+                  String categoryName = 'Χωρίς κατηγορία';
+                  if (tx.categoryId != null) {
+                    final cat = categoriesProvider.getCategoryByUuid(
+                      tx.categoryId!,
+                    );
+                    if (cat != null) {
+                      categoryName = cat.name;
+                      if (tx.subcategoryId != null) {
+                        final sub = categoriesProvider.getSubcategoryByUuid(
+                          tx.categoryId!,
+                          tx.subcategoryId!,
+                        );
+                        if (sub != null) {
+                          categoryName = '${cat.name} / ${sub.name}';
+                        }
+                      }
+                    }
+                  }
+
+                  // Account name
+                  String accountName = 'Άγνωστος λογαριασμός';
+                  final acc = accountsProvider.getAccountByUuid(tx.accountId);
+                  if (acc != null) {
+                    accountName = acc.name;
+                  }
+
+                  DebugConfig.print(
+                    '📅 [BOTTOM_SHEET] tx: $categoryName $formattedAmount ($accountName)',
+                  );
+
+                  return Semantics(
+                    label:
+                        '$categoryName: $formattedAmount, $accountName${tx.notes != null && tx.notes!.isNotEmpty ? ". ${tx.notes}" : ""}',
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: ColorsUI.getCard(brightness),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: ColorsUI.getBorder(brightness),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          // Category icon
+                          ExcludeSemantics(
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                type == 'income'
+                                    ? Icons.add_circle_outline
+                                    : Icons.remove_circle_outline,
+                                color: color,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+
+                          // Text
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  categoryName,
+                                  style: TypographyUI.bodyLarge(brightness)
+                                      .copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (tx.notes != null && tx.notes!.isNotEmpty)
+                                  Text(
+                                    tx.notes!,
+                                    style: TypographyUI.bodySmall(brightness)
+                                        .copyWith(
+                                          color: ColorsUI.getTextSecondary(
+                                            brightness,
+                                          ),
+                                        ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                Text(
+                                  accountName,
+                                  style: TypographyUI.bodySmall(brightness)
+                                      .copyWith(
+                                        color: ColorsUI.getTextSecondary(
+                                          brightness,
+                                        ),
+                                        fontSize: 11,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(width: 8),
+
+                          // Amount
+                          Text(
+                            '${type == 'income' ? '+' : '-'}$formattedAmount',
+                            style: TypographyUI.currencySmall(brightness).copyWith(
+                              color: color,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),

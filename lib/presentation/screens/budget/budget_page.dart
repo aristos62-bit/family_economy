@@ -34,26 +34,28 @@ class BudgetPage extends StatefulWidget {
   State<BudgetPage> createState() => _BudgetPageState();
 }
 
-class _BudgetPageState extends State<BudgetPage> {
-  // Debounce για να μην κάνουμε recalc σε κάθε rebuild/μικρο-αλλαγή snapshot
+class _BudgetPageState extends State<BudgetPage> with WidgetsBindingObserver {
   Timer? _recalcDebounce;
   static const Duration _recalcDebounceDelay = Duration(milliseconds: 250);
 
   DateTime? _listeningStart;
   DateTime? _listeningEnd;
 
-  // ✅ NEW: για να κάνουμε recalc μόνο όταν αλλάξουν τα transactions
-  int _lastTxCount = -1;
+  String _lastTxHash = '';
+  DateTime? _lastResumed;
 
-  // ✅ NEW: guard για να μην κάνουμε loadPeriod μέσα στο build / πολλές φορές
+  String _buildTxHash(List<TransactionModel> txs) {
+    return txs.map((t) => '${t.id}:${t.amount}').join('|');
+  }
+
   bool _loadScheduled = false;
 
-  // Κρατάει ποιες κατηγορίες είναι ανοιχτές (key = budgetUuid της category)
   final Set<String> _expandedCategoryKeys = {};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     AccessibilityService.announceAfterFirstFrame(
       context,
       'Σελίδα Προϋπολογισμών. Δείτε και διαχειριστείτε τους προϋπολογισμούς σας.',
@@ -61,7 +63,19 @@ class _BudgetPageState extends State<BudgetPage> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final now = DateTime.now();
+      if (_lastResumed != null && now.difference(_lastResumed!) < const Duration(seconds: 2)) return;
+      _lastResumed = now;
+      DebugConfig.print('📱 BudgetPage: app resumed — invalidating hash for recalc');
+      _lastTxHash = '';
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _recalcDebounce?.cancel();
     super.dispose();
   }
@@ -594,6 +608,7 @@ class _BudgetPageState extends State<BudgetPage> {
   void _ensureTransactionsListenerAndRecalc({
     required TransactionsProvider transactionsP,
     required BudgetsProvider budgetsP,
+    required CategoriesProvider categoriesP,
     required List<BudgetModel> visibleBudgets,
   }) {
     if (visibleBudgets.isEmpty) return;
@@ -623,33 +638,37 @@ class _BudgetPageState extends State<BudgetPage> {
         _loadScheduled = false;
         if (!mounted) return;
 
+        DebugConfig.print('📅 BudgetPage: loading BUDGETS_PAGE period $minStart → $maxEnd');
         transactionsP.loadPeriod('BUDGETS_PAGE', minStart, maxEnd);
       });
     }
 
     // 3) ✅ Recalc μόνο όταν αλλάξουν τα transactions του period
-    final txCount = transactionsP
-        .getTransactionsForPeriod('BUDGETS_PAGE')
-        .length;
+    final allTxs = transactionsP.getTransactionsForPeriod('BUDGETS_PAGE');
+    final txHash = _buildTxHash(allTxs);
 
-    if (txCount == _lastTxCount) return;
-
-    // ✅ Αν είναι πρώτο άνοιγμα σελίδας (_lastTxCount == -1) ΚΑΙ
-    // το cache έχει ήδη όλες τις τιμές → μην ξαναϋπολογίσεις
-    if (_lastTxCount == -1 && budgetsP.isSpentCachePopulated) {
-      _lastTxCount = txCount; // sync χωρίς recalc
+    if (txHash == _lastTxHash) {
+      DebugConfig.print('🔄 BudgetPage: tx hash unchanged — skip recalc');
       return;
     }
 
-    _lastTxCount = txCount;
+    if (_lastTxHash.isEmpty && budgetsP.isSpentCachePopulated) {
+      DebugConfig.print('🔄 BudgetPage: first load, cache populated — skip recalc');
+      _lastTxHash = txHash;
+      return;
+    }
+
+    DebugConfig.print('🔄 BudgetPage: tx hash changed — scheduling in-memory recalc (${allTxs.length} txs, ${budgetsP.budgets.length} budgets)');
+    _lastTxHash = txHash;
 
     _recalcDebounce?.cancel();
-    _recalcDebounce = Timer(_recalcDebounceDelay, () async {
+    _recalcDebounce = Timer(_recalcDebounceDelay, () {
       try {
-        for (final b in budgetsP.budgets) {
-          // ← όλα τα budgets
-          await budgetsP.calculateSpentAmount(b); // ← χωρίς skip
+        final categoryTypes = <String, String>{};
+        for (final cat in categoriesP.allCategories) {
+          categoryTypes[cat.uuid] = cat.type;
         }
+        budgetsP.calculateSpentAmountsFromCache(allTxs, categoryTypes: categoryTypes);
       } catch (e) {
         DebugConfig.print('⚠️ BudgetPage spent recalculation error: $e');
       }
@@ -680,6 +699,7 @@ class _BudgetPageState extends State<BudgetPage> {
         _ensureTransactionsListenerAndRecalc(
           transactionsP: transactionsP,
           budgetsP: budgetsP,
+          categoriesP: categoriesP,
           visibleBudgets: visibleBudgets,
         );
 
@@ -949,7 +969,7 @@ class _BudgetPageState extends State<BudgetPage> {
                                       final amount = b.amount;
                                       final spent = b.spentAmount;
                                       final pct = (spent / amount).clamp(0, 1);
-                                      final overspent = spent > amount;
+                                      final overspent = CurrencyFormatter.isOverspent(spent, amount);
                                       final double progress = pct
                                           .clamp(0.0, 1.0)
                                           .toDouble();
@@ -1272,7 +1292,10 @@ class _BudgetPageState extends State<BudgetPage> {
                                                           .clamp(0.0, 1.0)
                                                     : 0.0;
                                                 final subOverspent =
-                                                    subSpent > subAmount;
+                                                    CurrencyFormatter.isOverspent(
+                                                      subSpent,
+                                                      subAmount,
+                                                    );
 
                                                 // Βρες το όνομα της υποκατηγορίας
                                                 final subcat =
