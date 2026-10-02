@@ -76,8 +76,6 @@ class _CustomTextFieldState extends State<CustomTextField> {
   bool _obscureText = false;
   String? _errorText;
 
-  bool _clearedOnFocus = false;
-
   @override
   void initState() {
     super.initState();
@@ -119,11 +117,6 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
   void _onFocusChange() {
     if (_focusNode.hasFocus) {
-      if (!_clearedOnFocus && _controller.text.isNotEmpty) {
-        _controller.selection = TextSelection(baseOffset: 0, extentOffset: _controller.text.length);
-        _clearedOnFocus = true;
-      }
-
       final fieldTypeEl = widget.obscureText ? 'Κωδικός' : 'Κείμενο';
       AccessibilityService.announcePolite(
         '${widget.label ?? fieldTypeEl} πεδίο επιλεγμένο.',
@@ -132,9 +125,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
       _validate();
     }
 
-
-    setState(() {
-    });
+    setState(() {});
   }
 
   void _validate() {

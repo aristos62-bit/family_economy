@@ -69,7 +69,10 @@ class _TransactionEntryView extends StatelessWidget {
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
+            child: GestureDetector(
+              onTap: () => FocusScope.of(context).unfocus(),
+              behavior: HitTestBehavior.translucent,
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 16),
@@ -172,6 +175,7 @@ class _TransactionEntryView extends StatelessWidget {
                     },
                   ),
               ],
+              ),
             ),
           ),
         ),

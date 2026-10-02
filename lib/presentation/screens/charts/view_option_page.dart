@@ -25,6 +25,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
   late List<Map<String, dynamic>> charts;
   String? _userId;
   bool _preferencesLoaded = false;
+  bool _dirty = false;
 
   /// Metadata for charts (title & icon)
   final Map<String, Map<String, dynamic>> chartMeta = {
@@ -33,6 +34,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
     'graf_3': {'title': 'Κατηγορίες Εξόδων', 'icon': Icons.pie_chart_outline},
     'graf_4': {'title': 'Λογαριασμοί', 'icon': Icons.account_balance_wallet},
     'graf_5': {'title': 'Υποκατηγορίες Εξόδων', 'icon': Icons.donut_small},
+    'graf_7': {'title': 'Πορεία ανά Μήνα', 'icon': Icons.show_chart},
     'graf_6': {'title': 'Αναλυτική Προβολή', 'icon': Icons.list_alt},
   };
 
@@ -43,6 +45,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
     'graf_3': Colors.orange,
     'graf_4': Colors.purple,
     'graf_5': Colors.teal,
+    'graf_7': Colors.indigo,
     'graf_6': Colors.deepPurple,
   };
 
@@ -72,6 +75,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
       final item = charts.removeAt(oldIndex);
       charts.insert(newIndex, item);
     });
+    _dirty = true;
 
     // Αποθήκευση της νέας σειράς
     _saveOrderAndVisibilityOnly();
@@ -311,6 +315,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
         _chartPeriods[chartId] = result;
       });
       await _saveChartPeriod(chartId, result);
+      _dirty = true;
       AccessibilityService.announceSuccess('Η περίοδος άλλαξε σε $result');
     }
   }
@@ -319,7 +324,13 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.pop(context, result == true ? true : _dirty);
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(
           'Διάταξη Γραφημάτων',
@@ -343,12 +354,13 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
             child: ReorderableListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 12),
               itemCount: charts.length,
-              onReorder: (oldIndex, newIndex) {
+              onReorderItem: (oldIndex, newIndex) {
                 setState(() {
                   if (newIndex > oldIndex) newIndex -= 1;
                   final item = charts.removeAt(oldIndex);
                   charts.insert(newIndex, item);
                 });
+                _dirty = true;
                 _saveOrderAndVisibilityOnly();
                 AccessibilityService.announcePolite('Σειρά γραφημάτων άλλαξε');
               },
@@ -469,6 +481,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
                                   ),
                                   onChanged: (val) {
                                     setState(() => chart['visible'] = val);
+                                    _dirty = true;
                                     _saveOrderAndVisibilityOnly();
 
                                     AccessibilityService.announcePolite(
@@ -560,6 +573,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

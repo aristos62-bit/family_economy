@@ -135,7 +135,11 @@ class GeneralViewPageState extends State<GeneralViewPage> {
       // Find missing charts
       for (final chartId in defaultOrder) {
         if (!finalOrder.contains(chartId)) {
-          finalOrder.add(chartId); // Add new chart at the end
+          if (chartId == 'graf_7' && finalOrder.contains('graf_6')) {
+            finalOrder.insert(finalOrder.indexOf('graf_6'), chartId);
+          } else {
+            finalOrder.add(chartId); // Add new chart at the end
+          }
         }
       }
 
@@ -565,6 +569,17 @@ class GeneralViewPageState extends State<GeneralViewPage> {
           );
           break;
 
+
+        case 'graf_7':
+          title = 'Πορεία ανά Μήνα';
+          period = '';
+          onChanged = (_) {};
+          const cacheKey = 'graf_7';
+          chartWidget = _chartCache.putIfAbsent(
+            cacheKey,
+                () => chartItem.builder(''),
+          );
+          break;
 
         case 'graf_6':
           title = 'Προβολή Κινήσεων';

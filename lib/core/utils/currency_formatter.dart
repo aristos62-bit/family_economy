@@ -207,6 +207,16 @@ class CurrencyFormatter {
   static double round(double amount, {int decimalDigits = 2}) =>
       double.parse(amount.toStringAsFixed(decimalDigits));
 
+  /// Cent-rounded sufficiency: does [balance] cover [amount]?
+  /// Raw doubles carry float dust from FieldValue.increment, while the UI
+  /// shows rounded cents — compare rounded so exact amounts are not blocked.
+  static bool covers(double balance, double amount) =>
+      round(balance) >= round(amount);
+
+  /// Cent-rounded overspend: is [spent] strictly over [budget]?
+  static bool isOverspent(double spent, double budget) =>
+      round(spent) > round(budget);
+
   static double roundUp(double amount) => (amount * 100).ceil() / 100;
   static double roundDown(double amount) => (amount * 100).floor() / 100;
   static double abs(double amount) => amount.abs();

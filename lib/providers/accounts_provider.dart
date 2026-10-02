@@ -135,12 +135,13 @@ class AccountsProvider extends ChangeNotifier {
         .collection('users')
         .doc(uid)
         .collection('accounts')
+        .where('deleted', isEqualTo: false)
         .snapshots()
         .listen(
       _onAccountsChanged,
       onError: _onError,
     );
-    DebugConfig.print('→ AccountsProvider: listener initialized for userId=$uid');
+    DebugConfig.print('→ AccountsProvider: listener (FILTERED: deleted=false) initialized for userId=$uid');
   }
 
   // ============================================================

@@ -139,3 +139,113 @@
 **Αιτία:** Κάθε `calculateSpentAmount()` κάνει ξεχωριστό Firestore query, αγνοώντας τα transactions που ήδη έχει κατεβάσει το `TransactionsProvider` για το `BUDGETS_PAGE`. Για Ν budgets → Ν επιπλέον queries στη Firestore.
 
 **Πρόταση:** Το recalc loop (`budget_page.dart:649`) να δέχεται τα transactions από `transactionsP.getTransactionsForPeriod('BUDGETS_PAGE')` και να τα φιλτράρει in-memory, αντί να καλεί `calculateSpentAmount()` που κάνει δικά της Firestore queries.
+
+## Session 8 (2026-07-16)
+
+### Βελτιστοποίηση: In-memory spent calculation (αντί Ν Firestore queries)
+
+**Ολοκληρωμένο πλάνο από το προηγούμενο session — υλοποιήθηκε και επιβεβαιώθηκε πλήρως ✅**
+
+| Βήμα | Αρχείο | Αλλαγή | Status |
+|------|--------|--------|--------|
+| 1 | `budget_model.dart:192` | Νέο getter `matchesTransaction(tx)` — ελέγχει ημερομηνία, accountId, budgetType (total/category/subcategory) | ✅ |
+| 2 | `budgets_provider.dart:297` | Νέα μέθοδος `calculateSpentAmountsFromCache(List<TransactionModel> txs)` — 0 Firestore queries, in-memory φιλτράρισμα (skip transfers, skip income, budget matching) | ✅ |
+| 3 | `budget_page.dart:44,47` | `_lastTxHash` + `_buildTxHash()` — content-aware αντί για απλό count (`id:amount` hash) | ✅ |
+| 4 | `budget_page.dart:66-73` | `didChangeAppLifecycleState` (resume) — debounce 2s, αποφυγή διπλού recalc | ✅ |
+| 5 | Παντού | Debug logging σε κάθε βήμα (hash changes, cache update, matched transactions) | ✅ |
+
+**Αρχιτεκτονική after:**
+- `transactionsP.loadPeriod('BUDGETS_PAGE')` → 1 listener (ίδιο)
+- `transactionsP.getTransactionsForPeriod('BUDGETS_PAGE')` → in-memory λίστα
+- `budgetsP.calculateSpentAmountsFromCache(txs, categoryTypes)` → 1 pass, όλα τα budgets
+- `_lastTxHash` → ανιχνεύει αλλαγές περιεχομένου (όχι μόνο πλήθους)
+
+**ΔΕΝ υλοποιήθηκε:** `email_service.dart` (ανεξάρτητο, δεν συμπεριλήφθηκε)
+
+## Session 201+ — Bubble Layout Cache Bug (UNRESOLVED)
+
+### Περιγραφή
+- Bug: MessageBubble layout παγώνει σε λάθος κατάσταση μετά από cold restart
+- navigate-away-and-back διορθώνει το layout (γιατί dispose() καθαρίζει το cache)
+- Η αρχική θεωρία ήταν ότι το `_obtainBubble` cache κάνει identity skip (`child.widget == newWidget`) και δεν καλεί build(), παγώνοντας το layout
+
+### Attempt #1 — Επέκταση ValueKey (Session 202)
+- `ValueKey(msgId)` → `ValueKey('$msgId|${bubbleMaxWidth.toStringAsFixed(0)}')`
+- **Απέτυχε:** bubbleMaxWidth είναι ίδιο σε κάθε build, οπότε το key δεν άλλαζε
+- **REVERTED**
+
+### Attempt #2 — Αφαίρεση cache entirely (Session 202)
+- Αφαιρέθηκαν `_MessageBubbleSignature`, `_bubbleCache`, `_bubbleSignatures`, `_obtainBubble`
+- `MessageBubble(...)` direct στο itemBuilder
+- **Απέτυχε:** layout ακόμα λάθος, πρόβλημα αλλού
+- **REVERTED**
+
+### Debug investigation (Session 202-debugs)
+Προστέθηκαν 3 debug log points (DebugsConfig.log):
+1. `ChatMessagesList.build()` — loggtarei screenW, textScale, itemCount
+2. `_obtainBubble()` — loggtarei cache HIT (identityHashCode) ή cache MISS (existingSig)
+3. `MessageBubble.build()` — loggtarei build counter, key.hashCode, identity, mediaW, textScale, bubbleMaxWidth
+
+### Αποτελέσματα debugs
+- **Το build() καλείται ακόμα και με cache HIT** (ίδιο identity). Π.χ. `BUILD #3` και `BUILD #8` με ίδιο `identity=820304279` — ο Flutter καλεί build() κανονικά, ΔΕΝ γίνεται identity skip
+- `screenW` = **384.0 σε ΟΛΑ τα builds** (σταθερό, όχι transition)
+- `textScale` = **1.00 σε ΟΛΑ** (σταθερό)
+- `bubbleMaxWidth` = **288.0 σε ΟΛΑ** (`384 * 0.75`)
+- Παρατηρήθηκε μαζικό rebuild cascade: `MsgBubble BUILD #1→#538+` σε ένα session
+
+### Συμπέρασμα
+- Η αρχική θεωρία (cache identity skip) **καταρρίφθηκε** — το cache ΔΕΝ παγώνει το layout
+- Όλες οι μετρήσεις (screenW, textScale, bubbleMaxWidth) είναι ίδιες σε κάθε build
+- Το πρόβλημα βρίσκεται **αλλού** (ListView reconciliation, parent constraints, ή MediaQuery propagation)
+- Το bug παραμένει **UNRESOLVED**
+
+## Session 9 (2026-10-02)
+
+### Graf 7 «Πορεία ανά Μήνα» — υλοποιήθηκε ✅
+- Νέο `lib/presentation/screens/charts/graf_7_monthly_trend_page.dart` (~427 γραμμές): toggle Έσοδα/Έξοδα (`SegmentedButton`), dropdowns κατηγορίας/υποκατηγορίας, 1 μπλε γραμμή (`ColorsUI.getInfo`), 12 μήνες από 01/01 τρέχοντος έτους, ποσό + `%` πάνω από τελείες (μόνιμα tooltips), `YEAR_TREND` listener + in-memory buckets, `DebugConfig` + accessibility
+- `chart_registry.dart`: +import/+`graf_7` πριν το `graf_6` (backup `backups/chart_registry_20261002_105610.bak`)
+- `general_view_page.dart`: `case graf_7` (χωρίς περίοδο) + migration insert πριν το `graf_6` (backup `backups/general_view_page_20261002_105733.bak`)
+- `view_option_page.dart`: meta/icon + χρώμα `graf_7`, χωρίς περίοδο (backup `backups/view_option_page_20261002_105817.bak`)
+- `DESIGN.md`: +1 γραμμή `graf_7` (backup `backups/DESIGN_20261002_105915.bak`)
+- Έλεγχοι: `dart analyze` ανά αρχείο + `flutter analyze` → No issues found
+- Διόρθωση κατά την υλοποίηση: `LineBarSpot(bar, barIndex, spot)` (3 ορίσματα) αντί `LineBarSpot(0, i, spot)`
+
+### Graf 7 fixes (ίδιο session)
+- Μόνιμες ετικέτες πάνω από τελείες: custom `_LabelDotPainter` (ποσό + `%`), `clipData: none`, headroom ×1.7, μελλοντικοί μήνες χωρίς ετικέτα. Τα `showingTooltipIndicators` ήθελαν tap — αφαιρέθηκαν (tap tooltip κρατήθηκε)
+- Χρώματα `%`: έσοδα +πράσινο/−κόκκινο, έξοδα αντεστραμμένα +κόκκινο/−πράσινο (`_pctColor`)
+- Refresh κεντρικής: `view_option_page.dart` — `_dirty` flag + `PopScope` (system back γύρναγε `null` και δεν έκανε refresh)
+- Έλεγχοι: `dart analyze` + `flutter analyze` → No issues found
+
+### Build fixes (ίδιο session)
+- Android/Gradle: το Flutter έπαιρνε bundled JBR 25.0.3 (ασύμβατο με Gradle 8.14) → `flutter config --jdk-dir=jdk-21` (AGP 8.11.1 συμβατό)
+- Windows: corrupt `firebase_cpp_sdk_windows_13.4.0.zip` (cmake tar -5, μισό extract) → διαγραφή zip + `extracted` + CMakeCache → φρέσκο download → `Built build\windows\x64\runner\Release\family_economy.exe` ✅
+
+## Session 10 (2026-10-02)
+
+### Tests Βήμα 0+1 ✅ — 19/19 pass
+- Baseline: `flutter test` FAIL (σπασμένο counter `widget_test.dart`, `ProviderNotFound`)
+- Νέα δομή `test/unit/` (καθρέφτης του `lib/`): `currency_formatter_test.dart` (9 tests) + `chart_helpers_test.dart` (9 tests), pure-Dart χωρίς Firebase
+- `widget_test.dart`: αντικατάσταση με `ErrorApp` smoke test (χωρίς tap στο restart — θέλει Phoenix ancestor)
+- Backup: `backups/widget_test_20261002_124058.bak`
+
+### Tests Βήμα 2 ✅ — 33/33 pass
+- `test/unit/providers/transactions_provider_test.dart` (6 tests): `isTransfer/isIncome/isExpense`
+- `test/unit/models/budget_model_test.dart` (8 tests): `matchesTransaction` (category/subcategory/total/account/inclusive όρια)
+- Εύρημα: 1 αποτυχία από λάθος παραδοχή του test (πέρασε `'income'` με null id — ο provider περνά null resolved type, `transactions_provider.dart:400`). Ο κώδικας σωστός, διορθώθηκε το test
+
+### Tests Βήμα 3 ✅ — 44/44 pass
+- Νέο `lib/core/utils/monthly_trend.dart`: pure `computeMonthlyTrend` (εξαγωγή από Graf7, ίδια συμπεριφορά)
+- `graf_7_monthly_trend_page.dart`: 446 γραμμές (<500), `_computeMonthly` → delegate, `_MonthPoint` → `MonthlyPoint`
+- `test/unit/core/utils/monthly_trend_test.dart` (11 tests): zeros, abs sums, +50%, 0→X +100%, X→0 −100%, φίλτρα transfer/category/year/subcategory
+
+### Tests — Firebase mocks ΑΝΑΒΟΛΗ
+- Έλεγχος: `fake_cloud_firestore 4.3.0` + `firebase_auth_mocks 0.15.2` συμβατά, αλλά φέρνουν firebase_core 4.5→4.15 / firestore 6.1→6.10 / auth 6.2→6.7 (24 αλλαγές lock) + 93 σημεία καλούν singletons απευθείας (μόνο BudgetsProvider/TransactionsActionsService injectable)
+- Απόφαση: αναβολή (ρίσκο/όφελος δεν βγαίνει). Παραμένουν 44 hermetic tests + manual QA. Dry-run only, καμία αλλαγή pubspec
+
+## Session 11 (2026-10-02)
+
+### Fix υπολοίπου (float dust) ✅ — 50/50 tests, analyze clean
+- Αιτία: `FieldValue.increment` μαζεύει σκόνη float — υπόλοιπο 99.9999 δείχνει 100,00€ αλλά `amount > balance` έκοβε αγορά 100€
+- Έλεγχος όλης της εφαρμογής: μπλοκάρισμα μόνο σε `transaction_entry_details_step.dart:680,736` (+ ίδιας οικογένειας `budget_page.dart:972,1295` display υπέρβασης)
+- Γενικευμένο fix: `CurrencyFormatter.covers/isOverspent` (σύγκριση στρογγυλοποιημένη στα cents) + 6 tests
+- Backups: currency_formatter, details_step, budget_page

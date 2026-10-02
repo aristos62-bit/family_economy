@@ -99,11 +99,13 @@ class NotificationsProvider extends ChangeNotifier {
         .collection('users')
         .doc(userId)
         .collection('notifications')
+        .where('deleted', isEqualTo: false)
         .snapshots()
         .listen(
       _onNotificationsChanged,
       onError: _onError,
     );
+    DebugConfig.print('→ NotificationsProvider: listener (FILTERED: deleted=false) initialized for userId=$userId');
   }
 
   void _onNotificationsChanged(QuerySnapshot snapshot) {
