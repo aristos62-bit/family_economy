@@ -9,7 +9,7 @@ import 'package:family_economy/core/utils/icon_mapper.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
-import 'package:family_economy/CORE/widgets/custom_text_field.dart';
+import 'package:family_economy/core/widgets/custom_text_field.dart';
 import 'package:family_economy/core/widgets/custom_currency_field.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 
