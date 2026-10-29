@@ -7,7 +7,7 @@ import 'utils.dart' as oil_utils;
 
 class PurchaseHistorySheet extends StatelessWidget {
   final String userId;
-  final Future<void> Function(String userId) onRecalculateAvgCost;
+  final Future<void> Function(String userId, {double litersDelta}) onRecalculateAvgCost;
 
   const PurchaseHistorySheet({
     super.key,
@@ -135,11 +135,11 @@ class PurchaseHistorySheet extends StatelessWidget {
                               ),
                               IconButton(
                                 icon: ExcludeSemantics(child: Icon(Icons.edit_rounded, size: 20, color: ColorsUI.getPrimary(brightness))),
-                                onPressed: () => _showEditPurchaseDialog(context, docId: doc.id, userId: userId, currentDate: date, currentPrice: price, currentLiters: liters),
+                                onPressed: () => _showEditPurchaseDialog(context, docId: doc.id, userId: userId, currentDate: date, currentPrice: price, currentLiters: liters, isLatest: i == 0),
                               ),
                               IconButton(
                                 icon: ExcludeSemantics(child: Icon(Icons.delete_outline_rounded, size: 20, color: ColorsUI.getError(brightness))),
-                                onPressed: () => _confirmDeletePurchase(context, docId: doc.id, userId: userId, date: date),
+                                onPressed: () => _confirmDeletePurchase(context, docId: doc.id, userId: userId, date: date, liters: liters, isLatest: i == 0),
                               ),
                             ],
                           ),
@@ -163,6 +163,7 @@ class PurchaseHistorySheet extends StatelessWidget {
         required DateTime currentDate,
         required double currentPrice,
         required double currentLiters,
+        required bool isLatest,
       }) {
     final brightness = context.brightness;
     final fmt = DateFormat('dd/MM/yyyy');
@@ -262,7 +263,10 @@ class PurchaseHistorySheet extends StatelessWidget {
                         'price_per_liter': newPrice,
                         'liters': newLiters,
                       });
-                      await onRecalculateAvgCost(userId);
+                      await onRecalculateAvgCost(
+                        userId,
+                        litersDelta: isLatest ? newLiters - currentLiters : 0,
+                      );
                       if (ctx.mounted) {
                         Navigator.pop(dialogCtx);
                         AccessibilityService.announcePolite('Η αγορά ενημερώθηκε.');
@@ -284,7 +288,7 @@ class PurchaseHistorySheet extends StatelessWidget {
     );
   }
 
-  void _confirmDeletePurchase(BuildContext context, {required String docId, required String userId, required DateTime date}) {
+  void _confirmDeletePurchase(BuildContext context, {required String docId, required String userId, required DateTime date, required double liters, required bool isLatest}) {
     final brightness = context.brightness;
     final fmt = DateFormat('dd/MM/yyyy');
 
@@ -311,7 +315,7 @@ class PurchaseHistorySheet extends StatelessWidget {
                     .collection('oil_purchases')
                     .doc(docId)
                     .delete();
-                await onRecalculateAvgCost(userId);
+                await onRecalculateAvgCost(userId, litersDelta: isLatest ? -liters : 0);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Η αγορά διαγράφηκε.'), backgroundColor: Colors.green));
                   AccessibilityService.announcePolite('Η αγορά διαγράφηκε. Το μέσο κόστος επανυπολογίστηκε.');
