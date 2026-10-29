@@ -1,0 +1,234 @@
+# Session Log — Family Economy
+
+## Session 1 (2026-05-24)
+
+### Αξιολόγηση logs εκκίνησης
+- Αναλύθηκαν logs από release build σε Android (M2007J20CG)
+- Η εφαρμογή τρέχει κανονικά χωρίς errors/crashes
+
+### Αρχιτεκτονική
+- Διαβάστηκαν όλα τα models, services, providers, core utils
+- Επιβεβαιώθηκε ότι η βάση Firestore είναι ήδη εγκατεστημένη
+- Δύο διακριτά paths: auto-login (app_start) και fresh login (login_page)
+
+### Αξιολόγηση ανά αρχείο
+
+**main.dart** ✅ Συμπαγές
+- Εντοπίστηκαν 2 προτάσεις:
+  - Cleanup callback στο `dispose()` — δόθηκαν οδηγίες
+  - Restart button στο `ErrorApp` — δόθηκαν οδηγίες (flutter_phoenix)
+
+**splash_screen.dart** ✅ 1 διόρθωση
+- Unconditional 2.5s delay → conditional με `MediaQuery.accessibleNavigation`
+
+**app_start.dart + login_page.dart** — Αξιολογήθηκαν συνδυαστικά
+- #2 NotificationsService().initialize() — **idempotent, δεν χρειάζεται αλλαγή**
+- #3 app_start catch block — **δόθηκε fix**: προσθήκη accessibility announcement
+- #4 login_page missing mounted check — **δόθηκε fix**
+
+### Εκκρεμότητες Session 1 (όλες ✅ υλοποιημένες)
+| # | Αρχείο | Αλλαγή | Status |
+|---|--------|--------|--------|
+| A | `pubspec.yaml` | Διόρθωση indentation (2 κενά) + `flutter pub get` | ✅ |
+| B | `main.dart` | Import `flutter_phoenix` | ✅ (γρ. 14) |
+| C | `main.dart` | `dispose()`: `widget.connectivityService.onSyncComplete = null` | ✅ (γρ. 127) |
+| D | `main.dart` | Phoenix wrapper γύρω από MaterialApp | ✅ (γρ. 135) |
+| E | `main.dart` | Restart button: `Phoenix.rebirth(context)` | ✅ (γρ. 237) |
+| F | `splash_screen.dart` | Conditional delay with `MediaQuery.accessibleNavigation` | ✅ (γρ. 85–87) |
+| G | `app_start.dart` | Import `accessibility_service` + error announcement | ✅ (γρ. 12, 143–145) |
+| H | `login_page.dart` | `mounted` check μετά signIn/register | ✅ (γρ. 100) |
+| I | `transactions_actions_service.dart` | Απλοποίηση GetOptions | ✅ (γρ. 838, 889) |
+| I | `transactions_actions_service.dart` | Date filter scheduled query | ✅ (υπάρχει ήδη) |
+| — | Uncomment generateAhead()  ❓ Αποφασίζεις εσύ  ---> recurring_notifications_service --> generateAhead() σχολιασμένο και στα 2 σημεία
+| — | graf_1..5 | `toStringAsFixed(2)` στα DebugConfig.print |
+
+## Session 2 (2026-05-25)
+
+### Επιβεβαίωση A–I από Session 1
+- ✅ Όλες οι αλλαγές A–I έχουν εφαρμοστεί (ελέγχθηκαν ένα προς ένα)
+
+### Recurring Notifications
+- Επιβεβαιώθηκε ότι λειτουργούν σωστά (μόνο NotificationsProvider, RecurringNotificationsService είναι ανενεργό/νεκρός κώδικας)
+- generateAhead() παραμένει σχολιασμένο — δεν χρειάζεται
+
+### Bug: Δημιουργία Προϋπολογισμού — input_budget_page.dart
+**Περιγραφή:** Όταν ο χρήστης φιλτράρει μία-μία τις κατηγορίες βάζοντας ποσά, κατά την εναλλαγή φίλτρου το σύνολο της νέας κατηγορίας δείχνει το ποσό της προηγούμενης και δεν ενημερώνεται.
+
+**Δύο bugs που εντοπίστηκαν:**
+
+1. **`custom_currency_field.dart:148`** — `_onFocusChange` καλεί `widget.onChanged?.call(null)` όταν το πεδίο παίρνει focus. Αυτό μηδενίζει προσωρινά το ποσό στο parent.
+   - Επηρεάζει: `input_budget_page.dart` (category/subcategory fields) + `transaction_entry_details_step.dart` (amount field)
+   - Δεν έχει side effects η αφαίρεσή του (κανένα callback δεν βασίζεται στο null από focus)
+
+2. **`input_budget_page.dart`** — `_buildPieChartSections()` (γρ. 270) και `_buildLegend()` (γρ. 334) δεν φιλτράρονται από `_selectedCategoryFilter`
+   - Δεν έχει side effects (private methods, χρησιμοποιούνται μόνο εδώ)
+
+**Εκκρεμεί:** Υλοποίηση των διορθώσεων (επόμενο session)
+
+## Session 3 (2026-05-26)
+
+### Ανάλυση επίδρασης Bug #1
+- Εξετάστηκε αν η αφαίρεση της γραμμής `widget.onChanged?.call(null);` από `custom_currency_field.dart:148` επηρεάζει άλλες σελίδες
+- **Συμπέρασμα:** Επηρεάζει και το `transaction_entry_details_step.dart` (όχι μόνο `input_budget_page.dart`), αλλά κανένα callback δεν βασίζεται στο `null` από focus — η αφαίρεση είναι ασφαλής και βελτιώνει τη συμπεριφορά και στα δύο αρχεία
+
+### Διορθώσεις που εφαρμόστηκαν
+
+**Διόρθωση #1 — `custom_currency_field.dart:148`** ✅
+- Αφαιρέθηκε η γραμμή `widget.onChanged?.call(null);` από τη μέθοδο `_onFocusChange` (κλάση `_CustomCurrencyFieldState`)
+
+**Διόρθωση #2 — `input_budget_page.dart`** (3 σημεία) ✅
+- `_buildPieChartSections()`: Προστέθηκε παράμετρος `CategoriesProvider? categoriesP` + φιλτράρισμα με `_selectedCategoryFilter`
+- `_buildLegend()`: Φιλτράρισμα με `_selectedCategoryFilter`
+- Ενημέρωση των 2 κλήσεων `_buildPieChartSections(income)` → `_buildPieChartSections(income, categoriesP: categoriesP)`
+
+## Session 4 (2026-05-26)
+
+### Bug: Εναλλαγή φίλτρου κατηγορίας — input_budget_page.dart
+**Περιγραφή:** Σε νέο προϋπολογισμό, όταν ο χρήστης επιλέγει κατηγορία (π.χ. Διατροφή), βάζει ποσά σε υποκατηγορίες, και μετά αλλάζει το φίλτρο σε άλλη κατηγορία (π.χ. Στέγαση), η νέα κατηγορία εμφανίζει το ποσό της προηγούμενης και η εισαγωγή υποκατηγοριών δεν αλλάζει το σύνολο. Η αποθήκευση λειτουργεί σωστά.
+
+**Αιτία:** Το `CustomCurrencyField` είναι `StatefulWidget`. Κατά την αλλαγή φίλτρου, το Flutter ξαναχρησιμοποιεί το State (ίδια θέση, ίδιος τύπος), αλλά το `_controller` στο State παραμένει στο παλιό controller. Το `didUpdateWidget` δεν ενημερώνει το `_controller` όταν αλλάζει το `widget.controller`.
+
+**Διόρθωση (εκκρεμεί υλοποίηση):**
+- `custom_currency_field.dart` — `didUpdateWidget`: Προσθήκη ελέγχου `widget.controller != oldWidget.controller` και ανανέωση του `_controller` + disposal παλιού internal controller αν χρειαστεί
+
+## Session 5 (2026-05-26)
+
+### Bug: Μετακίνηση προϋπολογισμού χάνει υποκατηγορίες — budget_page.dart
+**Περιγραφή:** Μετά από "Μετακίνηση" (αλλαγή περιόδου) προϋπολογισμού που έχει κατηγορία με υποκατηγορίες (π.χ. Διατροφή 500€), η κάρτα δείχνει σωστά σύνολα αλλά χωρίς expand arrow για υποκατηγορίες. Αν επιλεγεί "Επεξεργασία", τα ποσά υποκατηγοριών και το σύνολο έχουν χαθεί.
+
+**Αιτία:** Η `_moveGroupedBudget` (γρ. 500–501) περνάει μόνο τα category-level budgets στην `updateBudgetDates`. Οι subcategory budgets δεν μετακινούνται, μένουν με παλιές ημερομηνίες. Αυτό σπάει το date-based matching στο `subBudgets` lookup (γρ. 934–950) και στην `_editGroupedBudget` (γρ. 187–194).
+
+## Session 6 (2026-05-26)
+
+### Bug: Phantom subcategories μετά από Μετακίνηση — budget_page.dart
+**Περιγραφή:** Δημιουργία νέου προϋπολογισμού με 1 κατηγορία (Διατροφή €100, χωρίς ποσά υποκατηγοριών). Η κάρτα εμφανίζεται σωστά χωρίς down arrow. Μετά από "Μετακίνηση" στον επόμενο μήνα, η κάρτα δείχνει phantom υποκατηγορίες (Χωρίς Κατηγορία €100, Σούπερ Μάρκετ €100) με down arrow.
+
+**Αιτία:** 
+1. `_deleteGroupedBudget` διέγραφε μόνο category-level budgets — οι subcategory budgets έμεναν orphaned (`deleted: false`)
+2. `_moveGroupedBudget` δεν φιλτράριζε `budgetType` ή `categoryId`, οπότε τα orphaned subcats με ίδιο όνομα/ημερομηνίες μαζεύονταν και μετακινούνταν κι αυτά
+3. `_editGroupedBudget` είχε ήδη το σωστό query pattern (από Session 5 fix)
+
+### Διορθώσεις που εφαρμόστηκαν ✅
+
+1. **`budget_page.dart` — `_deleteGroupedBudget`**: Query όλων των budgets (category + subcategory) matching name/accountId/startDate/endDate, και διαγραφή όλων — ίδια λογική με `_editGroupedBudget`
+
+2. **`budget_page.dart` — `_moveGroupedBudget`**: Αντικατάσταση `groupBudgets.map((e) => e.model)` με το ίδιο query pattern (category + subcategory)
+
+3. **`budgets_provider.dart`**: Νέο `_cleanupOrphanedSubcategoryBudgets()` — τρέχει μία φορά στο πρώτο load, εντοπίζει subcategory budgets χωρίς parent category budget και τα διαγράφει
+
+4. **`custom_currency_field.dart` — `didUpdateWidget`**: Προσθήκη controller update όταν αλλάζει `widget.controller` (από Session 4)
+
+5. **`input_budget_page.dart`**: Pie chart & legend φιλτράρισμα με `_selectedCategoryFilter` (από Session 3)
+
+6. **`purchase_card.dart`**: Προσθήκη `mounted` checks πριν από SnackBar
+
+## Session 7 (2026-05-26)
+
+### Θέμα: Προϋπολογισμοί — Τελικός έλεγχος
+
+**Ανάλυση logs & κώδικα:**
+- Εξετάστηκαν όλα τα logs από release build — τα budgets λειτουργούν άψογα online, offline, και με custom περιόδους (π.χ. 2-μηνο)
+- Real-time listeners, cache-first spent calculation, batch CRUD με optimistic updates — όλα σωστά
+
+**Διόρθωση που εφαρμόστηκε:**
+- `budgets_provider.dart:127-129` — Αφαιρέθηκε η διπλή (τυχαία) `notifyListeners()` στη `_onBudgetsChanged`
+- Το θέμα έκλεισε ✅
+
+### Future fix: Αργή πρώτη φόρτωση Budgets σελίδας
+
+**Αιτία:** Κάθε `calculateSpentAmount()` κάνει ξεχωριστό Firestore query, αγνοώντας τα transactions που ήδη έχει κατεβάσει το `TransactionsProvider` για το `BUDGETS_PAGE`. Για Ν budgets → Ν επιπλέον queries στη Firestore.
+
+**Πρόταση:** Το recalc loop (`budget_page.dart:649`) να δέχεται τα transactions από `transactionsP.getTransactionsForPeriod('BUDGETS_PAGE')` και να τα φιλτράρει in-memory, αντί να καλεί `calculateSpentAmount()` που κάνει δικά της Firestore queries.
+
+## Session 8 (2026-07-16)
+
+### Βελτιστοποίηση: In-memory spent calculation (αντί Ν Firestore queries)
+
+**Ολοκληρωμένο πλάνο από το προηγούμενο session — υλοποιήθηκε και επιβεβαιώθηκε πλήρως ✅**
+
+| Βήμα | Αρχείο | Αλλαγή | Status |
+|------|--------|--------|--------|
+| 1 | `budget_model.dart:192` | Νέο getter `matchesTransaction(tx)` — ελέγχει ημερομηνία, accountId, budgetType (total/category/subcategory) | ✅ |
+| 2 | `budgets_provider.dart:297` | Νέα μέθοδος `calculateSpentAmountsFromCache(List<TransactionModel> txs)` — 0 Firestore queries, in-memory φιλτράρισμα (skip transfers, skip income, budget matching) | ✅ |
+| 3 | `budget_page.dart:44,47` | `_lastTxHash` + `_buildTxHash()` — content-aware αντί για απλό count (`id:amount` hash) | ✅ |
+| 4 | `budget_page.dart:66-73` | `didChangeAppLifecycleState` (resume) — debounce 2s, αποφυγή διπλού recalc | ✅ |
+| 5 | Παντού | Debug logging σε κάθε βήμα (hash changes, cache update, matched transactions) | ✅ |
+
+**Αρχιτεκτονική after:**
+- `transactionsP.loadPeriod('BUDGETS_PAGE')` → 1 listener (ίδιο)
+- `transactionsP.getTransactionsForPeriod('BUDGETS_PAGE')` → in-memory λίστα
+- `budgetsP.calculateSpentAmountsFromCache(txs, categoryTypes)` → 1 pass, όλα τα budgets
+- `_lastTxHash` → ανιχνεύει αλλαγές περιεχομένου (όχι μόνο πλήθους)
+
+**ΔΕΝ υλοποιήθηκε:** `email_service.dart` (ανεξάρτητο, δεν συμπεριλήφθηκε)
+
+## Session 201+ — Bubble Layout Cache Bug (UNRESOLVED)
+
+### Περιγραφή
+- Bug: MessageBubble layout παγώνει σε λάθος κατάσταση μετά από cold restart
+- navigate-away-and-back διορθώνει το layout (γιατί dispose() καθαρίζει το cache)
+- Η αρχική θεωρία ήταν ότι το `_obtainBubble` cache κάνει identity skip (`child.widget == newWidget`) και δεν καλεί build(), παγώνοντας το layout
+
+### Attempt #1 — Επέκταση ValueKey (Session 202)
+- `ValueKey(msgId)` → `ValueKey('$msgId|${bubbleMaxWidth.toStringAsFixed(0)}')`
+- **Απέτυχε:** bubbleMaxWidth είναι ίδιο σε κάθε build, οπότε το key δεν άλλαζε
+- **REVERTED**
+
+### Attempt #2 — Αφαίρεση cache entirely (Session 202)
+- Αφαιρέθηκαν `_MessageBubbleSignature`, `_bubbleCache`, `_bubbleSignatures`, `_obtainBubble`
+- `MessageBubble(...)` direct στο itemBuilder
+- **Απέτυχε:** layout ακόμα λάθος, πρόβλημα αλλού
+- **REVERTED**
+
+### Debug investigation (Session 202-debugs)
+Προστέθηκαν 3 debug log points (DebugsConfig.log):
+1. `ChatMessagesList.build()` — loggtarei screenW, textScale, itemCount
+2. `_obtainBubble()` — loggtarei cache HIT (identityHashCode) ή cache MISS (existingSig)
+3. `MessageBubble.build()` — loggtarei build counter, key.hashCode, identity, mediaW, textScale, bubbleMaxWidth
+
+### Αποτελέσματα debugs
+- **Το build() καλείται ακόμα και με cache HIT** (ίδιο identity). Π.χ. `BUILD #3` και `BUILD #8` με ίδιο `identity=820304279` — ο Flutter καλεί build() κανονικά, ΔΕΝ γίνεται identity skip
+- `screenW` = **384.0 σε ΟΛΑ τα builds** (σταθερό, όχι transition)
+- `textScale` = **1.00 σε ΟΛΑ** (σταθερό)
+- `bubbleMaxWidth` = **288.0 σε ΟΛΑ** (`384 * 0.75`)
+- Παρατηρήθηκε μαζικό rebuild cascade: `MsgBubble BUILD #1→#538+` σε ένα session
+
+### Συμπέρασμα
+- Η αρχική θεωρία (cache identity skip) **καταρρίφθηκε** — το cache ΔΕΝ παγώνει το layout
+- Όλες οι μετρήσεις (screenW, textScale, bubbleMaxWidth) είναι ίδιες σε κάθε build
+- Το πρόβλημα βρίσκεται **αλλού** (ListView reconciliation, parent constraints, ή MediaQuery propagation)
+- Το bug παραμένει **UNRESOLVED**
+
+## Session 9 (2026-10-02)
+
+### Graf 7 «Πορεία ανά Μήνα» — υλοποιήθηκε ✅
+- Νέο `lib/presentation/screens/charts/graf_7_monthly_trend_page.dart` (~427 γραμμές): toggle Έσοδα/Έξοδα (`SegmentedButton`), dropdowns κατηγορίας/υποκατηγορίας, 1 μπλε γραμμή (`ColorsUI.getInfo`), 12 μήνες από 01/01 τρέχοντος έτους, ποσό + `%` πάνω από τελείες (μόνιμα tooltips), `YEAR_TREND` listener + in-memory buckets, `DebugConfig` + accessibility
+- `chart_registry.dart`: +import/+`graf_7` πριν το `graf_6` (backup `backups/chart_registry_20261002_105610.bak`)
+- `general_view_page.dart`: `case graf_7` (χωρίς περίοδο) + migration insert πριν το `graf_6` (backup `backups/general_view_page_20261002_105733.bak`)
+- `view_option_page.dart`: meta/icon + χρώμα `graf_7`, χωρίς περίοδο (backup `backups/view_option_page_20261002_105817.bak`)
+- `DESIGN.md`: +1 γραμμή `graf_7` (backup `backups/DESIGN_20261002_105915.bak`)
+- Έλεγχοι: `dart analyze` ανά αρχείο + `flutter analyze` → No issues found
+- Διόρθωση κατά την υλοποίηση: `LineBarSpot(bar, barIndex, spot)` (3 ορίσματα) αντί `LineBarSpot(0, i, spot)`
+
+### Graf 7 fixes (ίδιο session)
+- Μόνιμες ετικέτες πάνω από τελείες: custom `_LabelDotPainter` (ποσό + `%`), `clipData: none`, headroom ×1.7, μελλοντικοί μήνες χωρίς ετικέτα. Τα `showingTooltipIndicators` ήθελαν tap — αφαιρέθηκαν (tap tooltip κρατήθηκε)
+- Χρώματα `%`: έσοδα +πράσινο/−κόκκινο, έξοδα αντεστραμμένα +κόκκινο/−πράσινο (`_pctColor`)
+- Refresh κεντρικής: `view_option_page.dart` — `_dirty` flag + `PopScope` (system back γύρναγε `null` και δεν έκανε refresh)
+- Έλεγχοι: `dart analyze` + `flutter analyze` → No issues found
+
+### Build fixes (ίδιο session)
+- Android/Gradle: το Flutter έπαιρνε bundled JBR 25.0.3 (ασύμβατο με Gradle 8.14) → `flutter config --jdk-dir=jdk-21` (AGP 8.11.1 συμβατό)
+- Windows: corrupt `firebase_cpp_sdk_windows_13.4.0.zip` (cmake tar -5, μισό extract) → διαγραφή zip + `extracted` + CMakeCache → φρέσκο download → `Built build\windows\x64\runner\Release\family_economy.exe` ✅
+
+## Session 10 (2026-10-02)
+
+### Tests Βήμα 0+1 ✅ — 19/19 pass
+- Baseline: `flutter test` FAIL (σπασμένο counter `widget_test.dart`, `ProviderNotFound`)
+- Νέα δομή `test/unit/` (καθρέφτης του `lib/`): `currency_formatter_test.dart` (9 tests) + `chart_helpers_test.dart` (9 tests), pure-Dart χωρίς Firebase
+- `widget_test.dart`: αντικατάσταση με `ErrorApp` smoke test (χωρίς tap στο restart — θέλει Phoenix ancestor)
+- Backup: `backups/widget_test_20261002_124058.bak`
+
+### Tests Βήμα 2 ✅ — 33/33 pass
+- `test/unit/providers/transactions_provider_test.dart` (6 tests): `isTransfer/isIncome/isExpense`
+- `test/unit/models/budget_model_test.dart` (8 tests): `matchesTransaction` (category/subcategory/total/account/inclusive όρια)
+- Εύρημα: 1 αποτυχία από λάθος παραδοχή του test (πέρασε `'income'` με null id — ο provider περνά null resolved type, `transactions_provider.dart:400`). Ο κώδικας σωστός, διορθώθηκε το test
