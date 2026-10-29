@@ -79,10 +79,10 @@ class TankSettings {
       avgCostPerLiter: (data['avg_cost_per_liter'] ?? 0).toDouble(),
       litersAtLastPurchase: (data['liters_at_last_purchase'] ?? 0).toDouble(),
       lastPurchaseDate: data['last_purchase_date'] != null
-          ? DateTime.tryParse(data['last_purchase_date'])
+          ? DateTime.tryParse(data['last_purchase_date'])?.toLocal()
           : null,
       lastUsageEndDate: data['last_usage_end_date'] != null
-          ? DateTime.tryParse(data['last_usage_end_date'])
+          ? DateTime.tryParse(data['last_usage_end_date'])?.toLocal()
           : null,
       dimensionsByType: dimensionsMap,
     );

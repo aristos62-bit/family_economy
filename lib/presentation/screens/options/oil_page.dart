@@ -176,24 +176,56 @@ class _OilPageState extends State<OilPage> {
     }
   }
 
-  Future<void> _recalculateAvgCost(String userId) async {
+  Future<void> _recalculateAvgCost(
+      String userId, {
+        double litersDelta = 0,
+      }) async {
     final snapshot = await FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
         .collection('oil_purchases')
+        .orderBy('purchase_date', descending: true)
         .get();
 
+    // Λίτρα μετά την τελευταία αγορά (προσαρμογή κατά τη μεταβολή της τελευταίας αγοράς)
+    final capacity = _calculator?.capacity ?? 0;
+    double newLitersAtLast =
+        (_settings?.litersAtLastPurchase ?? 0) + litersDelta;
+    if (newLitersAtLast < 0) newLitersAtLast = 0;
+    if (capacity > 0 && newLitersAtLast > capacity) newLitersAtLast = capacity;
+    if (snapshot.docs.isEmpty) newLitersAtLast = 0;
+
+    // Μέσο κόστος αποθέματος μετά την τελευταία αγορά:
+    // από τη νεότερη αγορά προς τα πίσω μέχρι να συμπληρωθούν τα λίτρα
+    double remaining = newLitersAtLast;
+    double takenLiters = 0;
+    double takenCost = 0;
     double totalLiters = 0;
     double totalCost = 0;
+    DateTime? latestDate;
 
     for (final doc in snapshot.docs) {
       final liters = (doc['liters'] as num).toDouble();
       final price = (doc['price_per_liter'] as num).toDouble();
       totalLiters += liters;
       totalCost += liters * price;
+
+      if (remaining > 0) {
+        final take = liters < remaining ? liters : remaining;
+        takenLiters += take;
+        takenCost += take * price;
+        remaining -= take;
+      }
+
+      final d = DateTime.tryParse(doc['purchase_date'] as String? ?? '');
+      if (d != null && (latestDate == null || d.isAfter(latestDate))) {
+        latestDate = d;
+      }
     }
 
-    final newAvg = totalLiters > 0 ? totalCost / totalLiters : 0.0;
+    final newAvg = takenLiters > 0
+        ? takenCost / takenLiters
+        : (totalLiters > 0 ? totalCost / totalLiters : 0.0);
 
     await FirebaseFirestore.instance
         .collection('users')
@@ -202,13 +234,20 @@ class _OilPageState extends State<OilPage> {
         .doc('oil_tank')
         .set({
       'avg_cost_per_liter': newAvg,
+      'liters_at_last_purchase': newLitersAtLast,
+      if (latestDate != null)
+        'last_purchase_date': latestDate.toUtc().toIso8601String(),
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     }, SetOptions(merge: true));
 
     // Ενημέρωση τοπικά χωρίς να ξαναφορτώσουμε όλες τις ρυθμίσεις
     if (mounted) {
       setState(() {
-        _settings = _settings!.copyWith(avgCostPerLiter: newAvg);
+        _settings = _settings!.copyWith(
+          avgCostPerLiter: newAvg,
+          litersAtLastPurchase: newLitersAtLast,
+          lastPurchaseDate: latestDate?.toLocal(),
+        );
       });
     }
   }

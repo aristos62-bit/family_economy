@@ -39,7 +39,7 @@ class _PurchaseCardState extends State<PurchaseCard> {
   @override
   void initState() {
     super.initState();
-    _selectedDate = widget.settings.lastPurchaseDate ?? DateTime.now();
+    _selectedDate = DateTime.now();
     if (widget.settings.avgCostPerLiter <= 0 &&
         widget.settings.currentHeight > 0) {
       // If we have oil but no avg cost, we may need to ask for existing price
@@ -246,60 +246,60 @@ class _PurchaseCardState extends State<PurchaseCard> {
                 onEditingComplete: () => setState(() {}),
                 brightness: brightness,
               ),
+            ],
 
-              oil_utils.buildNumberField(
-                label: 'Τιμή αγοράς ανά λίτρο (€)',
-                controller: _priceCtrl,
-                icon: Icons.euro_rounded,
-                onEditingComplete: () => setState(() {}),
-                brightness: brightness,
-              ),
-              const SizedBox(height: 8),
+            oil_utils.buildNumberField(
+              label: 'Τιμή αγοράς ανά λίτρο (€)',
+              controller: _priceCtrl,
+              icon: Icons.euro_rounded,
+              onEditingComplete: () => setState(() {}),
+              brightness: brightness,
+            ),
+            const SizedBox(height: 8),
 
-              oil_utils.buildNumberField(
-                label: 'Λίτρα που βάλατε',
-                controller: _litersCtrl,
-                icon: Icons.local_gas_station_rounded,
-                onEditingComplete: () => setState(() {}),
-                brightness: brightness,
-              ),
+            oil_utils.buildNumberField(
+              label: 'Λίτρα που βάλατε',
+              controller: _litersCtrl,
+              icon: Icons.local_gas_station_rounded,
+              onEditingComplete: () => setState(() {}),
+              brightness: brightness,
+            ),
+            const SizedBox(height: 12),
+
+            if (hasDims &&
+                (oil_utils.parseDouble(_litersCtrl.text) ?? 0) > 0) ...[
+              _buildPreview(brightness, previewLiters, capped),
               const SizedBox(height: 12),
+            ],
 
-              if (hasDims &&
-                  (oil_utils.parseDouble(_litersCtrl.text) ?? 0) > 0) ...[
-                _buildPreview(brightness, previewLiters, capped),
-                const SizedBox(height: 12),
-              ],
-
-              ElevatedButton.icon(
-                onPressed: (_isSaving || connectivity.isOffline)
-                    ? null
-                    : _savePurchase,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primary,
-                  foregroundColor: ColorsUI.getOnPrimary(brightness),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            ElevatedButton.icon(
+              onPressed: (_isSaving || connectivity.isOffline)
+                  ? null
+                  : _savePurchase,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primary,
+                foregroundColor: ColorsUI.getOnPrimary(brightness),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: _isSaving
+                  ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: ExcludeSemantics(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
                   ),
                 ),
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: ExcludeSemantics(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        ),
-                      )
-                    : const ExcludeSemantics(
-                        child: Icon(Icons.add_circle_rounded, size: 20),
-                      ),
-                label: Text(_isSaving ? 'Αποθήκευση...' : 'Καταχώρηση Αγοράς'),
+              )
+                  : const ExcludeSemantics(
+                child: Icon(Icons.add_circle_rounded, size: 20),
               ),
-            ],
+              label: Text(_isSaving ? 'Αποθήκευση...' : 'Καταχώρηση Αγοράς'),
+            ),
           ],
         ),
       ),
