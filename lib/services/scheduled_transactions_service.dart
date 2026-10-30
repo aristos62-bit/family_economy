@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/services/notifications_service.dart';
+import 'package:family_economy/core/utils/currency_formatter.dart';
 
 class ScheduledTransactionsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -215,10 +216,13 @@ class ScheduledTransactionsService {
       final data = txDoc.data()!;
       final isScheduled = data['is_scheduled'] as bool? ?? false;
       final isExecuted = data['is_executed'] as bool? ?? false;
+      final isDeleted = data['deleted'] as bool? ?? false;
+      final executionFailed = data['execution_failed'] as bool? ?? false;
 
-      if (!isScheduled || isExecuted) {
+      // Εκτελεσμένη, ακυρωμένη ή αποτυχημένη (περιμένει απόφαση χρήστη): δεν εκτελείται
+      if (!isScheduled || isExecuted || isDeleted || executionFailed) {
         DebugConfig.print(
-          '⚠️ Transaction not scheduled or already executed: $transactionUuid',
+          '⚠️ Transaction not executable (not scheduled / executed / cancelled / failed): $transactionUuid',
         );
         return false;
       }
@@ -226,6 +230,13 @@ class ScheduledTransactionsService {
       final transactionType = data['transaction_type'] as String;
       final amount = (data['amount'] as num).toDouble();
       final accountId = data['account_id'] as String;
+
+      // ✅ BALANCE CHECK κατά την ΕΚΤΕΛΕΣΗ (όχι κατά την εισαγωγή)
+      final insufficient = await _findInsufficientDebit(userId, data);
+      if (insufficient != null) {
+        await _markExecutionFailed(userId, transactionUuid, data, insufficient);
+        return false;
+      }
 
       // ✅ Mark as executed
       await txRef.update({
@@ -337,7 +348,25 @@ class ScheduledTransactionsService {
           .where('scheduled_for_date', isLessThanOrEqualTo: todayStart)
           .get();
 
-      for (final doc in query.docs) {
+      // ✅ Σειρά εκτέλεσης: ημερομηνία ↑ και μέσα στην ίδια ημέρα πρώτα τα έσοδα
+      final docs = query.docs.toList()
+        ..sort((a, b) {
+          final da = (a.data()['scheduled_for_date'] as Timestamp)
+              .toDate()
+              .toLocal();
+          final db = (b.data()['scheduled_for_date'] as Timestamp)
+              .toDate()
+              .toLocal();
+          final dayA = DateTime(da.year, da.month, da.day);
+          final dayB = DateTime(db.year, db.month, db.day);
+          final byDay = dayA.compareTo(dayB);
+          if (byDay != 0) return byDay;
+          final pa = a.data()['transaction_type'] == 'income' ? 0 : 1;
+          final pb = b.data()['transaction_type'] == 'income' ? 0 : 1;
+          return pa.compareTo(pb);
+        });
+
+      for (final doc in docs) {
         final data = doc.data();
         final scheduledForDate = (data['scheduled_for_date'] as Timestamp).toDate();
         // ✅ FIX: Convert to local timezone before extracting date
@@ -373,6 +402,208 @@ class ScheduledTransactionsService {
       DebugConfig.print('🔴 Error checking pending transactions: $e');
       return [];
     }
+  }
+
+  /// Αν ο λογαριασμός χρέωσης ΔΕΝ καλύπτει το ποσό επιστρέφει στοιχεία, αλλιώς null
+  Future<Map<String, dynamic>?> _findInsufficientDebit(
+      String userId,
+      Map<String, dynamic> data,
+      ) async {
+    final transactionType = data['transaction_type'] as String;
+    if (transactionType == 'income') return null;
+
+    String debitAccountId;
+    double debitAmount;
+
+    if (transactionType == 'transfer') {
+      final transferGroupId = data['transfer_group_id'] as String?;
+      if (transferGroupId == null) return null;
+
+      final legs = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('transactions')
+          .where('transfer_group_id', isEqualTo: transferGroupId)
+          .get();
+
+      QueryDocumentSnapshot<Map<String, dynamic>>? debitLeg;
+      for (final leg in legs.docs) {
+        if ((leg.data()['amount'] as num).toDouble() < 0) {
+          debitLeg = leg;
+          break;
+        }
+      }
+      if (debitLeg == null) return null;
+
+      debitAccountId = debitLeg.data()['account_id'] as String;
+      debitAmount = (debitLeg.data()['amount'] as num).toDouble().abs();
+    } else {
+      debitAccountId = data['account_id'] as String;
+      debitAmount = (data['amount'] as num).toDouble().abs();
+    }
+
+    final accDoc = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('accounts')
+        .doc(debitAccountId)
+        .get();
+    final balance =
+        (accDoc.data()?['current_balance'] as num?)?.toDouble() ?? 0.0;
+
+    if (CurrencyFormatter.covers(balance, debitAmount)) return null;
+
+    return {
+      'account_id': debitAccountId,
+      'amount': debitAmount,
+      'balance': balance,
+    };
+  }
+
+  /// Σημείωση αποτυχίας εκτέλεσης λόγω ανεπαρκούς υπολοίπου.
+  /// Η κίνηση ΜΕΝΕΙ προγραμματισμένη (δεν διαγράφεται, δεν αλλάζει υπόλοιπο)
+  /// και περιμένει απόφαση του χρήστη (διαγραφή ή νέα ημερομηνία).
+  Future<void> _markExecutionFailed(
+      String userId,
+      String transactionUuid,
+      Map<String, dynamic> data,
+      Map<String, dynamic> info,
+      ) async {
+    try {
+      final transactionType = data['transaction_type'] as String;
+      final transferGroupId = data['transfer_group_id'] as String?;
+      final txCol = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('transactions');
+
+      final failFields = <String, dynamic>{
+        'execution_failed': true,
+        'execution_failed_reason': 'insufficient_balance',
+        'execution_failed_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      };
+
+      if (transferGroupId != null) {
+        final legs = await txCol
+            .where('transfer_group_id', isEqualTo: transferGroupId)
+            .get();
+        final batch = _firestore.batch();
+        for (final leg in legs.docs) {
+          batch.update(leg.reference, failFields);
+        }
+        await batch.commit();
+      } else {
+        await txCol.doc(transactionUuid).update(failFields);
+      }
+
+      // Ειδοποίηση συστήματος
+      try {
+        final scheduledDate =
+        (data['scheduled_for_date'] as Timestamp).toDate().toLocal();
+        final dateStr =
+            '${scheduledDate.day}/${scheduledDate.month}/${scheduledDate.year}';
+        final typeLabel =
+        transactionType == 'transfer' ? 'Η μεταφορά' : 'Το έξοδο';
+        final accountName = await getAccountName(
+          userId,
+          info['account_id'] as String,
+        );
+
+        await NotificationsService().showImmediateNotification(
+          title: 'Προγραμματισμένη Κίνηση',
+          message:
+          '$typeLabel €${(info['amount'] as double).toStringAsFixed(2)} '
+              'ημερομηνίας $dateStr από «$accountName» δεν εκτελέστηκε '
+              'λόγω ανεπαρκούς υπολοίπου.',
+        );
+      } catch (e) {
+        DebugConfig.print('⚠️ Could not send failure notification: $e');
+      }
+
+      DebugConfig.print(
+        '⛔ Scheduled transaction NOT executed (insufficient balance): $transactionUuid',
+      );
+    } catch (e) {
+      DebugConfig.print('🔴 Error marking execution failure: $e');
+    }
+  }
+
+  /// Κινήσεις που απέτυχαν λόγω ανεπαρκούς υπολοίπου και περιμένουν απόφαση χρήστη.
+  /// Για μεταφορά επιστρέφεται μία εγγραφή (το σκέλος χρέωσης).
+  Future<List<Map<String, dynamic>>> getFailedScheduledTransactions(
+      String userId,
+      ) async {
+    final snap = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('transactions')
+        .where('execution_failed', isEqualTo: true)
+        .where('is_executed', isEqualTo: false)
+        .where('deleted', isEqualTo: false)
+        .get();
+
+    final result = <Map<String, dynamic>>[];
+    for (final doc in snap.docs) {
+      final data = doc.data();
+      final type = data['transaction_type'] as String? ?? 'expense';
+      final amount = (data['amount'] as num).toDouble();
+
+      // Μεταφορά: μόνο το σκέλος χρέωσης (αρνητικό ποσό)
+      if (type == 'transfer' && amount > 0) continue;
+
+      result.add({
+        'uuid': doc.id,
+        'type': type,
+        'amount': amount.abs(),
+        'date': (data['scheduled_for_date'] as Timestamp).toDate().toLocal(),
+        'account_id': data['account_id'] as String,
+      });
+    }
+
+    result.sort(
+          (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime),
+    );
+    return result;
+  }
+
+  /// Αλλαγή ημερομηνίας εκτέλεσης αποτυχημένης κίνησης (και των δύο σκελών αν είναι μεταφορά)
+  Future<void> rescheduleFailedTransaction(
+      String userId,
+      String transactionUuid,
+      DateTime newDate,
+      ) async {
+    final txCol = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('transactions');
+
+    final doc = await txCol.doc(transactionUuid).get();
+    if (!doc.exists) throw Exception('Transaction not found');
+
+    final transferGroupId = doc.data()!['transfer_group_id'] as String?;
+    final fields = <String, dynamic>{
+      'date': Timestamp.fromDate(newDate),
+      'scheduled_for_date': Timestamp.fromDate(newDate),
+      'execution_failed': false,
+      'execution_failed_reason': null,
+      'updated_at': FieldValue.serverTimestamp(),
+    };
+
+    if (transferGroupId != null) {
+      final legs = await txCol
+          .where('transfer_group_id', isEqualTo: transferGroupId)
+          .get();
+      final batch = _firestore.batch();
+      for (final leg in legs.docs) {
+        batch.update(leg.reference, fields);
+      }
+      await batch.commit();
+    } else {
+      await txCol.doc(transactionUuid).update(fields);
+    }
+
+    DebugConfig.print('✅ Failed transaction rescheduled: $transactionUuid');
   }
 
   /// Ακύρωση προγραμματισμένης κίνησης (soft delete)

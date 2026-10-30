@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/session/session_scope.dart';
+import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/presentation/screens/transactions/transaction_entry_page.dart';
 import 'package:family_economy/presentation/screens/options/options_page.dart';
 import 'package:family_economy/presentation/screens/accounts/accounts_page.dart';
@@ -92,6 +93,9 @@ class _HomePageState extends State<HomePage> {
         // Show notification
         _showScheduledTransactionsNotification(count);
       }
+
+      // ✅ Κινήσεις που δεν εκτελέστηκαν (ανεπαρκές υπόλοιπο) — διάλογος επιλογής
+      unawaited(_showFailedScheduledDialogs());
     });
   }
 
@@ -153,6 +157,134 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+  // ============================================================
+  // ΑΠΟΤΥΧΗΜΕΝΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΕΝΕΣ ΚΙΝΗΣΕΙΣ (ανεπαρκές υπόλοιπο)
+  // ============================================================
+  bool _failedDialogRunning = false;
+
+  Future<void> _showFailedScheduledDialogs() async {
+    if (!mounted || _failedDialogRunning) return;
+    _failedDialogRunning = true;
+
+    try {
+      final userId = context.session.userId;
+      final service = ScheduledTransactionsService();
+      final failed = await service.getFailedScheduledTransactions(userId);
+
+      for (final tx in failed) {
+        if (!mounted) return;
+        await _showFailedScheduledDialog(service, userId, tx);
+      }
+    } catch (e) {
+      DebugConfig.print('❌ Failed scheduled dialogs error: $e');
+    } finally {
+      _failedDialogRunning = false;
+    }
+  }
+
+  Future<void> _showFailedScheduledDialog(
+      ScheduledTransactionsService service,
+      String userId,
+      Map<String, dynamic> tx,
+      ) async {
+    final type = tx['type'] as String;
+    final amount = tx['amount'] as double;
+    final date = tx['date'] as DateTime;
+    final accountName = await service.getAccountName(
+      userId,
+      tx['account_id'] as String,
+    );
+    if (!mounted) return;
+
+    final typeLabel = type == 'transfer' ? 'Η μεταφορά' : 'Το έξοδο';
+    final dateStr = '${date.day}/${date.month}/${date.year}';
+    final message =
+        '$typeLabel €${amount.toStringAsFixed(2)} από «$accountName» με '
+        'ημερομηνία εκτέλεσης $dateStr δεν εκτελέστηκε λόγω ανεπαρκούς υπολοίπου.';
+
+    final brightness = Theme.of(context).brightness;
+
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: [
+            ExcludeSemantics(
+              child: Icon(
+                Icons.warning_amber_rounded,
+                color: ColorsUI.getWarning(brightness),
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Η κίνηση δεν εκτελέστηκε')),
+          ],
+        ),
+        content: Text('$message\n\nΤι θέλετε να κάνετε;'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 'delete'),
+            child: const Text('Διαγραφή'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, 'reschedule'),
+            child: const Text('Αλλαγή ημερομηνίας'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted || choice == null) return; // Κλείσιμο χωρίς επιλογή: ξαναρωτάει στην επόμενη είσοδο
+
+    final uuid = tx['uuid'] as String;
+
+    try {
+      if (choice == 'delete') {
+        await service.cancelScheduledTransaction(userId, uuid);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Η κίνηση διαγράφηκε')),
+        );
+        AccessibilityService.announcePolite('Η κίνηση διαγράφηκε');
+      } else if (choice == 'reschedule') {
+        final now = DateTime.now();
+        final tomorrow = DateTime(now.year, now.month, now.day + 1);
+
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: tomorrow,
+          firstDate: tomorrow, // ✅ μόνο μελλοντική ημερομηνία
+          lastDate: DateTime(now.year + 5, now.month, now.day),
+          helpText: 'Νέα ημερομηνία εκτέλεσης',
+          cancelText: 'Άκυρο',
+          confirmText: 'Επιλογή',
+        );
+
+        if (picked == null || !mounted) return; // Άκυρο: μένει σε αναμονή
+
+        await service.rescheduleFailedTransaction(userId, uuid, picked);
+        if (!mounted) return;
+
+        final newDateStr = '${picked.day}/${picked.month}/${picked.year}';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Η κίνηση προγραμματίστηκε για $newDateStr')),
+        );
+        AccessibilityService.announcePolite(
+          'Η κίνηση προγραμματίστηκε για $newDateStr',
+        );
+      }
+    } catch (e) {
+      DebugConfig.print('❌ Failed scheduled action error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Η ενέργεια απέτυχε. Δοκιμάστε ξανά.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      AccessibilityService.announceError('Η ενέργεια απέτυχε');
+    }
   }
 
   void _onTabTap(int index) {

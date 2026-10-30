@@ -666,13 +666,23 @@ class _SaveButton extends StatelessWidget {
             }
             // ============================================================
             // ✅ BALANCE CHECK (NO NEGATIVE BALANCE ALLOWED)
+            // Για μελλοντική ημερομηνία ο έλεγχος γίνεται κατά την εκτέλεση
+            // (ή αμέσως, αν ο χρήστης επιλέξει «Άμεση» στο dialog)
             // ============================================================
+            final nowForCheck = DateTime.now();
+            final isFutureDate = DateTime(
+              state.selectedDate.year,
+              state.selectedDate.month,
+              state.selectedDate.day,
+            ).isAfter(
+              DateTime(nowForCheck.year, nowForCheck.month, nowForCheck.day),
+            );
             final accProvider = context.read<AccountsProvider>();
             final sourceAcc = accProvider.getAccountByUuid(
               state.selectedAccountUuid!,
             );
 
-            if (sourceAcc != null) {
+            if (sourceAcc != null && !isFutureDate) {
               final currentBalance = sourceAcc.currentBalance;
               final amountToCheck = state.amount!.abs();
 
@@ -721,31 +731,6 @@ class _SaveButton extends StatelessWidget {
               DebugConfig.print(
                 '📅 Future date detected - showing schedule dialog',
               );
-
-              // ============================================================
-              // ✅ BALANCE CHECK for SCHEDULED choice too (no negative balance)
-              // ============================================================
-              final accProvider = context.read<AccountsProvider>();
-              final sourceAcc = accProvider.getAccountByUuid(accountUuidSnap);
-
-              if (sourceAcc != null) {
-                final currentBalance = sourceAcc.currentBalance;
-                final amountToCheck = amountSnap.abs();
-
-                if ((isTransferSnap || (!isIncomeSnap && !isTransferSnap)) &&
-                    !CurrencyFormatter.covers(currentBalance, amountToCheck)) {
-                  AccessibilityService.announceError('Το υπόλοιπο δεν επαρκεί');
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      const SnackBar(
-                        content: Text('Το υπόλοιπο δεν επαρκεί'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  return;
-                }
-              }
 
               final scheduleChoice = await _showScheduleTransactionDialog(
                 context,
@@ -836,6 +821,31 @@ class _SaveButton extends StatelessWidget {
               DebugConfig.print(
                 '⚡ Continuing with immediate save (future date)',
               );
+
+              // ✅ BALANCE CHECK για «Άμεση» εκτέλεση (τώρα, με το τρέχον υπόλοιπο)
+              if (!context.mounted) return;
+              final accProviderImm = context.read<AccountsProvider>();
+              final sourceAccImm = accProviderImm.getAccountByUuid(
+                accountUuidSnap,
+              );
+
+              if (sourceAccImm != null &&
+                  (isTransferSnap || (!isIncomeSnap && !isTransferSnap)) &&
+                  !CurrencyFormatter.covers(
+                    sourceAccImm.currentBalance,
+                    amountSnap.abs(),
+                  )) {
+                AccessibilityService.announceError('Το υπόλοιπο δεν επαρκεί');
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    const SnackBar(
+                      content: Text('Το υπόλοιπο δεν επαρκεί'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                return;
+              }
             }
 
             // ============================================================
