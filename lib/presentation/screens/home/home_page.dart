@@ -204,86 +204,100 @@ class _HomePageState extends State<HomePage> {
         'ημερομηνία εκτέλεσης $dateStr δεν εκτελέστηκε λόγω ανεπαρκούς υπολοίπου.';
 
     final brightness = Theme.of(context).brightness;
-
-    final choice = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            ExcludeSemantics(
-              child: Icon(
-                Icons.warning_amber_rounded,
-                color: ColorsUI.getWarning(brightness),
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(child: Text('Η κίνηση δεν εκτελέστηκε')),
-          ],
-        ),
-        content: Text('$message\n\nΤι θέλετε να κάνετε;'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, 'delete'),
-            child: const Text('Διαγραφή'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, 'reschedule'),
-            child: const Text('Αλλαγή ημερομηνίας'),
-          ),
-        ],
-      ),
-    );
-
-    if (!mounted || choice == null) return; // Κλείσιμο χωρίς επιλογή: ξαναρωτάει στην επόμενη είσοδο
-
     final uuid = tx['uuid'] as String;
 
-    try {
-      if (choice == 'delete') {
-        await service.cancelScheduledTransaction(userId, uuid);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Η κίνηση διαγράφηκε')),
-        );
-        AccessibilityService.announcePolite('Η κίνηση διαγράφηκε');
-      } else if (choice == 'reschedule') {
-        final now = DateTime.now();
-        final tomorrow = DateTime(now.year, now.month, now.day + 1);
-
-        final picked = await showDatePicker(
-          context: context,
-          initialDate: tomorrow,
-          firstDate: tomorrow, // ✅ μόνο μελλοντική ημερομηνία
-          lastDate: DateTime(now.year + 5, now.month, now.day),
-          helpText: 'Νέα ημερομηνία εκτέλεσης',
-          cancelText: 'Άκυρο',
-          confirmText: 'Επιλογή',
-        );
-
-        if (picked == null || !mounted) return; // Άκυρο: μένει σε αναμονή
-
-        await service.rescheduleFailedTransaction(userId, uuid, picked);
-        if (!mounted) return;
-
-        final newDateStr = '${picked.day}/${picked.month}/${picked.year}';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Η κίνηση προγραμματίστηκε για $newDateStr')),
-        );
-        AccessibilityService.announcePolite(
-          'Η κίνηση προγραμματίστηκε για $newDateStr',
-        );
-      }
-    } catch (e) {
-      DebugConfig.print('❌ Failed scheduled action error: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Η ενέργεια απέτυχε. Δοκιμάστε ξανά.'),
-          backgroundColor: Colors.red,
+    // ✅ Ο διάλογος ΔΕΝ κλείνει χωρίς απόφαση: μόνο Διαγραφή ή Επαναπρογραμματισμός.
+    // Το «Πίσω» στον επιλογέα ημερομηνίας και κάθε αποτυχία εγγραφής
+    // επαναφέρουν το διάλογο, μέχρι να ολοκληρωθεί μία από τις δύο επιλογές.
+    while (mounted) {
+      final choice = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: Row(
+              children: [
+                ExcludeSemantics(
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: ColorsUI.getWarning(brightness),
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(child: Text('Η κίνηση δεν εκτελέστηκε')),
+              ],
+            ),
+            content: Text('$message\n\nΠρέπει να επιλέξετε τι θα γίνει.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, 'delete'),
+                child: const Text('Διαγραφή'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(dialogContext, 'reschedule'),
+                child: const Text('Επαναπρογραμματισμός'),
+              ),
+            ],
+          ),
         ),
       );
-      AccessibilityService.announceError('Η ενέργεια απέτυχε');
+
+      if (!mounted) return;
+
+      try {
+        if (choice == 'delete') {
+          await service.cancelScheduledTransaction(userId, uuid);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Η κίνηση διαγράφηκε')),
+          );
+          AccessibilityService.announcePolite('Η κίνηση διαγράφηκε');
+          return;
+        }
+
+        if (choice == 'reschedule') {
+          final now = DateTime.now();
+          final tomorrow = DateTime(now.year, now.month, now.day + 1);
+
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: tomorrow,
+            firstDate: tomorrow, // ✅ μόνο μελλοντική ημερομηνία
+            lastDate: DateTime(now.year + 5, now.month, now.day),
+            helpText: 'Νέα ημερομηνία εκτέλεσης',
+            cancelText: 'Πίσω',
+            confirmText: 'Επιλογή',
+          );
+
+          if (!mounted) return;
+          if (picked == null) continue; // «Πίσω»: ξαναδείχνουμε το διάλογο
+
+          await service.rescheduleFailedTransaction(userId, uuid, picked);
+          if (!mounted) return;
+
+          final newDateStr = '${picked.day}/${picked.month}/${picked.year}';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Η κίνηση προγραμματίστηκε για $newDateStr')),
+          );
+          AccessibilityService.announcePolite(
+            'Η κίνηση προγραμματίστηκε για $newDateStr',
+          );
+          return;
+        }
+      } catch (e) {
+        DebugConfig.print('❌ Failed scheduled action error: $e');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Η ενέργεια απέτυχε. Δοκιμάστε ξανά.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        AccessibilityService.announceError('Η ενέργεια απέτυχε. Δοκιμάστε ξανά.');
+        // Χωρίς return: ο διάλογος εμφανίζεται ξανά μέχρι να γίνει επιτυχής επιλογή
+      }
     }
   }
 
