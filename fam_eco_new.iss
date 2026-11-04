@@ -5,7 +5,10 @@
 [Setup]
 AppId={{D7C3F8A1-2B44-4C7A-9F9E-8A5D11223344}
 AppName=Οικογενειακός Προϋπολογισμός
-AppVersion=1.0.0
+#ifndef MyAppVersion
+  #define MyAppVersion "2.0.1"
+#endif
+AppVersion={#MyAppVersion}
 AppPublisher=Aris Gavrielatos
 AppPublisherURL=https://www.example.com
 AppSupportURL=https://www.example.com/support

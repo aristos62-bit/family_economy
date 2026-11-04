@@ -44,3 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 serviceAccountKey.json
+
+# Build logs (build_and_setup_final.bat)
+build_logs/
