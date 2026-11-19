@@ -15,8 +15,13 @@
 // - Συνολικοί μήνες: σταθμισμένοι μήνες μεταξύ ημ/νίας από και έως
 // ============================================================
 
+import 'package:excel/excel.dart' hide Border;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:provider/provider.dart';
 
 import 'package:family_economy/core/theme/ui_tokens.dart';
@@ -48,6 +53,12 @@ class _Stats2AveragesPageState extends State<Stats2AveragesPage> {
   bool _isRefreshing = false;
 
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
+
+  // Τελευταίοι υπολογισμοί (για export Excel / PDF)
+  List<_CategoryAvg> _lastCats = const [];
+  double _lastTotalMonths = 0.0;
+  DateTime? _lastFrom;
+  DateTime? _lastTo;
 
   @override
   void initState() {
@@ -174,6 +185,453 @@ class _Stats2AveragesPageState extends State<Stats2AveragesPage> {
     return '${df.format(from)} → ${df.format(to)}';
   }
 
+  // ------------------ EXPORT helpers ------------------
+
+  double _avg(double total, double months) => months > 0 ? total / months : 0.0;
+
+  int _catCount(_CategoryAvg c) =>
+      c.sortedSubs.fold<int>(0, (s, e) => s + e.count);
+
+  double _n2(double v) => double.parse(v.toStringAsFixed(2));
+
+  bool _canExport() {
+    final loading =
+    context.read<TransactionsProvider>().isLoadingPeriod(_periodKey);
+    if (loading || _isRefreshing) {
+      _showSnack('Παρακαλώ περιμένετε να ολοκληρωθεί ο υπολογισμός.',
+          isError: true);
+      return false;
+    }
+    if (_lastCats.isEmpty || _lastFrom == null || _lastTo == null) {
+      _showSnack('Δεν υπάρχουν δεδομένα για εξαγωγή.', isError: true);
+      return false;
+    }
+    return true;
+  }
+
+  // ══════════════════════════════════════════════
+  // EXPORT TO EXCEL
+  // ══════════════════════════════════════════════
+  Future<void> _exportToExcel() async {
+    if (!_canExport()) return;
+
+    // Snapshot πριν από τα await
+    final cats = _lastCats;
+    final totalMonths = _lastTotalMonths;
+    final from = _lastFrom!;
+    final to = _lastTo!;
+
+    AccessibilityService.announcePolite('Δημιουργία αρχείου Excel...');
+
+    try {
+      final excel = Excel.createExcel();
+      for (final name in excel.sheets.keys.toList()) {
+        excel.delete(name);
+      }
+
+      const sheetName = 'Μέσοι Όροι';
+      final sheet = excel[sheetName];
+      excel.setDefaultSheet(sheetName);
+
+      final now = DateTime.now();
+      final dtFmt = DateFormat('dd/MM/yyyy HH:mm');
+
+      // ── Meta ──────────────────────────────────
+      sheet.appendRow([TextCellValue('Αναφορά Μέσων Όρων Κατανάλωσης')]);
+      sheet.appendRow([
+        TextCellValue('Περίοδος:'),
+        TextCellValue('${_dateFormat.format(from)} - ${_dateFormat.format(to)}'),
+      ]);
+      sheet.appendRow([
+        TextCellValue('Σταθμισμένοι Μήνες:'),
+        DoubleCellValue(_n2(totalMonths)),
+      ]);
+      sheet.appendRow([
+        TextCellValue('Ημερομηνία Εξαγωγής:'),
+        TextCellValue(dtFmt.format(now)),
+      ]);
+      sheet.appendRow([TextCellValue('')]);
+
+      // ── Headers ───────────────────────────────
+      sheet.appendRow([
+        TextCellValue('ΚΑΤΗΓΟΡΙΑ'),
+        TextCellValue('ΥΠΟΚΑΤΗΓΟΡΙΑ'),
+        TextCellValue('ΣΥΝΟΛΟ €'),
+        TextCellValue('Μ.Ο./ΜΗΝΑ €'),
+        TextCellValue('ΣΥΝΑΛΛΑΓΕΣ'),
+      ]);
+
+      // ── Data rows ─────────────────────────────
+      double grandTotal = 0.0;
+      int grandCount = 0;
+
+      for (final cat in cats) {
+        final catCount = _catCount(cat);
+        grandTotal += cat.totalAmountAbs;
+        grandCount += catCount;
+
+        sheet.appendRow([
+          TextCellValue(cat.name),
+          TextCellValue(''),
+          DoubleCellValue(_n2(cat.totalAmountAbs)),
+          DoubleCellValue(_n2(_avg(cat.totalAmountAbs, totalMonths))),
+          IntCellValue(catCount),
+        ]);
+
+        for (final sub in cat.sortedSubs) {
+          sheet.appendRow([
+            TextCellValue(''),
+            TextCellValue(sub.name),
+            DoubleCellValue(_n2(sub.totalAmountAbs)),
+            DoubleCellValue(_n2(_avg(sub.totalAmountAbs, totalMonths))),
+            IntCellValue(sub.count),
+          ]);
+        }
+      }
+
+      // ── Total row ─────────────────────────────
+      sheet.appendRow([TextCellValue('')]);
+      sheet.appendRow([
+        TextCellValue('ΣΥΝΟΛΟ'),
+        TextCellValue(''),
+        DoubleCellValue(_n2(grandTotal)),
+        DoubleCellValue(_n2(_avg(grandTotal, totalMonths))),
+        IntCellValue(grandCount),
+      ]);
+
+      // ── Save ──────────────────────────────────
+      final bytes = excel.encode();
+      if (bytes == null) {
+        _showSnack('Σφάλμα δημιουργίας Excel.', isError: true);
+        return;
+      }
+
+      final ts = DateFormat('yyyyMMdd_HHmm').format(now);
+      final fileName =
+          'Μέσοι_Όροι_${DateFormat('yyyyMMdd').format(from)}_${DateFormat('yyyyMMdd').format(to)}_$ts.xlsx';
+
+      final savePath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Αποθήκευση Excel',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+        bytes: Uint8List.fromList(bytes),
+      );
+
+      if (savePath == null) return;
+      if (!mounted) return;
+
+      AccessibilityService.announcePolite('Το Excel αποθηκεύτηκε επιτυχώς.');
+      _showSnack('Το Excel αποθηκεύτηκε επιτυχώς!', isError: false);
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('Σφάλμα εξαγωγής Excel: $e', isError: true);
+    }
+  }
+
+  // ══════════════════════════════════════════════
+  // EXPORT TO PDF
+  // ══════════════════════════════════════════════
+  Future<void> _exportToPdf() async {
+    if (!_canExport()) return;
+
+    // Snapshot πριν από τα await
+    final cats = _lastCats;
+    final totalMonths = _lastTotalMonths;
+    final from = _lastFrom!;
+    final to = _lastTo!;
+
+    AccessibilityService.announcePolite('Δημιουργία αρχείου PDF...');
+
+    try {
+      final ttf = pw.Font.ttf(
+        await rootBundle.load('assets/fonts/NotoSans-Regular.ttf'),
+      );
+      final ttfBold = pw.Font.ttf(
+        await rootBundle.load('assets/fonts/NotoSans-Bold.ttf'),
+      );
+
+      final pdf = pw.Document();
+      final now = DateTime.now();
+      final dtFmt = DateFormat('dd/MM/yyyy HH:mm');
+
+      final grandTotal =
+      cats.fold<double>(0.0, (s, c) => s + c.totalAmountAbs);
+      final grandMonthly = _avg(grandTotal, totalMonths);
+      final grandCount = cats.fold<int>(0, (s, c) => s + _catCount(c));
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(28),
+          theme: pw.ThemeData.withFont(
+            base: ttf,
+            bold: ttfBold,
+            italic: ttf,
+            boldItalic: ttfBold,
+          ),
+          header: (context) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                'Μέσοι Όροι Κατανάλωσης',
+                style: pw.TextStyle(
+                  font: ttfBold,
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text(
+                'Περίοδος: ${_dateFormat.format(from)} - ${_dateFormat.format(to)}'
+                    '  |  Σταθμισμένοι Μήνες: ${totalMonths.toStringAsFixed(2)}',
+                style: pw.TextStyle(font: ttf, fontSize: 10),
+              ),
+              pw.Text(
+                'Ημερομηνία Εξαγωγής: ${dtFmt.format(now)}',
+                style: pw.TextStyle(font: ttf, fontSize: 10),
+              ),
+              pw.Divider(thickness: 1),
+              pw.SizedBox(height: 4),
+            ],
+          ),
+          build: (context) {
+            final content = <pw.Widget>[];
+
+            // ── Summary boxes ─────────────────────
+            pw.Widget summaryBox(String label, String value, String hexBg) {
+              return pw.Container(
+                padding: const pw.EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex(hexBg),
+                  borderRadius: pw.BorderRadius.circular(6),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      label,
+                      style: pw.TextStyle(font: ttfBold, fontSize: 11),
+                    ),
+                    pw.Text(
+                      value,
+                      style: pw.TextStyle(font: ttfBold, fontSize: 11),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            content.add(
+              summaryBox(
+                'Σύνολο Εξόδων Περιόδου:',
+                CurrencyFormatter.format(grandTotal),
+                '#FFEBEE',
+              ),
+            );
+            content.add(pw.SizedBox(height: 6));
+            content.add(
+              summaryBox(
+                'Συνολικός Μ.Ο. / Μήνα:',
+                CurrencyFormatter.format(grandMonthly),
+                '#EDE7F6',
+              ),
+            );
+            content.add(pw.SizedBox(height: 12));
+
+            // ── Styles ────────────────────────────
+            final pw.TextStyle headerStyle = pw.TextStyle(
+              font: ttfBold,
+              fontSize: 10,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white,
+            );
+            final pw.TextStyle catStyle = pw.TextStyle(
+              font: ttfBold,
+              fontSize: 9,
+              fontWeight: pw.FontWeight.bold,
+            );
+            final pw.TextStyle subStyle = pw.TextStyle(font: ttf, fontSize: 9);
+
+            const colWidths = {
+              0: pw.FlexColumnWidth(4.0),
+              1: pw.FlexColumnWidth(2.0),
+              2: pw.FlexColumnWidth(2.0),
+              3: pw.FlexColumnWidth(1.4),
+            };
+
+            pw.Widget buildCell(
+                String text,
+                pw.TextStyle style, {
+                  pw.Alignment align = pw.Alignment.centerRight,
+                  PdfColor? bg,
+                  double indent = 0,
+                }) {
+              return pw.Container(
+                color: bg,
+                padding: pw.EdgeInsets.fromLTRB(5 + indent, 5, 5, 5),
+                child: pw.Align(
+                  alignment: align,
+                  child: pw.Text(text, style: style),
+                ),
+              );
+            }
+
+            final tableRows = <pw.TableRow>[];
+
+            // Header
+            final headerBg = PdfColor.fromHex('#6750A4');
+            tableRows.add(
+              pw.TableRow(
+                children: [
+                  buildCell('ΚΑΤΗΓΟΡΙΑ / ΥΠΟΚΑΤΗΓΟΡΙΑ', headerStyle,
+                      align: pw.Alignment.centerLeft, bg: headerBg),
+                  buildCell('ΣΥΝΟΛΟ', headerStyle, bg: headerBg),
+                  buildCell('Μ.Ο./ΜΗΝΑ', headerStyle, bg: headerBg),
+                  buildCell('ΣΥΝ/ΓΕΣ', headerStyle, bg: headerBg),
+                ],
+              ),
+            );
+
+            // Data rows
+            final catBg = PdfColor.fromHex('#F3EFFA');
+            final subBg = PdfColor.fromHex('#FFFFFF');
+
+            for (final cat in cats) {
+              tableRows.add(
+                pw.TableRow(
+                  children: [
+                    buildCell(cat.name, catStyle,
+                        align: pw.Alignment.centerLeft, bg: catBg),
+                    buildCell(CurrencyFormatter.format(cat.totalAmountAbs),
+                        catStyle, bg: catBg),
+                    buildCell(
+                        CurrencyFormatter.format(
+                            _avg(cat.totalAmountAbs, totalMonths)),
+                        catStyle,
+                        bg: catBg),
+                    buildCell('${_catCount(cat)}', catStyle, bg: catBg),
+                  ],
+                ),
+              );
+
+              for (final sub in cat.sortedSubs) {
+                tableRows.add(
+                  pw.TableRow(
+                    children: [
+                      buildCell(sub.name, subStyle,
+                          align: pw.Alignment.centerLeft,
+                          bg: subBg,
+                          indent: 14),
+                      buildCell(CurrencyFormatter.format(sub.totalAmountAbs),
+                          subStyle, bg: subBg),
+                      buildCell(
+                          CurrencyFormatter.format(
+                              _avg(sub.totalAmountAbs, totalMonths)),
+                          subStyle,
+                          bg: subBg),
+                      buildCell('${sub.count}', subStyle, bg: subBg),
+                    ],
+                  ),
+                );
+              }
+            }
+
+            // Total row
+            final totalBg = PdfColor.fromHex('#EDE7F6');
+            tableRows.add(
+              pw.TableRow(
+                children: [
+                  buildCell('ΣΥΝΟΛΟ', catStyle,
+                      align: pw.Alignment.centerLeft, bg: totalBg),
+                  buildCell(CurrencyFormatter.format(grandTotal), catStyle,
+                      bg: totalBg),
+                  buildCell(CurrencyFormatter.format(grandMonthly), catStyle,
+                      bg: totalBg),
+                  buildCell('$grandCount', catStyle, bg: totalBg),
+                ],
+              ),
+            );
+
+            content.add(
+              pw.Table(
+                columnWidths: colWidths,
+                border: pw.TableBorder.all(
+                  color: PdfColor.fromHex('#CCCCCC'),
+                  width: 0.5,
+                ),
+                children: tableRows,
+              ),
+            );
+
+            content.add(pw.SizedBox(height: 8));
+            content.add(
+              pw.Text(
+                '* Μ.Ο./Μήνα = Σύνολο / Σταθμισμένοι Μήνες  |  '
+                    'Περιλαμβάνονται μόνο έξοδα (χωρίς μεταφορές)',
+                style: pw.TextStyle(
+                  font: ttf,
+                  fontSize: 8,
+                  color: PdfColors.grey600,
+                ),
+              ),
+            );
+
+            return content;
+          },
+        ),
+      );
+
+      final bytes = await pdf.save();
+      final ts = DateFormat('yyyyMMdd_HHmm').format(now);
+      final fileName =
+          'Μέσοι_Όροι_${DateFormat('yyyyMMdd').format(from)}_${DateFormat('yyyyMMdd').format(to)}_$ts.pdf';
+
+      final savePath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Αποθήκευση PDF',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        bytes: Uint8List.fromList(bytes),
+      );
+
+      if (savePath == null) return;
+      if (!mounted) return;
+
+      AccessibilityService.announcePolite('Το PDF αποθηκεύτηκε επιτυχώς.');
+      _showSnack('Το PDF αποθηκεύτηκε επιτυχώς!', isError: false);
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('Σφάλμα εξαγωγής PDF: $e', isError: true);
+    }
+  }
+
+  // ── SnackBar helper ───────────────────────────
+  void _showSnack(String msg, {required bool isError}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            ExcludeSemantics(
+              child: Icon(
+                isError ? Icons.error_outline : Icons.check_circle,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(msg)),
+          ],
+        ),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   // ------------------ BUILD ------------------
 
   @override
@@ -248,6 +706,7 @@ class _Stats2AveragesPageState extends State<Stats2AveragesPage> {
 
         // Αν δεν υπάρχουν έξοδα στην περίοδο
         if (!isLoading && expenseTxs.isEmpty) {
+          _lastCats = const [];
           return Scaffold(
             backgroundColor: context.cBg,
             appBar: _buildAppBar(brightness),
@@ -348,6 +807,12 @@ class _Stats2AveragesPageState extends State<Stats2AveragesPage> {
             ..sort((a, b) => a.name.compareTo(b.name));
           c._sortedSubs = subsList;
         }
+
+        // Τελευταίοι υπολογισμοί (για export Excel / PDF)
+        _lastCats = sortedCats;
+        _lastTotalMonths = totalMonths;
+        _lastFrom = _fromDate;
+        _lastTo = _toDate;
 
         final horizontalPadding = MediaQuery.of(context).size.width >= 700 ? 18.0 : 12.0;
 
@@ -601,6 +1066,36 @@ class _Stats2AveragesPageState extends State<Stats2AveragesPage> {
           ),
         ),
       ),
+      actions: [
+        Semantics(
+          button: true,
+          label: 'Εξαγωγή σε Excel',
+          child: IconButton(
+            icon: ExcludeSemantics(
+              child: Icon(
+                Icons.table_chart,
+                color: ColorsUI.getOnPrimary(brightness),
+              ),
+            ),
+            tooltip: 'Εξαγωγή Excel',
+            onPressed: _exportToExcel,
+          ),
+        ),
+        Semantics(
+          button: true,
+          label: 'Εξαγωγή σε PDF',
+          child: IconButton(
+            icon: ExcludeSemantics(
+              child: Icon(
+                Icons.picture_as_pdf,
+                color: ColorsUI.getOnPrimary(brightness),
+              ),
+            ),
+            tooltip: 'Εξαγωγή PDF',
+            onPressed: _exportToPdf,
+          ),
+        ),
+      ],
     );
   }
 
