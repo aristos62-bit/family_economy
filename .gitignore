@@ -47,3 +47,6 @@ serviceAccountKey.json
 
 # Build logs (build_and_setup_final.bat)
 build_logs/
+
+# Node modules (import-data.js helper - not part of the app)
+node_modules/
