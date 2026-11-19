@@ -48,5 +48,8 @@ serviceAccountKey.json
 # Build logs (build_and_setup_final.bat)
 build_logs/
 
+# Installer output (fam_eco_new.iss) - μην ανεβαίνει ποτέ (38+ MB exe)
+InstallerOutput/
+
 # Node modules (import-data.js helper - not part of the app)
 node_modules/
