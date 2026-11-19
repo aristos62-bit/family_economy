@@ -5,8 +5,19 @@
 [Setup]
 AppId={{D7C3F8A1-2B44-4C7A-9F9E-8A5D11223344}
 AppName=Οικογενειακός Προϋπολογισμός
+; ------------------------------------------------------------------
+; ΕΚΔΟΣΗ - single source of truth: pubspec.yaml (version: X.Y.Z+B)
+; Το build_and_setup_final.bat τη διαβάζει και την περνά εδώ με /D.
+; Χωρίς /D το compile ΣΤΑΜΑΤΑ (δεν επιτρέπεται παλιά/μαντέψιμη έκδοση).
+; ------------------------------------------------------------------
 #ifndef MyAppVersion
-  #define MyAppVersion "2.0.1"
+  #error MyAppVersion is not defined. Run build_and_setup_final.bat or pass /DMyAppVersion=X.Y.Z
+#endif
+#ifndef MyBuildNo
+  #define MyBuildNo "0"
+#endif
+#ifndef MyOutputBase
+  #define MyOutputBase "FamilyBudgetSetup"
 #endif
 AppVersion={#MyAppVersion}
 AppPublisher=Aris Gavrielatos
@@ -14,6 +25,14 @@ AppPublisherURL=https://www.example.com
 AppSupportURL=https://www.example.com/support
 AppUpdatesURL=https://www.example.com/updates
 AppContact=support@example.com
+
+; --- Windows file version info (Task Manager / Properties / Add-Remove) ---
+VersionInfoVersion={#MyAppVersion}.{#MyBuildNo}
+VersionInfoProductVersion={#MyAppVersion}.{#MyBuildNo}
+VersionInfoCompany=Aris Gavrielatos
+VersionInfoProductName=Οικογενειακός Προϋπολογισμός
+VersionInfoDescription=Οικογενειακός Προϋπολογισμός - Οδηγός εγκατάστασης
+VersionInfoCopyright=Copyright (C) 2026 Aris Gavrielatos
 
 ; Εμποδίζει την εγκατάσταση αν η εφαρμογή είναι ανοιχτή
 AppMutex=FamilyEconomy_Flutter_Mutex
@@ -28,11 +47,11 @@ AllowNoIcons=yes
 
 ; Output
 OutputDir=.\InstallerOutput
-OutputBaseFilename=FamilyBudgetSetup
+OutputBaseFilename={#MyOutputBase}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
-SetupIconFile=C:\Users\Vaggelis\Flutter Projects\family_economy\windows\runner\resources\app_icon.ico
+SetupIconFile=windows\runner\resources\app_icon.ico
 UninstallDisplayIcon={app}\family_economy.exe
 
 ; Permissions
@@ -49,9 +68,9 @@ Name: "desktopicon"; Description: "Δημιουργία συντόμευσης �
 
 [Files]
 ; Η εφαρμογή (Release build)
-Source: "C:\Users\Vaggelis\Flutter Projects\family_economy\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Το VC++ Redistributable
-Source: "C:\Users\Vaggelis\Flutter Projects\family_economy\Dependencies\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "Dependencies\VC_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Dirs]
 Name: "{app}"; Permissions: users-full

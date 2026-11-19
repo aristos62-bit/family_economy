@@ -1,11 +1,13 @@
 {
-    "name": "family_economy",
-    "short_name": "family_economy",
+    "name": "Οικογενειακός Προϋπολογισμός",
+    "short_name": "Προϋπολογισμός",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Οικογενειακός Προϋπολογισμός: έσοδα, έξοδα, λογαριασμοί και στατιστικά για όλη την οικογένεια.",
+    "lang": "el",
+    "dir": "ltr",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

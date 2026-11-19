@@ -78,6 +78,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | uuid | `^4.5.3` | 4.5.3 |
 | intl | `^0.20.2` | **0.20.3** |
 | flutter_phoenix | `^1.1.1` | 1.1.1 |
+| package_info_plus | `^9.0.1` | **9.0.1** |
 | flutter_lints (dev) | `^6.0.0` | 6.0.0 |
 
 `flutter pub get` → **75 πακέτα** έχουν νεότερες εκδόσεις εκτός constraints.
@@ -118,16 +119,30 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.0.1+2)   ← ΜΟΝΟ εδώ αλλάζει η έκδοση
-   ↓ αυτόματη ανάγνωση
-build_and_setup_final.bat          ← διαβάζει το version: από το pubspec
-   ↓
-fam_eco_new.iss (AppVersion)       ← ⚠️ έχει hardcoded fallback "2.0.1"
-   ↓
-APK / FamilyBudgetSetup.exe
+pubspec.yaml  (version: 2.0.1+2)          ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+   │
+   ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
+   ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
+   ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
+   ├── Web       build/web/version.json                                     (auto)
+   │
+   └── build_and_setup_final.bat  APP_VER=2.0.1 · BUILD_NO=2
+         ├── APK      FamilyBudget_v2.0.1.apk
+         └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
+               └── FamilyBudgetSetup_v2.0.1.exe   (FileVersion 2.0.1.2)
 ```
 
-⚠️ **Κίνδυνος:** αν τρέξει το Inno Setup **χωρίς** το script, χρησιμοποιείται το hardcoded `2.0.1` χωρίς προειδοποίηση (βλ. εκκρεμότητα E2).
+**Κανόνες παραγωγής (R1–R5):**
+
+| # | Κανόνας | Πού εφαρμόζεται |
+|---|---|---|
+| **R1** | **Μία** πηγή: μόνο το `version:` του `pubspec.yaml` γράφεται με το χέρι | κανένα άλλο αρχείο δεν περιέχει νούμερο έκδοσης |
+| **R2** | Ό,τι μπορεί να παραχθεί, **παράγεται** | Android / iOS / macOS / Windows / Web από το Flutter· installer από το `.bat` |
+| **R3** | Κάθε hardcoded fallback **αποτυγχάνει δυνατά** | `fam_eco_new.iss`: `#error MyAppVersion is not defined` |
+| **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.0.1.apk`, `FamilyBudgetSetup_v2.0.1.exe` |
+| **R5** | Κάθε release = **tag** | `v2.0.1` στο commit του release |
+
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.0.1 (build 2)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -144,20 +159,22 @@ APK / FamilyBudgetSetup.exe
 | # | Επίπεδο | Κατάσταση | Σημείωση |
 |---|---|---|---|
 | V1 | Κανόνας SemVer (τεκμηρίωση) | ✅ **Ισχύει** (αυτή η ενότητα) | — |
-| V2 | Git tags ανά release (`v2.0.1`) | ⏳ **Εκκρεμεί** (E1) | Σήμερα 0 tags σε 14 commits |
-| V3 | Εμφάνιση έκδοσης στην εφαρμογή | ⏳ **Εκκρεμεί** (E3) | Χρειάζεται `package_info_plus` (σήμερα 0 refs) |
+| V2 | Git tags ανά release (`v2.0.1`) | ✅ **Υλοποιήθηκε** (19/11/2026) | `v2.0.1` = πρώτο tag |
+| V3 | Εμφάνιση έκδοσης στην εφαρμογή | ✅ **Υλοποιήθηκε** (19/11/2026) | `package_info_plus ^9.0.1` + footer Επιλογών |
 | V4 | Versioning **δεδομένων** | ⏳ **Εκκρεμεί** (E4) | `schema_version` σε Firestore + SharedPreferences + `migrate()` στην εκκίνηση — σήμερα 0 refs |
 
-**Εκκρεμότητες (καταγεγραμμένες, χωρίς υλοποίηση):**
+**Εκκρεμότητες:**
 
-| # | Εκκρεμότητα | Επίπτωση αν μείνει |
+| # | Εκκρεμότητα | Κατάσταση |
 |---|---|---|
-| **E1** | Git tags `v<version>` + commit `release: v<version>` σε κάθε release | Δεν υπάρχει αντιστοίχιση commit ↔ έκδοση |
-| **E2** | Αφαίρεση/συγχρονισμός του hardcoded `MyAppVersion` στο `fam_eco_new.iss` | Installer με λάθος έκδοση |
-| **E3** | Εμφάνιση έκδοσης στις Ρυθμίσεις | Ο χρήστης δεν ξέρει τι έκδοση τρέχει (δύσκολο support) |
-| **E4** | `schema_version` (Firestore + prefs) + migration στην εκκίνηση | Κάθε μελλοντική αλλαγή πεδίου γίνεται «τυφλή» |
+| **E1** | Git tags `v<version>` + commit `release: v<version>` σε κάθε release | ✅ `v2.0.1` |
+| **E2** | Αφαίρεση/συγχρονισμός του hardcoded `MyAppVersion` στο `fam_eco_new.iss` | ✅ `#error` guard — αδύνατο stale installer |
+| **E3** | Εμφάνιση έκδοσης στις Ρυθμίσεις | ✅ footer «Έκδοση X (build N)» |
+| **E4** | `schema_version` (Firestore + prefs) + migration στην εκκίνηση | ⏳ **ανοιχτό** — κάθε μελλοντική αλλαγή πεδίου γίνεται «τυφλή» |
 
-> Οι εκκρεμότητες E1–E4 **δεν** αλλάζουν τον κώδικα από μόνες τους· καταγράφονται εδώ ώστε να μη χαθούν. Κάθε υλοποίηση θέλει ξεχωριστή έγκριση (κανόνας 3).
+> Τα **E1–E3** υλοποιήθηκαν στις 19/11/2026 (Session 13, βλ. `oldsessions.md`). Το **E4** παραμένει και θέλει ξεχωριστή έγκριση (κανόνας 3).
+>
+> **Δεν** αλλάζουν (σκόπιμα): `MARKETING_VERSION = 1.0` στα `project.pbxproj` (iOS/macOS) — το `Info.plist` χρησιμοποιεί `$(FLUTTER_BUILD_NAME)`, άρα η τιμή αγνοείται· το `flutter create` θα την ξαναγράψει. Το `Runner.rc` δείχνει `2.0.1+2` (σωστό και πληροφοριακό). Το `Greek.isl` δεν περιέχει έκδοση εφαρμογής.
 
 ---
 
@@ -197,7 +214,8 @@ APK / FamilyBudgetSetup.exe
 
 ### 2.4 Web
 
-- `web/index.html` + `web/manifest.json`: τίτλος **`family_economy`** (όχι τοπικοποιημένος).
+- `web/index.html` + `web/manifest.json`: τίτλος/όνομα **«Οικογενειακός Προϋπολογισμός»**, `lang=el`, τοπικοποιημένη περιγραφή.
+- Έκδοση web: το `flutter build web` παράγει `build/web/version.json` (`version`, `build_number`) από το `pubspec.yaml` — δεν γράφεται με το χέρι.
 
 ### 2.5 Windows
 
@@ -208,16 +226,18 @@ APK / FamilyBudgetSetup.exe
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Script | `fam_eco_new.iss` (Inno Setup) |
-| AppVersion | Διαβάζεται από `pubspec.yaml` (σήμερα `2.0.1`) |
+| Script | `fam_eco_new.iss` (Inno Setup 6.6.1) |
+| AppVersion | `{#MyAppVersion}` — **μόνο** από `/D` του script· χωρίς αυτό → `#error` (δεν υπάρχει fallback) |
+| File version (exe) | `VersionInfoVersion={#MyAppVersion}.{#MyBuildNo}` → π.χ. `2.0.1.2` |
 | Default dir | `{localappdata}\f_budget` |
-| Output | `.\InstallerOutput\FamilyBudgetSetup.exe` |
+| Output | `.\InstallerOutput\FamilyBudgetSetup_v<ver>.exe` (π.χ. `FamilyBudgetSetup_v2.0.1.exe`) |
 | Compression | `lzma2/ultra64` |
 | Privileges | `PrivilegesRequired=lowest` |
 | Εξάρτηση | `Dependencies/VC_redist.x64.exe` (17,7 MB, tracked) |
-| Build automation | `build_and_setup_final.bat` (version από pubspec, logs σε `build_logs/`, καθαρό build) |
+| Build automation | `build_and_setup_final.bat` (version από pubspec, logs σε `build_logs/`, καθαρό build, έλεγχος έκδοσης του setup) |
 | CI | ❌ **Καμία** (δεν υπάρχει `.github/`) |
-| Σημείωση | Το `.iss` περιέχει **απόλυτα paths** του μηχανήματος ανάπτυξης |
+| Σημείωση | Το `.iss` χρησιμοποιεί **σχετικές** διαδρομές (`{#SourcePath}` / script dir) → μεταφέρεται σε άλλο PC |
+| `InstallerOutput/` | ❌ **δεν** είναι στο `.gitignore` — προσέχει να μη γίνει commit |
 
 ### 2.7 Κατάσταση build (19/11/2026) — ✅ υγιές
 
@@ -270,6 +290,7 @@ lib/
       app_theme.dart                           # lightTheme / darkTheme (Material 3)
       ui_tokens.dart                           # ColorsUI, TypographyUI (primaryFont = Roboto)
     utils/
+      app_info.dart                            # έκδοση από package_info_plus (footer Επιλογών)
       chart_helpers.dart
       currency_formatter.dart
       debug_config.dart                        # _debug = false (logs OFF)
@@ -787,7 +808,7 @@ default_currency, biometric_mode ('always'|'on_demand'), biometric_remember, ...
 | `analysis_options.yaml` | Lints + εξαιρέσεις native φακέλων |
 | `firebase.json`, `.firebaserc` | Firebase CLI config · default project `family-economy-d1b4d` |
 | `firestore.rules`, `firestore.indexes.json` | Κανόνες + 3 indexes (deploy μέσω CLI) |
-| `fam_eco_new.iss` | Inno Setup installer (απόλυτα paths) |
+| `fam_eco_new.iss` | Inno Setup installer (σχετικές διαδρομές, έκδοση από `/D`) |
 | `build_and_setup_final.bat` | Build + packaging script (version από pubspec, logs σε `build_logs/`) |
 | `import-data.js` + `package.json` + `package-lock.json` | Node.js import script (`firebase-admin`) |
 | `data/*.json` (14) | Δεδομένα εισαγωγής |
@@ -800,8 +821,8 @@ default_currency, biometric_mode ('always'|'on_demand'), biometric_remember, ...
 | Μέτρηση | Τιμή |
 |---|---|
 | Tracked αρχεία | **610** |
-| Commits | 14 (1 κύριο branch + remote tracking) |
-| Tags | 0 |
+| Commits | 19 (με το release commit `v2.0.1`) |
+| Tags | **1** (`v2.0.1`) |
 | Μέγεθος `.git` | **23,3 MB** |
 | `.gitignore` | 52 γραμμές (`/build/`, `build_logs/`, `serviceAccountKey.json`, `node_modules/`, …) |
 | CI/CD | ❌ κανένα |
@@ -822,9 +843,10 @@ default_currency, biometric_mode ('always'|'on_demand'), biometric_remember, ...
 
 1. `backups/` είναι **tracked** → ό,τι αντιγράφεται εκεί δημοσιεύεται· ποτέ credentials.
 2. `Dependencies/VC_redist.x64.exe` (17,7 MB) στο repo — απαραίτητο για τον installer.
-3. Το `.iss` περιέχει απόλυτα paths του μηχανήματος ανάπτυξης.
+3. Το `.iss` χρησιμοποιεί **σχετικές** διαδρομές → μεταφέρεται σε άλλο PC. Απαιτεί `/DMyAppVersion` (αλλιώς `#error`).
 4. `build/` και `build_logs/` είναι ignored (δεν μπαίνουν σε commits).
 5. `node_modules/` είναι πλέον ignored (5.086 αρχεία εκτός git).
+6. Το `InstallerOutput/` **δεν** είναι ignored → έλεγχος πριν από `git add`.
 
 ---
 
@@ -844,11 +866,11 @@ default_currency, biometric_mode ('always'|'on_demand'), biometric_remember, ...
 | L10 | Android release υπογράφεται με **debug key**, minify/shrink off | §2.1 |
 | L11 | `MessageService` σχεδόν ανενεργό (180 άμεσα SnackBar) | §5.5 |
 | L12 | Budgets spent με **3** διαδρομές υπολογισμού | §5.6 |
-| L13 | Web title/manifest `family_economy` (όχι τοπικοποιημένο) | §2.4 |
-| L14 | Installer με απόλυτα paths (μη μεταφέρσιμο σε άλλο PC) | §2.6 |
+| L13 | *(λύθηκε 19/11/2026)* Web title/manifest τοπικοποιήθηκαν | §2.4 |
+| L14 | *(λύθηκε 19/11/2026)* Installer με σχετικές διαδρομές | §2.6 |
 | L15 | `assets/images/` άδειος — εξαρτάται από `.gitkeep` | §2.7 |
 | L16 | Καμία UI/integration δοκιμή | §9.3 |
-| L17 | Versioning δεδομένων ανύπαρκτο (`schema_version`, migrations) + 0 git tags + hardcoded έκδοση στο `.iss` | §1.5.4 (E1–E4) |
+| L17 | Versioning **δεδομένων** ανύπαρκτο (`schema_version`, migrations) — E4 ανοιχτό (E1–E3 λύθηκαν) | §1.5.4 (E4) |
 
 ---
 

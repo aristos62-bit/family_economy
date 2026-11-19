@@ -1,5 +1,5 @@
 name: family_economy
-description: "A new Flutter project."
+description: "Οικογενειακός Προϋπολογισμός: έσοδα, έξοδα, λογαριασμοί και στατιστικά για όλη την οικογένεια."
 
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
@@ -38,6 +38,7 @@ dependencies:
   file_picker: ^10.3.10
   http: ^1.6.0
   flutter_phoenix: ^1.1.1
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:

@@ -396,15 +396,35 @@
 | `flutter build bundle` | ✅ EXIT 0 |
 | Outdated packages | 75 (εκτός constraints) |
 
+### Versioning: E1–E3 ✅ (19/11/2026)
+
+**Στόχος:** μία πηγή έκδοσης (`pubspec.yaml`) και **κανένα** hardcoded νούμερο.
+
+| Αρχείο | Αλλαγή | Επαλήθευση |
+|---|---|---|
+| `fam_eco_new.iss` | `#ifndef MyAppVersion` → **`#error`** (χωρίς fallback) · `+MyBuildNo` · `+MyOutputBase` · `+VersionInfoVersion/ProductVersion/Company/ProductName/Description/Copyright` · απόλυτα paths → **σχετικά** | ISCC χωρίς `/D` → σταματά (line 14) · throwaway build → `FileVersion = ProductVersion = 2.0.1.2` · 0 absolute paths |
+| `build_and_setup_final.bat` | `INST_NAME` μετά το STEP 0 · `+INST_BASE/INST_NAME/SETUP_VER` · `ISCC /DMyBuildNo /DMyOutputBase` · **έλεγχος** `ProductVersion == APP_VER.BUILD_NO` | STEP 0: `2.0.1+2`→`2.0.1.2` · `1.4.4`→`1.4.4.0` · `10.12.3+57`→`10.12.3.57` · E2E ISCC + version check OK |
+| `pubspec.yaml` / `pubspec.lock` | `+package_info_plus ^9.0.1` (το 10.x είναι incompatible) | resolved **9.0.1** |
+| `lib/core/utils/app_info.dart` | **ΝΕΟ** — cached `PackageInfo`, `versionLabel()` → «Έκδοση 2.0.1 (build 2)» | 5 περιπτώσεις σε temp package (Android-style, `+build`, μόνο version, κενό, trim) |
+| `options_page.dart` | footer `_AppVersionFooter` κάτω από `_LogoutCard` | analyze 0 issues · tests 50/50 |
+| `web/index.html` / `web/manifest.json` | «Οικογενειακός Προϋπολογισμός», `lang=el`, περιγραφή αντί template | `flutter build web` OK · `version.json` = `2.0.1` / `2` |
+| `DESIGN.md` | §1.5 R1–R5 + V2/V3 ✅ + E1–E3 ✅ · §2.4/§2.6/§10/§11 ενημερώθηκαν | L13/L14 → λυμένα |
+| `macos/.../GeneratedPluginRegistrant.swift` | 🤖 auto από `pub get` | μόνο plugin registration |
+
+**Bug που βρήκε το testing:** το `VersionInfo.ProductVersion` επιστρέφει **κενά στο τέλος** → χωρίς `.Trim()` ο έλεγχος θα απέτυχε πάντα και κάθε build θα σταματούσε στο τέλος.
+
+**Release:** commit `release: v2.0.1` + tag **`v2.0.1`**.
+
 ### Backups αυτού του session
-`gitignore_20261119_131825.bak`, `DESIGN_20261119_133539.bak`, `DESIGN_20261119_134810.bak`, `DESIGN_20261119_140431.bak`, `AGENTS_20261119_135238.bak`, `AGENTS_20261119_135541.bak`, `README_20261119_140658.bak`, `oldsessions_20261119_141008.bak`
+`gitignore_20261119_131825.bak`, `DESIGN_20261119_133539.bak`, `DESIGN_20261119_134810.bak`, `DESIGN_20261119_140431.bak`, `AGENTS_20261119_135238.bak`, `AGENTS_20261119_135541.bak`, `README_20261119_140658.bak`, `oldsessions_20261119_141008.bak`, `fam_eco_new.iss_20261119_143305.bak`, `build_and_setup_final.bat_20261119_143536.bak`, `pubspec.yaml_20261119_143941.bak`, `options_page.dart_20261119_143941.bak`, `index.html_20261119_150109.bak`, `manifest.json_20261119_150109.bak`, `DESIGN.md_20261119_150347.bak`, `oldsessions.md_20261119_150347.bak`
 
 ### Εκκρεμότητες (ανοιχτές)
 | # | Θέμα | Κατάσταση |
 |---|---|---|
-| 1 | Commit αλλαγών (`.gitignore`, `DESIGN.md`, `AGENTS.md`, `README.md`, `assets/images/`, backups, διαγραφές scripts, `stats2_averages_page.dart`) | ⏳ δεν έγινε |
-| 2 | `family_economy_security_report.md` — untracked, δεν πρέπει να δημοσιευτεί | ⏳ απόφαση |
-| 3 | Versioning **E1–E4** (`DESIGN.md` §1.5.4) | 📝 καταγεγραμμένα |
-| 4 | `metadata` ασυνέπειες: `lib/*.backup` (2 tracked), `backups/` tracked, `oldsessions.md.backup` | ⏳ απόφαση |
-| 5 | 3 πακέτα με 0 χρήσεις + iOS/macOS χωρίς `Podfile` | 📝 στο `DESIGN.md` §1.3, §2.3 |
+| 1 | `family_economy_security_report.md` — untracked, δεν πρέπει να δημοσιευτεί | ⏳ απόφαση |
+| 2 | Versioning **E4** — `schema_version` σε Firestore + prefs + `migrate()` στην εκκίνηση | ⏳ ανοιχτό (`DESIGN.md` §1.5.4) |
+| 3 | ~~`pubspec.yaml` `description: "A new Flutter project."`~~ → διορθώθηκε στα ελληνικά | ✅ |
+| 4 | `InstallerOutput/` **δεν** είναι στο `.gitignore` | ⏳ πρόταση |
+| 5 | `metadata` ασυνέπειες: `lib/*.backup` (2 tracked), `backups/` tracked, `oldsessions.md.backup` | ⏳ απόφαση |
+| 6 | 3 πακέτα με 0 χρήσεις + iOS/macOS χωρίς `Podfile` | 📝 στο `DESIGN.md` §1.3, §2.3 |
 

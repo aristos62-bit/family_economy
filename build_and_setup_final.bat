@@ -8,7 +8,9 @@ title Family Economy - Final Build Tool
 :: Merges build_and_setup.bat + build_and_setup_new.bat
 ::   - reads version from pubspec.yaml (source of truth)
 ::   - names the APK with the real version
-::   - passes the version to Inno Setup (AppVersion)
+::   - names the installer with the real version (FamilyBudgetSetup_vX.Y.Z.exe)
+::   - passes AppVersion + build number to Inno Setup (2.0.1+2 -> 2.0.1.2)
+::   - verifies the produced setup.exe really carries that version
 ::   - detects build failures (no infinite spinner)
 ::   - writes a log per step in build_logs\
 ::   - cleans build\ + windows\flutter\ephemeral
@@ -30,7 +32,7 @@ set "LOG_DIR=%PROJECT_DIR%build_logs"
 set "APK_DIR=build\app\outputs\flutter-apk"
 set "WIN_DIR=build\windows\x64\runner\Release"
 set "INST_DIR=InstallerOutput"
-set "INST_NAME=FamilyBudgetSetup.exe"
+:: INST_NAME ορίζεται μετά την ανάγνωση της έκδοσης (STEP 0) - περιέχει την έκδοση
 
 set "DO_CLEAN=1"
 if /i "%~1"=="fast" set "DO_CLEAN=0"
@@ -61,10 +63,16 @@ if not defined APP_VER goto ver_fail
 if not defined BUILD_NO set "BUILD_NO=0"
 set "APK_NAME=FamilyBudget_v!APP_VER!.apk"
 
+:: Installer: όνομα με έκδοση + αναμενόμενη έκδοση αρχείου (4 μέρη)
+set "INST_BASE=FamilyBudgetSetup_v!APP_VER!"
+set "INST_NAME=!INST_BASE!.exe"
+set "SETUP_VER=!APP_VER!.!BUILD_NO!"
+
 echo ========================================================
 echo   FAMILY ECONOMY - FINAL BUILD
 echo   Version : !APP_VER!+!BUILD_NO!
 echo   APK     : !APK_NAME!
+echo   Setup   : %INST_DIR%\!INST_NAME!
 echo   Mode    : !DO_CLEAN!  ^(1 = full clean, 0 = fast^)
 echo ========================================================
 
@@ -173,7 +181,7 @@ if not exist "!ISS_PATH!" (
     goto failed
 )
 
-"%INNO_PATH%" /DMyAppVersion=!APP_VER! "!ISS_PATH!" > "!INNO_LOG!" 2>&1
+"%INNO_PATH%" /DMyAppVersion=!APP_VER! /DMyBuildNo=!BUILD_NO! /DMyOutputBase=!INST_BASE! "!ISS_PATH!" > "!INNO_LOG!" 2>&1
 if errorlevel 1 (
     echo  [ERROR] Inno Setup failed - see !INNO_LOG!
     goto failed
@@ -183,6 +191,14 @@ if not exist "%INST_DIR%\%INST_NAME%" (
     goto failed
 )
 echo  [OK] Setup: %INST_DIR%\%INST_NAME%
+
+:: Έλεγχος ότι το setup.exe φέρει την έκδοση που ζητήθηκε (αποτρέπει stale/λάθος build)
+:: ΣΗΜΕΙΩΣΗ: το ProductVersion επιστρέφεται με κενά στο τέλος -> πάντα .Trim()
+powershell -NoProfile -Command "$i='%INST_DIR%\%INST_NAME%'; $want='!SETUP_VER!'.Trim(); $got=((Get-Item $i).VersionInfo.ProductVersion).Trim(); if ($got -ne $want) { Write-Host ('[ERROR] Setup ProductVersion is [' + $got + '] but expected [' + $want + ']'); exit 1 }"
+if errorlevel 1 (
+    echo  [ERROR] Installer version mismatch - see !INNO_LOG!
+    goto failed
+)
 
 :: ---------------- Summary ----------------
 :summary
@@ -195,12 +211,13 @@ echo   Firebase C++ : !FB_VER!
 echo   APK          : %APK_DIR%\!APK_NAME!
 echo   Windows EXE  : %WIN_DIR%\family_economy.exe
 echo   Installer    : %INST_DIR%\%INST_NAME%
+echo   Setup ver.   : !SETUP_VER!
 echo   Logs         : %LOG_DIR%
 echo ========================================================
 
 powershell -NoProfile -Command "$a='%APK_DIR%\!APK_NAME!'; if (Test-Path $a) { 'APK size     : ' + [math]::Round((Get-Item $a).Length/1MB,1) + ' MB' }"
 powershell -NoProfile -Command "$e='%WIN_DIR%\family_economy.exe'; if (Test-Path $e) { 'EXE version  : ' + (Get-Item $e).VersionInfo.ProductVersion }"
-powershell -NoProfile -Command "$i='%INST_DIR%\%INST_NAME%'; if (Test-Path $i) { 'Setup version: ' + (Get-Item $i).VersionInfo.ProductVersion + '  (' + [math]::Round((Get-Item $i).Length/1MB,1) + ' MB)' }"
+powershell -NoProfile -Command "$i='%INST_DIR%\%INST_NAME%'; if (Test-Path $i) { 'Setup version: ' + ((Get-Item $i).VersionInfo.ProductVersion).Trim() + '  (' + [math]::Round((Get-Item $i).Length/1MB,1) + ' MB)' }"
 
 echo.
 echo [DONE] Build finished successfully.

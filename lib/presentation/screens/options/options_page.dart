@@ -21,6 +21,7 @@ import 'package:family_economy/core/services/biometric_auth_service.dart';
 import 'package:family_economy/core/services/biometric_settings_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
+import 'package:family_economy/core/utils/app_info.dart';
 import 'package:family_economy/presentation/screens/options/change_password_page.dart';
 import 'package:family_economy/presentation/screens/options/delete_account_page.dart';
 import 'package:family_economy/presentation/screens/options/database_cleanup_page.dart';
@@ -48,6 +49,9 @@ class _OptionsPageState extends State<OptionsPage> {
   bool _isStatsExpanded = false;
   bool _isDatabaseExpanded = false;
   bool _isAccountExpanded = false;
+
+  /// Κείμενο έκδοσης (π.χ. «Έκδοση 2.0.1 (build 2)») - μία φόρτωση ανά σελίδα
+  late final Future<String> _versionLabel = AppInfo.versionLabel();
 
   @override
   void initState() {
@@ -699,6 +703,9 @@ class _OptionsPageState extends State<OptionsPage> {
 
                       // 6. Logout Card (Αποσύνδεση)
                       _LogoutCard(userId: userId),
+
+                      // 7. Έκδοση εφαρμογής (από pubspec.yaml μέσω package_info_plus)
+                      _AppVersionFooter(label: _versionLabel),
                     ],
                     )
                   ),
@@ -1604,6 +1611,42 @@ class _ThemeSwitchTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ============================================================
+// APP VERSION FOOTER
+// ============================================================
+
+/// Μικρό κείμενο έκδοσης στο τέλος της σελίδας Επιλογών.
+/// Η τιμή έρχεται από [AppInfo] (pubspec.yaml -> πλατφόρμα), δεν είναι hardcoded.
+class _AppVersionFooter extends StatelessWidget {
+  final Future<String> label;
+
+  const _AppVersionFooter({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String>(
+      future: label,
+      builder: (context, snapshot) {
+        final text = snapshot.data ?? '';
+        if (text.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+          child: Semantics(
+            label: text,
+            excludeSemantics: true,
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: context.bodySm.copyWith(color: context.cText2),
+            ),
+          ),
+        );
+      },
     );
   }
 }
