@@ -840,7 +840,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | Μέτρηση | Τιμή |
 |---|---|
 | Tracked αρχεία | **570** |
-| Commits | 25 |
+| Commits | 27 |
 | Tags | **2** (`v2.0.1`, `v2.1.0`) |
 | Μέγεθος `.git` | **23,7 MB** |
 | `.gitignore` | 59 γραμμές (`/build/`, `build_logs/`, `InstallerOutput/`, `serviceAccountKey.json`, `node_modules/`, `backups/`, `*.backup`, …) |
