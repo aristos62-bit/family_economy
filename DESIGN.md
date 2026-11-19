@@ -81,7 +81,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | package_info_plus | `^9.0.1` | **9.0.1** |
 | flutter_lints (dev) | `^6.0.0` | 6.0.0 |
 
-`flutter pub get` → **75 πακέτα** έχουν νεότερες εκδόσεις εκτός constraints.
+`flutter pub get` → **77 πακέτα** έχουν νεότερες εκδόσεις εκτός constraints.
 
 ### 1.3 Πακέτα χωρίς (ή με ελάχιστη) χρήση
 
@@ -98,7 +98,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | Path | Κατάσταση |
 |---|---|
 | `assets/fonts/` | ✅ 3 αρχεία NotoSans (Regular, Bold, Italic) — δηλωμένα στο `pubspec.yaml` (`fonts:`) |
-| `assets/icons/` | ✅ 277 αρχεία (accounts, categories/subcategories income/expense, default.*, app_icon.png) |
+| `assets/icons/` | ✅ 276 αρχεία (accounts, categories/subcategories income/expense, default.*, app_icon.png) |
 | `assets/images/` | ✅ Υπάρχει (άδειος φάκελος + `.gitkeep`)· δηλώνεται στο `pubspec.yaml` |
 
 Η γραμματοσειρά που εφαρμόζεται πραγματικά στο UI είναι **Roboto** (`TypographyUI.primaryFont` στο `core/theme/ui_tokens.dart`). Το NotoSans είναι δηλωμένο αλλά **δεν** χρησιμοποιείται από το theme.
@@ -245,7 +245,7 @@ pubspec.yaml  (version: 2.1.0+3)          ← ΜΟΝΟ εδώ αλλάζει η 
 |---|---|
 | `flutter build bundle` | ✅ EXIT 0 |
 | `flutter analyze` | ✅ No issues found |
-| `flutter test` | ✅ 50/50 |
+| `flutter test` | ✅ 89/89 |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -257,12 +257,12 @@ pubspec.yaml  (version: 2.1.0+3)          ← ΜΟΝΟ εδώ αλλάζει η 
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **98** (+2 `*.backup` tracked) |
+| Dart αρχεία στο `lib/` | **102** (τα 2 `*.backup` είναι πλέον untracked/ignored) |
 | Σελίδες (`*_page.dart`) | 32 |
-| Αρχεία Oil module | 12 (`oil_page.dart` + `oil/`) |
+| Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 6 αρχεία · **50** `test()`/`testWidgets()` |
+| Tests | 8 αρχεία · **89** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | 5.086 αρχεία, 41,4 MB — **εκτός git** (πλέον ignored) |
 
@@ -274,7 +274,7 @@ lib/
   firebase_options.dart         # Firebase config ανά πλατφόρμα (5 πλατφόρμες)
 
   core/
-    accessibility/accessibility_service.dart   # Semantics / screen reader (58 αρχεία το χρησιμοποιούν)
+    accessibility/accessibility_service.dart   # Semantics / screen reader (61 αρχεία το χρησιμοποιούν)
     data/
       schema.dart                              # Έκδοση δεδομένων: σταθερές, parser, καθαρή απόφαση (χωρίς Firebase)
       schema_service.dart                      # Gate + migrations + εγγραφή έκδοσης (timeout + cache verify)
@@ -364,7 +364,7 @@ lib/
 | `core/widgets/biometric_gate.dart` | 0 imports εκτός του εαυτού του |
 | `services/recurring_notifications_service.dart` | 0 imports· η κλήση `generateAhead` είναι σχολιασμένη (`app_start.dart:101`) |
 | `AccountsProvider.updateAccountBalance` | 1 αναφορά (μόνο ο ορισμός) |
-| `lib/*.backup` (2 αρχεία) | Tracked στο git, δεν συμπεριλαμβάνονται σε build |
+| `lib/*.backup` (2 αρχεία) | Untracked/ignored, δεν συμπεριλαμβάνονται σε build |
 
 ---
 
@@ -374,16 +374,16 @@ lib/
 
 | # | Ενέργεια | Γραμμή |
 |---|---|---|
-| 1 | `WidgetsFlutterBinding.ensureInitialized()` | 29 |
-| 2 | `ThemeProvider.initialize()` (SharedPreferences) | 33–35 |
-| 3 | `NotificationsService().initialize()` | 38–39 |
-| 4 | `ConnectivityService()` (instance) | 42–43 |
-| 5 | `Firebase.initializeApp(options)` | 45 |
-| 6 | `FirebaseAuth.authStateChanges().first` με **timeout** → persisted user | 53–58 |
-| 7 | `Settings(persistenceEnabled: true, cacheSizeUnlimited)` | 64–65 |
-| 8 | `FirebaseFirestore.setLoggingEnabled(DebugConfig.isDebug)` | 70 |
-| 9 | `runApp(MultiProvider(ThemeProvider, ConnectivityService) → MyApp)` | 74 |
-| 10 | Σε αποτυχία Firebase → `ErrorApp` (κόκκινη οθόνη + `Phoenix.rebirth`) | ~85–92 |
+| 1 | `WidgetsFlutterBinding.ensureInitialized()` | 30 |
+| 2 | `ThemeProvider.initialize()` (SharedPreferences) | 34–36 |
+| 3 | `NotificationsService().initialize()` | 39–40 |
+| 4 | `ConnectivityService()` (instance) | 43–44 |
+| 5 | `Firebase.initializeApp(options)` | 46 |
+| 6 | `FirebaseAuth.authStateChanges().first` με **timeout 2s** → persisted user | 54–62 |
+| 7 | `Settings(persistenceEnabled: true, cacheSizeUnlimited)` | 65–68 |
+| 8 | `FirebaseFirestore.setLoggingEnabled(DebugConfig.isDebug)` | 71 |
+| 9 | `runApp(MultiProvider(ThemeProvider, ConnectivityService) → MyApp)` | 76–90 |
+| 10 | Σε αποτυχία Firebase → `ErrorApp` (κόκκινη οθόνη + `Phoenix.rebirth`) | 91–93 |
 
 ### 4.2 `SplashScreen`
 
@@ -436,13 +436,13 @@ lib/
 | Firestore | `users/{userId}/...` | ✅ |
 
 **Κανόνας που ισχύει ως πρόθεση, όχι ως πραγματικότητα:** «Firestore μόνο από Providers/Services».
-Μετρημένο: **82 άμεσες κλήσεις `FirebaseFirestore.instance` σε 29 αρχεία**
+Μετρημένο: **83 άμεσες κλήσεις `FirebaseFirestore.instance` σε 30 αρχεία**
 
 | Στρώμα | Κλήσεις |
 |---|---|
 | `presentation/` | **42** (σε 14 αρχεία) |
-| `providers/` | 22 |
-| `services/` + `core/` | 17 |
+| `providers/` | 22 (σε 6 αρχεία) |
+| `services/` + `core/` | 18 (σε 9 αρχεία) |
 | `main.dart` | 1 |
 
 ### 5.2 Providers
@@ -484,7 +484,7 @@ lib/
 | Στοιχείο | Μέτρηση |
 |---|---|
 | `MessageService` | **1** χρήση (`main.dart` → `showSyncComplete`) |
-| Άμεσα `SnackBar(...)` | **180** σε **28** αρχεία |
+| Άμεσα `SnackBar(...)` | **186** σε **28** αρχεία |
 
 ### 5.6 Budgets — υπολογισμός spent
 
@@ -513,7 +513,7 @@ lib/
 ### 5.9 Connectivity & accessibility
 
 - `ConnectivityService`: 2s debounce → `onSyncComplete` → `MessageService.showSyncComplete`.
-- `AccessibilityService`: χρησιμοποιείται σε **58** αρχεία (semantics/ανακοινώσεις).
+- `AccessibilityService`: χρησιμοποιείται σε **61** αρχεία (semantics/ανακοινώσεις).
 - `AnnouncementOverlay` στο `MaterialApp.builder` (μαζί με `TextScaler` clamp 0.85–1.45).
 
 ### 5.10 Ειδοποιήσεις (local notifications)
@@ -550,7 +550,7 @@ lib/
 
 | Συλλογή | Χρήση στον κώδικα (`lib/`) |
 |---|---|
-| `users/{uid}` | ✅ 141 αναφορές |
+| `users/{uid}` | ✅ 142 αναφορές |
 | `transactions` | ✅ 38 |
 | `categories` (+ `subcategories`) | ✅ 27 + 12 |
 | `accounts` | ✅ 16 |
@@ -661,8 +661,8 @@ schema_version (int), schema_updated_at (Timestamp)
 ### 6.4 Δομικά χαρακτηριστικά
 
 - Όλα τα δεδομένα χρήστη ζουν **κάτω από `users/{uid}`** (εκτός από το global `exchange_rates`).
-- **Soft-delete παντού**: `deleted: boolean` αντί για πραγματική διαγραφή (`deleted` → 200 αναφορές).
-- Sync πεδία: `uuid` (367), `updated_at` (114), `last_modified_device_id` (13), `deleted` (200).
+- **Soft-delete παντού**: `deleted: boolean` αντί για πραγματική διαγραφή (`deleted` → 247 αναφορές).
+- Sync πεδία: `uuid` (423), `updated_at` (116), `last_modified_device_id` (13), `deleted` (247).
 - **Διαγραφή λογαριασμού χρήστη**: δεν γίνεται cascade στο Firestore από την εφαρμογή· καθαρισμός μέσω `DatabaseCleanupService` / ροών διαγραφής.
 - Αναφορές μεταξύ docs γίνονται με **uuid strings** (`account_id`, `category_id`, `transfer_group_id`), όχι με document references.
 
@@ -723,13 +723,13 @@ schema_version (int), schema_updated_at (Timestamp)
 
 ### 8.2 Soft-delete & συγχρονισμός
 
-- Καμία φυσική διαγραφή: `deleted: boolean` (200 αναφορές).
+- Καμία φυσική διαγραφή: `deleted: boolean` (247 αναφορές).
 - Sync πεδία: `uuid`, `updated_at`, `last_modified_device_id`, `deleted`.
 - `created_at` / `updated_at` ως Firestore `Timestamp`.
 
 ### 8.3 Optimistic updates & offline-first
 
-- `notifyListeners()` **66** φορές σε providers/UI.
+- `notifyListeners()` **67** φορές σε providers/UI.
 - Τοπική αλλαγή state → ενημέρωση UI → Firestore write στο background.
 - `Settings(persistenceEnabled: true, cacheSizeUnlimited)` → offline writes επιτρέπονται.
 - `ConnectivityService` (2s debounce) → `onSyncComplete` → μήνυμα συγχρονισμού.
@@ -777,7 +777,7 @@ schema_version (int), schema_updated_at (Timestamp)
 
 ### 8.10 Accessibility
 
-- `AccessibilityService` σε 58 αρχεία (semantics, ανακοινώσεις).
+- `AccessibilityService` σε 61 αρχεία (semantics, ανακοινώσεις).
 - `AnnouncementOverlay` τυλίγει όλο το app.
 
 ---
@@ -832,20 +832,20 @@ schema_version (int), schema_updated_at (Timestamp)
 | `import-data.js` + `package.json` + `package-lock.json` | Node.js import script (`firebase-admin`) |
 | `data/*.json` (14) | Δεδομένα εισαγωγής |
 | `docs/` (15) | Legacy τεκμηρίωση schema |
-| `backups/` (41 tracked) | Αντίγραφα αρχείων |
+| `backups/` | Τοπικά αντίγραφα — **ignored** (0 tracked) |
 | `Dependencies/VC_redist.x64.exe` | Εξάρτηση installer (17,7 MB) |
 
 ### 10.2 Κατάσταση repository (19/11/2026)
 
 | Μέτρηση | Τιμή |
 |---|---|
-| Tracked αρχεία | **635** |
-| Commits | 24 |
+| Tracked αρχεία | **570** |
+| Commits | 25 |
 | Tags | **2** (`v2.0.1`, `v2.1.0`) |
-| Μέγεθος `.git` | **23,3 MB** |
-| `.gitignore` | 58 γραμμές (`/build/`, `build_logs/`, `InstallerOutput/`, `serviceAccountKey.json`, `node_modules/`, `backups/`, …) |
+| Μέγεθος `.git` | **23,7 MB** |
+| `.gitignore` | 59 γραμμές (`/build/`, `build_logs/`, `InstallerOutput/`, `serviceAccountKey.json`, `node_modules/`, `backups/`, `*.backup`, …) |
 | CI/CD | ❌ κανένα |
-| Ιδιαιτερότητες | 62 **προ-υπάρχοντα** `.bak` στο `backups/` παραμένουν tracked (μπήκαν πριν το ignore rule) · 2 `lib/*.backup` + `oldsessions.md.backup` tracked |
+| Ιδιαιτερότητες | **Κανένα backup στο git** — `backups/`, `lib/*.backup`, `oldsessions.md.backup` είναι untracked/ignored (19/11/2026) |
 
 ### 10.3 `import-data.js` (script εισαγωγής)
 
@@ -860,7 +860,7 @@ schema_version (int), schema_updated_at (Timestamp)
 
 ### 10.4 Σημεία προσοχής (hygiene)
 
-1. `backups/` είναι **tracked** → ό,τι αντιγράφεται εκεί δημοσιεύεται· ποτέ credentials.
+1. `backups/` είναι **ignored** (0 tracked) → τοπικά αντίγραφα, ποτέ credentials (τα credentials μένουν εκτός repo).
 2. `Dependencies/VC_redist.x64.exe` (17,7 MB) στο repo — απαραίτητο για τον installer.
 3. Το `.iss` χρησιμοποιεί **σχετικές** διαδρομές → μεταφέρεται σε άλλο PC. Απαιτεί `/DMyAppVersion` (αλλιώς `#error`).
 4. `build/` και `build_logs/` είναι ignored (δεν μπαίνουν σε commits).
@@ -873,7 +873,7 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | # | Περιορισμός | Στοιχείο |
 |---|---|---|
-| L1 | Το layering δεν επιβάλλεται: 82 άμεσες κλήσεις Firestore (42 σε UI) | §5.1 |
+| L1 | Το layering δεν επιβάλλεται: 83 άμεσες κλήσεις Firestore (42 σε UI) | §5.1 |
 | L2 | Τα υπόλοιπα γράφονται από **6** διαφορετικά αρχεία | §5.4 |
 | L3 | 5 συλλογές υπάρχουν στους κανόνες αλλά δεν χρησιμοποιούνται | §6.1 |
 | L4 | Κανόνες χωρίς validation πεδίων/ορίων | §7.2 |
@@ -883,7 +883,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | L8 | iOS/macOS χωρίς `Podfile` → builds ανεπιβεβαίωτα | §2.3 |
 | L9 | Καμία CI (analyze/test/build χειροκίνητα) | §2.6 |
 | L10 | Android release υπογράφεται με **debug key**, minify/shrink off | §2.1 |
-| L11 | `MessageService` σχεδόν ανενεργό (180 άμεσα SnackBar) | §5.5 |
+| L11 | `MessageService` σχεδόν ανενεργό (186 άμεσα SnackBar) | §5.5 |
 | L12 | Budgets spent με **3** διαδρομές υπολογισμού | §5.6 |
 | L13 | *(λύθηκε 19/11/2026)* Web title/manifest τοπικοποιήθηκαν | §2.4 |
 | L14 | *(λύθηκε 19/11/2026)* Installer με σχετικές διαδρομές | §2.6 |
@@ -908,7 +908,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `README.md` | Παρουσίαση | Intro + links |
 | `docs/` | Legacy λεπτομέρειες | Πίνακες schema (import script) |
 | `data/*.json` | Datasets | Δεδομένα εισαγωγής |
-| `backups/` | Αντίγραφα | Μόνο μη-ευαίσθητα αρχεία |
+| `backups/` | Τοπικά αντίγραφα (**ignored**, εκτός git) | Μόνο μη-ευαίσθητα αρχεία |
 
 ### 12.2 `docs/` — legacy χάρτης
 

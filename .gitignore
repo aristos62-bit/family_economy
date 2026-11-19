@@ -56,3 +56,4 @@ node_modules/
 
 # Local backups (pre-edit copies) — ποτέ στο repo
 backups/
+*.backup

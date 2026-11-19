@@ -15,7 +15,7 @@ https://github.com/aristos62-bit/family_economy
 4. ΠΑΝΤΑ προχωράμε ένα βήμα τη φορά, κάνει ο χρήστης ελέγχους και ΜΟΝΟ αν πει «επόμενο» συνεχίζεις
 5. Πριν προτείνεις βελτίωση/διόρθωση, έλεγξε διεξοδικά για side effects.
 6. Διάβασε το oldsessions.md για να θυμηθείς τι κάναμε στο προηγούμενο session· σε νέο project δημιούργησέ το
-7. ΟΛΑ τα back up γίνονται save στον φάκελο backups του project — ΕΞΑΙΡΕΣΗ: αρχεία με credentials/κλειδιά/secret ΔΕΝ αντιγράφονται ποτέ στο backups/ (είναι tracked στο git)· πάνε σε φάκελο εκτός repo.
+7. ΟΛΑ τα back up γίνονται save στον φάκελο backups του project — ΕΞΑΙΡΕΣΗ: αρχεία με credentials/κλειδιά/secret ΔΕΝ αντιγράφονται ποτέ στο backups/ (ο φάκελος είναι ignored και δεν μπαίνει ποτέ στο git)· πάνε σε φάκελο εκτός repo.
 8. Μόνο όταν γίνεται αλλαγή στην αρχιτεκτονική θα ενημερώνεται το DESIGN.md· αν δεν υπάρχει, πρότεινε να δημιουργηθεί
 9. Για την πρόοδο του project και fixes θα ενημερώνεται το oldsessions.md
 10. Στο oldsessions.md θα ενημερώνεται 1 κεφάλαιο ανά φάση, νέο αρχείο για το ίδιο κεφάλαιο μόνο άνω των 500 γραμμών
@@ -52,7 +52,7 @@ https://github.com/aristos62-bit/family_economy
 |---|---|
 | `flutter pub get` | Εγκατάσταση dependencies |
 | `flutter analyze` | **No issues found** |
-| `flutter test` | **50/50** |
+| `flutter test` | **89/89** |
 | `flutter run -d windows` | Desktop build |
 | `flutter run -d chrome` | Web build |
 | `dart run flutter_launcher_icons` | Αναγέννηση app icons |

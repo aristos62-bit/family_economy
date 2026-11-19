@@ -9,6 +9,7 @@
 | Πεδίο | Τύπος | Περιγραφή |
 |-------|-------|-----------|
 | `uuid` | `string` | Πρέπει να είναι ίδιο με το Firebase UID |
+| `user_id` | `string` | Ίδιο με το `uuid` — γράφεται από την εφαρμογή (το legacy `data/users.json` δεν το περιέχει) |
 | `username` | `string \| null` | Optional, για εσωτερική χρήση |
 | `email` | `string \| null` | Προαιρετικά, για εμφάνιση ή filtering |
 | `display_name` | `string \| null` | Όνομα προβολής |
@@ -18,11 +19,15 @@
 | `default_currency` | `string` | Προτίμηση νομίσματος (π.χ. `"EUR"`) |
 | `preferred_language` | `string \| null` | Προτίμηση γλώσσας (π.χ. `"el"`) |
 | `onboarding_completed` | `boolean` | Αν έχει ολοκληρωθεί η αρχική ρύθμιση |
-| `last_sync_at` | `string \| null` | ISO timestamp τελευταίου συγχρονισμού |
-| `created_at` | `string` | Πότε δημιουργήθηκε το προφίλ |
-| `updated_at` | `string` | Πότε τροποποιήθηκε |
+| `last_sync_at` | `timestamp \| null` | Firestore Timestamp τελευταίου συγχρονισμού |
+| `created_at` | `timestamp` | Πότε δημιουργήθηκε το προφίλ |
+| `updated_at` | `timestamp` | Πότε τροποποιήθηκε |
 | `last_modified_device_id` | `string` | Από ποια συσκευή έγινε η τελευταία αλλαγή |
 | `deleted` | `boolean` | Soft delete |
+| `schema_version` | `number` | **E4:** έκδοση **δεδομένων** ανά χρήστη — σήμερα `1` (baseline = current) |
+| `schema_updated_at` | `timestamp` | Πότε γράφτηκε η έκδοση (πληροφοριακό, δεν παίρνονται αποφάσεις από αυτό) |
+
+> ⚠️ Τα `created_at` / `updated_at` / `last_sync_at` γράφονται από την εφαρμογή ως Firestore `Timestamp`, όχι ως ISO string. Τα `schema_version` / `schema_updated_at` γράφονται **μόνο** από την εφαρμογή (η εφαρμογή τα προσθέτει σε νέο χρήστη· σε υπάρχοντα docs λείπουν και θεωρούνται baseline).
 
 ---
 
