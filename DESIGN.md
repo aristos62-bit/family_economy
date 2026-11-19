@@ -52,7 +52,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | JDK (CLI) | 21.0.2 (ρυθμισμένο στο `flutter config`) |
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Visual Studio | Community 2026 18.1.1 · Windows SDK 10.0.26100.0 |
-| App version | `2.0.1+2` (`pubspec.yaml`) |
+| App version | `2.1.0+3` (`pubspec.yaml`) |
 
 ### 1.2 Constraint vs resolved
 
@@ -119,17 +119,17 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.0.1+2)          ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.1.0+3)          ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.0.1 · BUILD_NO=2
-         ├── APK      FamilyBudget_v2.0.1.apk
+   └── build_and_setup_final.bat  APP_VER=2.1.0 · BUILD_NO=3
+         ├── APK      FamilyBudget_v2.1.0.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.0.1.exe   (FileVersion 2.0.1.2)
+               └── FamilyBudgetSetup_v2.1.0.exe   (FileVersion 2.1.0.3)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -139,10 +139,10 @@ pubspec.yaml  (version: 2.0.1+2)          ← ΜΟΝΟ εδώ αλλάζει η 
 | **R1** | **Μία** πηγή: μόνο το `version:` του `pubspec.yaml` γράφεται με το χέρι | κανένα άλλο αρχείο δεν περιέχει νούμερο έκδοσης |
 | **R2** | Ό,τι μπορεί να παραχθεί, **παράγεται** | Android / iOS / macOS / Windows / Web από το Flutter· installer από το `.bat` |
 | **R3** | Κάθε hardcoded fallback **αποτυγχάνει δυνατά** | `fam_eco_new.iss`: `#error MyAppVersion is not defined` |
-| **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.0.1.apk`, `FamilyBudgetSetup_v2.0.1.exe` |
-| **R5** | Κάθε release = **tag** | `v2.0.1` στο commit του release |
+| **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.0.apk`, `FamilyBudgetSetup_v2.1.0.exe` |
+| **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.0.1 (build 2)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.1.0 (build 3)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -159,7 +159,7 @@ pubspec.yaml  (version: 2.0.1+2)          ← ΜΟΝΟ εδώ αλλάζει η 
 | # | Επίπεδο | Κατάσταση | Σημείωση |
 |---|---|---|---|
 | V1 | Κανόνας SemVer (τεκμηρίωση) | ✅ **Ισχύει** (αυτή η ενότητα) | — |
-| V2 | Git tags ανά release (`v2.0.1`) | ✅ **Υλοποιήθηκε** (19/11/2026) | `v2.0.1` = πρώτο tag |
+| V2 | Git tags ανά release (`v2.0.1`, `v2.1.0`) | ✅ **Υλοποιήθηκε** (19/11/2026) | `v2.0.1` = πρώτο tag · `v2.1.0` = E4 |
 | V3 | Εμφάνιση έκδοσης στην εφαρμογή | ✅ **Υλοποιήθηκε** (19/11/2026) | `package_info_plus ^9.0.1` + footer Επιλογών |
 | V4 | Versioning **δεδομένων** | ✅ **Υλοποιήθηκε** (19/11/2026, Session 14) | `schema_version` (int) στο root doc + gate στην εκκίνηση· **χωρίς** SharedPreferences (σκόπιμη απόκλιση — βλ. §6.2) |
 
@@ -167,14 +167,14 @@ pubspec.yaml  (version: 2.0.1+2)          ← ΜΟΝΟ εδώ αλλάζει η 
 
 | # | Εκκρεμότητα | Κατάσταση |
 |---|---|---|
-| **E1** | Git tags `v<version>` + commit `release: v<version>` σε κάθε release | ✅ `v2.0.1` |
+| **E1** | Git tags `v<version>` + commit `release: v<version>` σε κάθε release | ✅ `v2.0.1` → `v2.1.0` |
 | **E2** | Αφαίρεση/συγχρονισμός του hardcoded `MyAppVersion` στο `fam_eco_new.iss` | ✅ `#error` guard — αδύνατο stale installer |
 | **E3** | Εμφάνιση έκδοσης στις Ρυθμίσεις | ✅ footer «Έκδοση X (build N)» |
 | **E4** | `schema_version` + migration στην εκκίνηση — Firestore **μόνο** (χωρίς prefs) | ✅ 19/11/2026 (Session 14) |
 
 > Τα **E1–E4** υλοποιήθηκαν στις 19/11/2026: **E1–E3** = Session 13, **E4** = Session 14 (βλ. `oldsessions.md`). Η απόφαση «χωρίς SharedPreferences» είναι σκόπιμη — βλ. §6.2.
 >
-> **Δεν** αλλάζουν (σκόπιμα): `MARKETING_VERSION = 1.0` στα `project.pbxproj` (iOS/macOS) — το `Info.plist` χρησιμοποιεί `$(FLUTTER_BUILD_NAME)`, άρα η τιμή αγνοείται· το `flutter create` θα την ξαναγράψει. Το `Runner.rc` δείχνει `2.0.1+2` (σωστό και πληροφοριακό). Το `Greek.isl` δεν περιέχει έκδοση εφαρμογής.
+> **Δεν** αλλάζουν (σκόπιμα): `MARKETING_VERSION = 1.0` στα `project.pbxproj` (iOS/macOS) — το `Info.plist` χρησιμοποιεί `$(FLUTTER_BUILD_NAME)`, άρα η τιμή αγνοείται· το `flutter create` θα την ξαναγράψει. Το `Runner.rc` γράφεται αυτόματα από το Flutter και δείχνει **πάντα** την τρέχουσα έκδοση του build (πληροφοριακό). Το `Greek.isl` δεν περιέχει έκδοση εφαρμογής.
 
 ---
 
@@ -228,9 +228,9 @@ pubspec.yaml  (version: 2.0.1+2)          ← ΜΟΝΟ εδώ αλλάζει η 
 |---|---|
 | Script | `fam_eco_new.iss` (Inno Setup 6.6.1) |
 | AppVersion | `{#MyAppVersion}` — **μόνο** από `/D` του script· χωρίς αυτό → `#error` (δεν υπάρχει fallback) |
-| File version (exe) | `VersionInfoVersion={#MyAppVersion}.{#MyBuildNo}` → π.χ. `2.0.1.2` |
+| File version (exe) | `VersionInfoVersion={#MyAppVersion}.{#MyBuildNo}` → π.χ. `2.1.0.3` |
 | Default dir | `{localappdata}\f_budget` |
-| Output | `.\InstallerOutput\FamilyBudgetSetup_v<ver>.exe` (π.χ. `FamilyBudgetSetup_v2.0.1.exe`) |
+| Output | `.\InstallerOutput\FamilyBudgetSetup_v<ver>.exe` (π.χ. `FamilyBudgetSetup_v2.1.0.exe`) |
 | Compression | `lzma2/ultra64` |
 | Privileges | `PrivilegesRequired=lowest` |
 | Εξάρτηση | `Dependencies/VC_redist.x64.exe` (17,7 MB, tracked) |
@@ -839,13 +839,13 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Μέτρηση | Τιμή |
 |---|---|
-| Tracked αρχεία | **627** |
-| Commits | 20 |
-| Tags | **1** (`v2.0.1`) |
+| Tracked αρχεία | **635** |
+| Commits | 24 |
+| Tags | **2** (`v2.0.1`, `v2.1.0`) |
 | Μέγεθος `.git` | **23,3 MB** |
-| `.gitignore` | 55 γραμμές (`/build/`, `build_logs/`, `InstallerOutput/`, `serviceAccountKey.json`, `node_modules/`, …) |
+| `.gitignore` | 58 γραμμές (`/build/`, `build_logs/`, `InstallerOutput/`, `serviceAccountKey.json`, `node_modules/`, `backups/`, …) |
 | CI/CD | ❌ κανένα |
-| Ιδιαιτερότητες | 2 `lib/*.backup` tracked · `backups/` tracked |
+| Ιδιαιτερότητες | 62 **προ-υπάρχοντα** `.bak` στο `backups/` παραμένουν tracked (μπήκαν πριν το ignore rule) · 2 `lib/*.backup` + `oldsessions.md.backup` tracked |
 
 ### 10.3 `import-data.js` (script εισαγωγής)
 

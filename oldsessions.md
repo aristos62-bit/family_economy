@@ -441,7 +441,7 @@
 | 2 | Versioning **E4** — `schema_version` + migration στην εκκίνηση | ✅ Session 14 (Firestore μόνο, χωρίς prefs) |
 | 3 | ~~`pubspec.yaml` `description: "A new Flutter project."`~~ → διορθώθηκε στα ελληνικά | ✅ |
 | 4 | ~~`InstallerOutput/` εκτός `.gitignore`~~ → ignored (55 γραμμές) | ✅ |
-| 5 | `metadata` ασυνέπειες: `lib/*.backup` (2 tracked), `backups/` tracked, `oldsessions.md.backup` | ⏳ απόφαση |
+| 5 | `metadata` ασυνέπειες: `lib/*.backup` (2 tracked), `backups/` (**62 tracked** — μπήκαν πριν το ignore· νέα `.bak` ignored από Session 14), `oldsessions.md.backup` (tracked) | ⏳ απόφαση |
 | 6 | 3 πακέτα με 0 χρήσεις + iOS/macOS χωρίς `Podfile` | 📝 στο `DESIGN.md` §1.3, §2.3 |
 
 ### Κλείσιμο session 13 (19/11/2026)
@@ -501,11 +501,16 @@
 ### Εκκρεμότητες
 | # | Θέμα | Κατάσταση |
 |---|---|---|
-| 1 | `_debug = true` προσωρινά για QA → **πρέπει** `false` πριν το commit | ⏳ |
-| 2 | `backups/` εκτός `.gitignore` (11 `.bak` untracked) | ⏳ απόφαση |
+| 1 | `_debug = true` προσωρινά για QA → **πρέπει** `false` πριν το commit | ✅ `false` |
+| 2 | `backups/` εκτός `.gitignore` (11 `.bak` untracked) | ✅ προστέθηκε στο `.gitignore` |
 | 3 | Χειροκίνητο QA (offline migration, kill-restart) — μόνο όταν `Schema.current` γίνει 2 | ⏳ |
-| 4 | Τα 4 νέα αρχεία θέλουν `git add` | ⏳ |
+| 4 | Τα νέα αρχεία θέλουν `git add` | ✅ commit `211fb86` |
+
+### Release
+- Commit κώδικα: `211fb86` (`feat(data): add schema versioning gate at startup (E4)`) · pushed.
+- Version bump: `2.0.1+2` → **`2.1.0+3`** (MINOR: προαιρετικό νέο πεδίο με default, βλ. `DESIGN.md` §1.5.3).
+- Tag: **`v2.1.0`** σε commit `release: v2.1.0`.
 
 ### Backups αυτού του session
-`DESIGN_20261119_173403.bak`, `app_start_20261119_173403.bak`, `app_start_20261119_175708.bak`, `auth_service_20261119_173403.bak`, `login_page_20261119_173403.bak`, `login_page_20261119_181125.bak`, `main_20261119_173403.bak`, `oldsessions_20261119_173403.bak`, `options_page_20261119_173403.bak`, `options_page_20261119_182021.bak`, `schema_service_20261119_182916.bak`, `widget_test_20261119_173403.bak`
+`DESIGN_20261119_173403.bak`, `app_start_20261119_173403.bak`, `app_start_20261119_175708.bak`, `auth_service_20261119_173403.bak`, `login_page_20261119_173403.bak`, `login_page_20261119_181125.bak`, `main_20261119_173403.bak`, `oldsessions_20261119_173403.bak`, `options_page_20261119_173403.bak`, `options_page_20261119_182021.bak`, `schema_service_20261119_182916.bak`, `widget_test_20261119_173403.bak`, `DESIGN_20261119_184222.bak`, `oldsessions_20261119_184222.bak`, `DESIGN_20261119_184727.bak`, `gitignore_20261119_184727.bak`, `oldsessions_20261119_184727.bak`, `DESIGN_20261119_185231.bak`, `oldsessions_20261119_185231.bak`, `pubspec_20261119_185231.bak`
 
