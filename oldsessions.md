@@ -441,7 +441,7 @@
 | 2 | Versioning **E4** — `schema_version` + migration στην εκκίνηση | ✅ Session 14 (Firestore μόνο, χωρίς prefs) |
 | 3 | ~~`pubspec.yaml` `description: "A new Flutter project."`~~ → διορθώθηκε στα ελληνικά | ✅ |
 | 4 | ~~`InstallerOutput/` εκτός `.gitignore`~~ → ignored (55 γραμμές) | ✅ |
-| 5 | `metadata` ασυνέπειες: `lib/*.backup` (2 tracked), `backups/` (**62 tracked** — μπήκαν πριν το ignore· νέα `.bak` ignored από Session 14), `oldsessions.md.backup` (tracked) | ⏳ απόφαση |
+| 5 | `metadata` ασυνέπειες: `lib/*.backup` (2), `backups/` (62), `oldsessions.md.backup` — **όλα tracked** τότε | ✅ Session 14: `git rm --cached` + `*.backup`/`backups/` ignored (0 tracked) |
 | 6 | 3 πακέτα με 0 χρήσεις + iOS/macOS χωρίς `Podfile` | 📝 στο `DESIGN.md` §1.3, §2.3 |
 
 ### Κλείσιμο session 13 (19/11/2026)
