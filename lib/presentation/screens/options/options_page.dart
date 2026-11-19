@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:family_economy/core/data/schema.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/providers/theme_provider.dart';
@@ -1429,6 +1430,10 @@ class _UserDetailsDialogState extends State<_UserDetailsDialog> {
               'Τελευταίος συγχρονισμός',
               '${lastSync.day}/${lastSync.month}/${lastSync.year}',
             ),
+          _buildInfoRow(
+            'Δεδομένα',
+            'Έκδοση ${Schema.readVersion(_userData?[Schema.versionField]) ?? Schema.baseline}',
+          ),
         ],
       ),
     );

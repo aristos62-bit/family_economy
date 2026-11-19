@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
+import 'package:family_economy/core/data/schema.dart';
+import 'package:family_economy/core/data/schema_service.dart';
 import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/biometric_auth_service.dart';
 import 'package:family_economy/core/services/biometric_settings_service.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
+import 'package:family_economy/core/widgets/startup_error_view.dart';
 
 import 'package:family_economy/core/session/session.dart';
 import 'package:family_economy/core/session/session_scope.dart';
@@ -36,6 +39,7 @@ class AppStart extends StatefulWidget {
 class _AppStartState extends State<AppStart> {
   bool _loading = true;
   String? _error;
+  SchemaBlockedException? _blocked;
 
   final _authService = AuthService();
 
@@ -55,6 +59,7 @@ class _AppStartState extends State<AppStart> {
     setState(() {
       _loading = true;
       _error = null;
+      _blocked = null;
     });
 
     try {
@@ -93,6 +98,13 @@ class _AppStartState extends State<AppStart> {
       }
 
       if (!mounted) return;
+
+      // ✅ E4: Έλεγχος έκδοσης δεδομένων πριν από οποιαδήποτε εγγραφή.
+      await _checkSchemaVersion(
+        uid: uid,
+        exists: userDoc.exists,
+        data: userDoc.data(),
+      );
 
       // ✅ ΚΡΙΣΙΜΗ ΔΙΟΡΘΩΣΗ: Check scheduled transactions BEFORE navigating
       await _checkScheduledTransactions(uid);
@@ -133,6 +145,17 @@ class _AppStartState extends State<AppStart> {
 
         ),
       );
+    } on SchemaBlockedException catch (e) {
+      DebugConfig.print(
+        '⛔ Schema gate: code=${e.code ?? 'newer-data'} — ${e.message}',
+      );
+      if (!mounted) return;
+      setState(() {
+        _blocked = e;
+        _error = e.message;
+        _loading = false;
+      });
+      AccessibilityService.announceError(e.message);
     } catch (e) {
       DebugConfig.print('❌ AppStart error: $e');
       if (!mounted) return;
@@ -144,6 +167,24 @@ class _AppStartState extends State<AppStart> {
         'Απαιτείται ταυτοποίηση: ${e.toString().replaceFirst('Exception: ', '')}',
       );
     }
+  }
+
+  /// ✅ E4: Έλεγχος έκδοσης δεδομένων με το doc που έχει ήδη διαβαστεί.
+  /// Δεν κάνει δεύτερη ανάγνωση· γράφει μόνο αν χρειάζεται migration.
+  Future<void> _checkSchemaVersion({
+    required String uid,
+    required bool exists,
+    Map<String, dynamic>? data,
+  }) async {
+    final decision = await SchemaService().checkAndMigrate(
+      uid: uid,
+      exists: exists,
+      data: data,
+    );
+    DebugConfig.print(
+      '🗂️ schema: ${decision.status.name} '
+          '(${decision.fromVersion} → ${decision.toVersion})',
+    );
   }
 
   // ✅ ΝΕΟΣ ΜΕΘΟΔΟΣ: Έλεγχος προγραμματισμένων κινήσεων
@@ -193,46 +234,17 @@ class _AppStartState extends State<AppStart> {
     }
 
     if (_error != null) {
+      final blocked = _blocked;
       return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.lock_outline, size: 48),
-                const SizedBox(height: 12),
-                const Text(
-                  'Απαιτείται ταυτοποίηση',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _logout,
-                        child: const Text('Αποσύνδεση'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _run,
-                        child: const Text('Ξανά'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+        body: StartupErrorView(
+          title: blocked?.title ?? 'Απαιτείται ταυτοποίηση',
+          message: blocked?.message ?? _error!,
+          icon: blocked != null ? Icons.system_update_alt : Icons.lock_outline,
+          primaryLabel: 'Ξανά',
+          primaryIcon: Icons.refresh,
+          onPrimary: _run,
+          secondaryLabel: 'Αποσύνδεση',
+          onSecondary: _logout,
         ),
       );
     }

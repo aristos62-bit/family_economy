@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:family_economy/core/data/schema_service.dart';
 import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/services/onboarding_service.dart';
 import 'package:family_economy/presentation/screens/home/home_page.dart';
@@ -112,6 +113,14 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
       final userDoc = await _authService.getUserDocument(uid);
       final userData = userDoc.data();
       final currency = userData?['default_currency'] as String? ?? 'EUR';
+
+      // ✅ E4: Έλεγχος έκδοσης δεδομένων πριν το onboarding / το HomePage.
+      // Χρησιμοποιεί το doc που μόλις διαβάστηκε (0 επιπλέον reads).
+      await SchemaService().checkAndMigrate(
+        uid: uid,
+        exists: userDoc.exists,
+        data: userData,
+      );
 
       // ✅ Recurring notifications sync (must run on login/register too)
       // ώστε να καλύπτει: πρώτη είσοδο, login μετά από logout, κλπ.

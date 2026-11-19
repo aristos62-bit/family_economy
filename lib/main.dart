@@ -16,6 +16,7 @@ import 'package:flutter_phoenix/flutter_phoenix.dart';
 // ✅ Offline support imports
 import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/services/message_service.dart';
+import 'package:family_economy/core/widgets/startup_error_view.dart';
 
 // ✅ ΝΕΟΣ: Scheduled transactions
 
@@ -175,7 +176,7 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-// ✅ Error screen για Firebase initialization failures
+/// ✅ Error screen για Firebase initialization failures
 class ErrorApp extends StatelessWidget {
   final String error;
   const ErrorApp({super.key, required this.error});
@@ -186,70 +187,14 @@ class ErrorApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         backgroundColor: Colors.redAccent.shade100.withValues(alpha: 0.15),
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 80,
-                    color: Colors.red.shade700,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Σφάλμα Αρχικοποίησης',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red.shade900,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Η εφαρμογή δεν μπόρεσε να συνδεθεί με τις υπηρεσίες Firebase.',
-                    style: TextStyle(fontSize: 16, color: Colors.red.shade800),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.shade300),
-                    ),
-                    child: Text(
-                      'Σφάλμα: $error',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.red.shade700,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () => Phoenix.rebirth(context),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Επανεκκίνηση'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade700,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        body: StartupErrorView(
+          title: 'Σφάλμα Αρχικοποίησης',
+          message:
+          'Η εφαρμογή δεν μπόρεσε να συνδεθεί με τις υπηρεσίες Firebase.',
+          details: 'Σφάλμα: $error',
+          primaryLabel: 'Επανεκκίνηση',
+          primaryIcon: Icons.refresh,
+          onPrimary: () => Phoenix.rebirth(context),
         ),
       ),
     );

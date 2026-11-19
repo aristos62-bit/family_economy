@@ -438,7 +438,7 @@
 | # | Θέμα | Κατάσταση |
 |---|---|---|
 | 1 | `family_economy_security_report.md` — untracked, δεν πρέπει να δημοσιευτεί | ⏳ απόφαση |
-| 2 | Versioning **E4** — `schema_version` σε Firestore + prefs + `migrate()` στην εκκίνηση | ⏳ ανοιχτό (`DESIGN.md` §1.5.4) |
+| 2 | Versioning **E4** — `schema_version` + migration στην εκκίνηση | ✅ Session 14 (Firestore μόνο, χωρίς prefs) |
 | 3 | ~~`pubspec.yaml` `description: "A new Flutter project."`~~ → διορθώθηκε στα ελληνικά | ✅ |
 | 4 | ~~`InstallerOutput/` εκτός `.gitignore`~~ → ignored (55 γραμμές) | ✅ |
 | 5 | `metadata` ασυνέπειες: `lib/*.backup` (2 tracked), `backups/` tracked, `oldsessions.md.backup` | ⏳ απόφαση |
@@ -452,7 +452,60 @@
 - Αν ποτέ χρειαστεί αλλαγή σημασίας πεδίου: **one-off script** migration, όχι runtime framework.
 - Το `DESIGN.md` §1.5.4 εξακολουθεί να το εμφανίζει ⏳ — να αλλάξει σε «προαιρετικό / απορρίφθηκε» **μόνο** αν ζητηθεί.
 
+> ⚠️ **Ανατράπηκε στη Session 14 (19/11/2026):** το E4 **εγκρίθηκε και υλοποιήθηκε** — `schema_version` στο root doc, **χωρίς** SharedPreferences (βλ. επόμενο κεφάλαιο).
+
 **Επόμενο session:** διορθώσεις **ασφάλειας**, από καθαρή βάση (νέο session).
 
 **Κατάσταση repo στο κλείσιμο:** `HEAD = origin/main`, tag `v2.0.1`, working tree καθαρό (μόνο untracked `family_economy_security_report.md`).
+
+---
+
+## Session 14 (2026-11-19) — E4: Versioning δεδομένων ✅
+
+### Απόφαση & πλαίσιο
+- Το E4 **εγκρίθηκε** και υλοποιήθηκε σε 11 μικρά βήματα: ένα αρχείο τη φορά, **backup πρώτα**, `flutter analyze` + `flutter test` μετά από κάθε αλλαγή.
+- **Απόκλιση από την αρχική διατύπωση:** `schema_version` **μόνο** στο Firestore root doc (`users/{uid}`) — **όχι** SharedPreferences. Λόγος: με `persistenceEnabled + CACHE_SIZE_UNLIMITED` (`main.dart:64–67`) το doc είναι διαθέσιμο offline· δεύτερο σημείο αλήθειας θα ξέφευγε (αλλαγή λογαριασμού, καθαρισμός cache).
+- **Καμία αλλαγή στους `firestore.rules`:** το root doc είναι owner read/write χωρίς field validation.
+
+### Νέα αρχεία
+| Αρχείο | Γραμμές | Ρόλος |
+|---|---|---|
+| `lib/core/data/schema.dart` | 249 | Σταθερές (`current = baseline = 1`), ανεκτικός parser, `decide()`, `failureFor()`, `resolveWrite()`, `SchemaBlockedException` |
+| `lib/core/data/schema_service.dart` | 187 | Gate + migrations (κενό registry) + εγγραφή έκδοσης με `timeout(3s)` + επαλήθευση `Source.cache` |
+| `lib/core/widgets/startup_error_view.dart` | 140 | Κοινή διάταξη σφάλματος (scroll, κόκκινο, κύριο + δευτερεύον κουμπί) |
+| `test/unit/core/data/schema_test.dart` | 334 | **34 tests** |
+| `test/unit/core/widgets/startup_error_view_test.dart` | 154 | **5 tests** |
+
+### Αλλαγές σε υπάρχοντα αρχεία
+| Αρχείο | Αλλαγή |
+|---|---|
+| `main.dart` | `ErrorApp` → `StartupErrorView` (ίδια κείμενα· `Phoenix.rebirth` **άθικτο**) |
+| `app_start.dart` | Gate πριν τις scheduled transactions (103) · typed catch (148) · error UI (239) |
+| `login_page.dart` | Gate μετά την ανάγνωση του doc (119) — **μηδέν νέο UI** |
+| `options_page.dart` | `_buildInfoCard` → «Δεδομένα · Έκδοση N» (1434) |
+| `auth_service.dart` | Σφράγισμα νέου χρήστη: `schema_version`, `schema_updated_at` |
+
+### Αποφάσεις-κλειδιά
+1. **Timeout ≠ αποτυχία.** Offline το `set()` **δεν** ολοκληρώνεται (η εγγραφή μένει στην ουρά). Γι' αυτό: timeout → **1 ανάγνωση cache** (`Source.cache` πρώτα, μετά fallback) → `appliedLocally` ή φραγή.
+2. **Φραγή** μόνο σε πραγματικό σφάλμα, σε `newerThanApp`, ή σε μη επιβεβαιωμένη τοπική εφαρμογή.
+3. **Καμία migration framework.** Κενό registry· όσο `current == baseline` η ροή `pending` είναι **μαθηματικά αδύνατη** ⇒ 0 writes για υπάρχοντες χρήστες.
+4. **`ErrorApp` restart δεν διορθώθηκε** (γνωστό bug: `Phoenix.rebirth` χωρίς ancestor, δεν επανατρέχει το `main()`) → `DESIGN.md` §11 L18.
+5. **Login χωρίς νέο UI:** το υπάρχον spinner του κουμπιού + το υπάρχον `catch` αρκούν (το `SchemaBlockedException.toString()` επιστρέφει μόνο το μήνυμα).
+
+### Quality gates
+| Έλεγχος | Αποτέλεσμα |
+|---|---|
+| `flutter analyze` | ✅ No issues found (~5s) |
+| `flutter test` | ✅ **89/89** (84 + 5) |
+
+### Εκκρεμότητες
+| # | Θέμα | Κατάσταση |
+|---|---|---|
+| 1 | `_debug = true` προσωρινά για QA → **πρέπει** `false` πριν το commit | ⏳ |
+| 2 | `backups/` εκτός `.gitignore` (11 `.bak` untracked) | ⏳ απόφαση |
+| 3 | Χειροκίνητο QA (offline migration, kill-restart) — μόνο όταν `Schema.current` γίνει 2 | ⏳ |
+| 4 | Τα 4 νέα αρχεία θέλουν `git add` | ⏳ |
+
+### Backups αυτού του session
+`DESIGN_20261119_173403.bak`, `app_start_20261119_173403.bak`, `app_start_20261119_175708.bak`, `auth_service_20261119_173403.bak`, `login_page_20261119_173403.bak`, `login_page_20261119_181125.bak`, `main_20261119_173403.bak`, `oldsessions_20261119_173403.bak`, `options_page_20261119_173403.bak`, `options_page_20261119_182021.bak`, `schema_service_20261119_182916.bak`, `widget_test_20261119_173403.bak`
 

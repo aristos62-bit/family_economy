@@ -161,7 +161,7 @@ pubspec.yaml  (version: 2.0.1+2)          ← ΜΟΝΟ εδώ αλλάζει η 
 | V1 | Κανόνας SemVer (τεκμηρίωση) | ✅ **Ισχύει** (αυτή η ενότητα) | — |
 | V2 | Git tags ανά release (`v2.0.1`) | ✅ **Υλοποιήθηκε** (19/11/2026) | `v2.0.1` = πρώτο tag |
 | V3 | Εμφάνιση έκδοσης στην εφαρμογή | ✅ **Υλοποιήθηκε** (19/11/2026) | `package_info_plus ^9.0.1` + footer Επιλογών |
-| V4 | Versioning **δεδομένων** | ⏳ **Εκκρεμεί** (E4) | `schema_version` σε Firestore + SharedPreferences + `migrate()` στην εκκίνηση — σήμερα 0 refs |
+| V4 | Versioning **δεδομένων** | ✅ **Υλοποιήθηκε** (19/11/2026, Session 14) | `schema_version` (int) στο root doc + gate στην εκκίνηση· **χωρίς** SharedPreferences (σκόπιμη απόκλιση — βλ. §6.2) |
 
 **Εκκρεμότητες:**
 
@@ -170,9 +170,9 @@ pubspec.yaml  (version: 2.0.1+2)          ← ΜΟΝΟ εδώ αλλάζει η 
 | **E1** | Git tags `v<version>` + commit `release: v<version>` σε κάθε release | ✅ `v2.0.1` |
 | **E2** | Αφαίρεση/συγχρονισμός του hardcoded `MyAppVersion` στο `fam_eco_new.iss` | ✅ `#error` guard — αδύνατο stale installer |
 | **E3** | Εμφάνιση έκδοσης στις Ρυθμίσεις | ✅ footer «Έκδοση X (build N)» |
-| **E4** | `schema_version` (Firestore + prefs) + migration στην εκκίνηση | ⏳ **ανοιχτό** — κάθε μελλοντική αλλαγή πεδίου γίνεται «τυφλή» |
+| **E4** | `schema_version` + migration στην εκκίνηση — Firestore **μόνο** (χωρίς prefs) | ✅ 19/11/2026 (Session 14) |
 
-> Τα **E1–E3** υλοποιήθηκαν στις 19/11/2026 (Session 13, βλ. `oldsessions.md`). Το **E4** παραμένει και θέλει ξεχωριστή έγκριση (κανόνας 3).
+> Τα **E1–E4** υλοποιήθηκαν στις 19/11/2026: **E1–E3** = Session 13, **E4** = Session 14 (βλ. `oldsessions.md`). Η απόφαση «χωρίς SharedPreferences» είναι σκόπιμη — βλ. §6.2.
 >
 > **Δεν** αλλάζουν (σκόπιμα): `MARKETING_VERSION = 1.0` στα `project.pbxproj` (iOS/macOS) — το `Info.plist` χρησιμοποιεί `$(FLUTTER_BUILD_NAME)`, άρα η τιμή αγνοείται· το `flutter create` θα την ξαναγράψει. Το `Runner.rc` δείχνει `2.0.1+2` (σωστό και πληροφοριακό). Το `Greek.isl` δεν περιέχει έκδοση εφαρμογής.
 
@@ -275,6 +275,9 @@ lib/
 
   core/
     accessibility/accessibility_service.dart   # Semantics / screen reader (58 αρχεία το χρησιμοποιούν)
+    data/
+      schema.dart                              # Έκδοση δεδομένων: σταθερές, parser, καθαρή απόφαση (χωρίς Firebase)
+      schema_service.dart                      # Gate + migrations + εγγραφή έκδοσης (timeout + cache verify)
     services/
       auth_service.dart                        # Firebase Auth API
       biometric_auth_service.dart              # LocalAuth API
@@ -305,6 +308,7 @@ lib/
       notification_edit_dialog.dart
       notifications_list_widget.dart
       offline_banner.dart
+      startup_error_view.dart                   # Κοινή οθόνη σφάλματος (ErrorApp + AppStart)
       tag_selector_widget.dart
 
   models/
@@ -321,7 +325,7 @@ lib/
     transactions_provider.dart     # TransactionModel + per-period cache + φίλτρα
 
   presentation/
-    auth/app_start.dart            # Auth gateway (currency → biometric → scheduled → providers)
+    auth/app_start.dart            # Auth gateway (currency → biometric → schema gate → scheduled → providers)
     auth/login_page.dart
     dialogs/                       # category_actions, category_type_selector, create_type_selector, edit_category
     screens/
@@ -394,18 +398,23 @@ lib/
 
 | # | Βήμα | Γραμμή |
 |---|---|---|
-| 1 | `authStateChanges` → αν `user == null` → `LoginPage` | 62 |
-| 2 | Φόρτωση user document → `default_currency` (default `EUR`) | 74–77 |
-| 3 | `BiometricSettingsService.load(uid)` | 79 |
-| 4 | Αν `enabled && mode == 'always'` → `BiometricAuthService.authenticate()`· σε αποτυχία → `LoginPage` | 82–95 |
-| 5 | `ScheduledTransactionsService.checkAndExecutePendingTransactions(uid)` | 97–98, 150–172 |
-| 6 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` | 108–130 |
+| 1 | `authStateChanges` → αν `user == null` → `LoginPage` | 66–71 |
+| 2 | Φόρτωση user document → `default_currency` (default `EUR`) | 79–81 |
+| 3 | `BiometricSettingsService.load(uid)` | 84 |
+| 4 | Αν `enabled && mode == 'always'` → `BiometricAuthService.authenticate()`· σε αποτυχία → `LoginPage` | 87–98 |
+| 5 | **E4 gate:** `SchemaService.checkAndMigrate(...)` με το doc των γραμμών 79–81 (**0 νέα reads**) | 103–107 (μέθοδος 174–189) |
+| 6 | `ScheduledTransactionsService.checkAndExecutePendingTransactions(uid)` | 110, 191–218 |
+| 7 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` | 120–147 |
 
-> Το `RecurringNotificationsService().generateAhead(...)` είναι **σχολιασμένο** (`app_start.dart:101`).
+> Το `RecurringNotificationsService().generateAhead(...)` είναι **σχολιασμένο** (`app_start.dart:113`).
+
+> **Σειρά σημαντική:** το gate τρέχει **μετά** το βιομετρικό (μόνο ο νόμιμος χρήστης προκαλεί writes) και **πριν** τις scheduled transactions (που γράφουν). `SchemaBlockedException` → typed catch (148) → `StartupErrorView` (239) με «Ξανά» / «Αποσύνδεση».
 
 ### 4.4 `MyApp` / `ErrorApp`
 
 - `Phoenix` wrapper (restart μέσω `ErrorApp`).
+- `ErrorApp` → κοινό `StartupErrorView` (`core/widgets/startup_error_view.dart`)· **ίδια** κείμενα, ίδιο `Scaffold` background.
+- ⚠️ Το «Επανεκκίνηση» πετά `Null check` — **δεν** διορθώθηκε στο E4 (βλ. §11 L18).
 - `localizationsDelegates`: Material/Widgets/Cupertino.
 - `supportedLocales`: `el-GR` (προεπιλογή), `en-US` (fallback).
 - `themeMode` από `ThemeProvider` (light/dark/system).
@@ -628,8 +637,16 @@ avg_cost_per_liter, liters_at_last_purchase, price_per_liter, ...
 **users/{uid}** (root doc)
 
 ```
-default_currency, biometric_mode ('always'|'on_demand'), biometric_remember, ...
+uuid, user_id, username, email, display_name, is_guest, auth_provider,
+default_currency, preferred_language, fingerprint_enabled,
+biometric_mode ('always'|'on_demand'), biometric_remember,
+onboarding_completed, last_sync_at, created_at, updated_at,
+last_modified_device_id, deleted,
+schema_version (int), schema_updated_at (Timestamp)
 ```
+
+> **E4:** `schema_version` = έκδοση **δεδομένων** ανά χρήστη (`baseline = current = 1`). Αν το πεδίο λείπει ⇒ baseline. Το `schema_updated_at` είναι **πληροφοριακό** — καμία απόφαση δεν βασίζεται σε αυτό (μπορεί να είναι `null` μέχρι τον συγχρονισμό).
+> **Δεν** υπάρχει αντίγραφο σε SharedPreferences: το root doc είναι διαθέσιμο offline (`persistenceEnabled` + `CACHE_SIZE_UNLIMITED`, `main.dart:64–67`).
 
 ### 6.3 Indexes (`firestore.indexes.json`)
 
@@ -771,11 +788,11 @@ default_currency, biometric_mode ('always'|'on_demand'), biometric_remember, ...
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (50 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (89 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
-| `flutter analyze` | ✅ No issues found (~64s) |
-| `flutter test` | ✅ 50/50 |
+| `flutter analyze` | ✅ No issues found (~5s) |
+| `flutter test` | ✅ 89/89 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 ### 9.2 Τι καλύπτεται
@@ -783,11 +800,13 @@ default_currency, biometric_mode ('always'|'on_demand'), biometric_remember, ...
 | Αρχείο | Πλήθος | Αντικείμενο |
 |---|---|---|
 | `chart_helpers_test.dart` | 9 | Εύρος ημερομηνιών, μορφοποίηση περιόδου, `parseAmount` |
-| `currency_formatter_test.dart` | 20 | Μορφοποίηση/compact/parse, αριθμητική, overspend |
+| `currency_formatter_test.dart` | 15 | Μορφοποίηση/compact/parse, αριθμητική, overspend |
 | `monthly_trend_test.dart` | 11 | `computeMonthlyTrend` (φίλτρα, ποσοστά, edges) |
 | `budget_model_test.dart` | 8 | `matchesTransaction` (category/subcategory/total/account/date) |
 | `transactions_provider_test.dart` | 6 | `TransactionModel.isTransfer/isIncome/isExpense` |
 | `widget_test.dart` | 1 | `ErrorApp` εμφανίζει μήνυμα σφάλματος |
+| `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
+| `startup_error_view_test.dart` | 5 | Κείμενα, ενέργειες, λεπτομέρειες, `textScale 1.45` χωρίς overflow |
 
 ### 9.3 Τι **δεν** καλύπτεται
 
@@ -860,7 +879,7 @@ default_currency, biometric_mode ('always'|'on_demand'), biometric_remember, ...
 | L4 | Κανόνες χωρίς validation πεδίων/ορίων | §7.2 |
 | L5 | Καμία cascade διαγραφή δεδομένων χρήστη | §6.4 |
 | L6 | Νεκρός κώδικας (`biometric_gate`, `recurring_notifications_service`, `updateAccountBalance`) | §3.3 |
-| L7 | 3 πακέτα με 0 χρήση + 75 outdated | §1.3 |
+| L7 | 3 πακέτα με 0 χρήση + 77 outdated | §1.3 |
 | L8 | iOS/macOS χωρίς `Podfile` → builds ανεπιβεβαίωτα | §2.3 |
 | L9 | Καμία CI (analyze/test/build χειροκίνητα) | §2.6 |
 | L10 | Android release υπογράφεται με **debug key**, minify/shrink off | §2.1 |
@@ -870,7 +889,10 @@ default_currency, biometric_mode ('always'|'on_demand'), biometric_remember, ...
 | L14 | *(λύθηκε 19/11/2026)* Installer με σχετικές διαδρομές | §2.6 |
 | L15 | `assets/images/` άδειος — εξαρτάται από `.gitkeep` | §2.7 |
 | L16 | Καμία UI/integration δοκιμή | §9.3 |
-| L17 | Versioning **δεδομένων** ανύπαρκτο (`schema_version`, migrations) — E4 ανοιχτό (E1–E3 λύθηκαν) | §1.5.4 (E4) |
+| L17 | *(λύθηκε 19/11/2026)* Versioning **δεδομένων** — E4 | §1.5.4 |
+| L18 | `ErrorApp` «Επανεκκίνηση» → `Null check operator` (το `ErrorApp` χτίζεται **έξω** από το `Phoenix`, όταν το Firebase init αποτυγχάνει) · ακόμη κι αν έμπαινε μέσα, **δεν** επανατρέχει το `main()` | §4.4 |
+| L19 | Web: `persistentLocalCache` **χωρίς** multi-tab manager → 2 tabs μπορεί να δουν διαφορετικά δεδομένα | §2.4 |
+| L20 | `schema_version` χωρίς field validation στους rules (γράφεται μόνο από την εφαρμογή, στον δικό της λογαριασμό) | §7.2 |
 
 ---
 

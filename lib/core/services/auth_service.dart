@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:family_economy/core/data/schema.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 
 class AuthService {
@@ -73,6 +74,11 @@ class AuthService {
         'biometric_mode': 'always', // ✅ 'always' ή 'on_demand'
         'biometric_remember': false, // ✅ αν θες "θυμήσου/μη θυμάσαι"
         'onboarding_completed': false,
+
+        // ✅ E4: Σφράγισμα έκδοσης δεδομένων — ο νέος χρήστης
+        // ξεκινά κατευθείαν στην τρέχουσα έκδοση (καμία migration).
+        'schema_version': Schema.current,
+        'schema_updated_at': now,
 
         // ✅ ΔΙΟΡΘΩΣΗ: Χρήση Firestore Timestamp objects
         'last_sync_at': now,

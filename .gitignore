@@ -53,3 +53,6 @@ InstallerOutput/
 
 # Node modules (import-data.js helper - not part of the app)
 node_modules/
+
+# Local backups (pre-edit copies) — ποτέ στο repo
+backups/
