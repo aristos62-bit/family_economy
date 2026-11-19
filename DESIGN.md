@@ -237,7 +237,7 @@ pubspec.yaml  (version: 2.0.1+2)          ← ΜΟΝΟ εδώ αλλάζει η 
 | Build automation | `build_and_setup_final.bat` (version από pubspec, logs σε `build_logs/`, καθαρό build, έλεγχος έκδοσης του setup) |
 | CI | ❌ **Καμία** (δεν υπάρχει `.github/`) |
 | Σημείωση | Το `.iss` χρησιμοποιεί **σχετικές** διαδρομές (`{#SourcePath}` / script dir) → μεταφέρεται σε άλλο PC |
-| `InstallerOutput/` | ❌ **δεν** είναι στο `.gitignore` — προσέχει να μη γίνει commit |
+| `InstallerOutput/` | ✅ στο `.gitignore` (38+ MB exe — δεν ανεβαίνει ποτέ) |
 
 ### 2.7 Κατάσταση build (19/11/2026) — ✅ υγιές
 
@@ -820,11 +820,11 @@ default_currency, biometric_mode ('always'|'on_demand'), biometric_remember, ...
 
 | Μέτρηση | Τιμή |
 |---|---|
-| Tracked αρχεία | **610** |
-| Commits | 19 (με το release commit `v2.0.1`) |
+| Tracked αρχεία | **627** |
+| Commits | 20 |
 | Tags | **1** (`v2.0.1`) |
 | Μέγεθος `.git` | **23,3 MB** |
-| `.gitignore` | 52 γραμμές (`/build/`, `build_logs/`, `serviceAccountKey.json`, `node_modules/`, …) |
+| `.gitignore` | 55 γραμμές (`/build/`, `build_logs/`, `InstallerOutput/`, `serviceAccountKey.json`, `node_modules/`, …) |
 | CI/CD | ❌ κανένα |
 | Ιδιαιτερότητες | 2 `lib/*.backup` tracked · `backups/` tracked |
 
@@ -846,7 +846,7 @@ default_currency, biometric_mode ('always'|'on_demand'), biometric_remember, ...
 3. Το `.iss` χρησιμοποιεί **σχετικές** διαδρομές → μεταφέρεται σε άλλο PC. Απαιτεί `/DMyAppVersion` (αλλιώς `#error`).
 4. `build/` και `build_logs/` είναι ignored (δεν μπαίνουν σε commits).
 5. `node_modules/` είναι πλέον ignored (5.086 αρχεία εκτός git).
-6. Το `InstallerOutput/` **δεν** είναι ignored → έλεγχος πριν από `git add`.
+6. `InstallerOutput/` είναι **ignored** (38,6 MB setup exe — δεν ανεβαίνει ποτέ).
 
 ---
 

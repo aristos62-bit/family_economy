@@ -413,10 +413,26 @@
 
 **Bug που βρήκε το testing:** το `VersionInfo.ProductVersion` επιστρέφει **κενά στο τέλος** → χωρίς `.Trim()` ο έλεγχος θα απέτυχε πάντα και κάθε build θα σταματούσε στο τέλος.
 
-**Release:** commit `release: v2.0.1` + tag **`v2.0.1`**.
+### Πλήρες clean build — επαλήθευση (19/11/2026) ✅
+
+| Παραδοτέο | Έκδοση | Μέγεθος |
+|---|---|---|
+| `FamilyBudget_v2.0.1.apk` | `versionName=2.0.1` · `versionCode=2` (aapt) | 85,4 MB |
+| `family_economy.exe` | `FileVersion/ProductVersion = 2.0.1+2` | — |
+| `FamilyBudgetSetup_v2.0.1.exe` | **`FileVersion/ProductVersion = 2.0.1.2`** (ήταν **`0.0.0.0`**) | 38,6 MB |
+
+- `build_and_setup_final.bat` (full clean, `NO_PAUSE=1`) → **`[DONE] Build finished successfully`**
+- Χρόνος: **Windows 566,6s (9,4′)** — το πιο βαρύ βήμα· Firebase C++ SDK 13.13.1
+- Ο ενσωματωμένος έλεγχος πέρασε (`Setup ver. : 2.0.1.2`) — δεν χρειάστηκε χειροκίνητος έλεγχος
+- APK label: «Οικογενειακός Προϋπολογισμός»
+- **Γιατί αργεί:** `--follow-tags`-style clean script → `taskkill java` (κρύος Gradle daemon) + `flutter clean` + AOT για 3 ABI + CMake από την αρχή + `lzma2/ultra64`. Επόμενη φορά: `... fast`
+
+**Hygiene:** `InstallerOutput/` → `.gitignore` (**52 → 55 γραμμές**, commit `26ac6c4`) — το setup exe δεν ανεβαίνει.
+
+**Release:** commit `addcdd0` (`release: v2.0.1`) + tag **`v2.0.1`** → pushed (`origin/main = addcdd0`).
 
 ### Backups αυτού του session
-`gitignore_20261119_131825.bak`, `DESIGN_20261119_133539.bak`, `DESIGN_20261119_134810.bak`, `DESIGN_20261119_140431.bak`, `AGENTS_20261119_135238.bak`, `AGENTS_20261119_135541.bak`, `README_20261119_140658.bak`, `oldsessions_20261119_141008.bak`, `fam_eco_new.iss_20261119_143305.bak`, `build_and_setup_final.bat_20261119_143536.bak`, `pubspec.yaml_20261119_143941.bak`, `options_page.dart_20261119_143941.bak`, `index.html_20261119_150109.bak`, `manifest.json_20261119_150109.bak`, `DESIGN.md_20261119_150347.bak`, `oldsessions.md_20261119_150347.bak`
+`gitignore_20261119_131825.bak`, `DESIGN_20261119_133539.bak`, `DESIGN_20261119_134810.bak`, `DESIGN_20261119_140431.bak`, `AGENTS_20261119_135238.bak`, `AGENTS_20261119_135541.bak`, `README_20261119_140658.bak`, `oldsessions_20261119_141008.bak`, `fam_eco_new.iss_20261119_143305.bak`, `build_and_setup_final.bat_20261119_143536.bak`, `pubspec.yaml_20261119_143941.bak`, `options_page.dart_20261119_143941.bak`, `index.html_20261119_150109.bak`, `manifest.json_20261119_150109.bak`, `DESIGN.md_20261119_150347.bak`, `oldsessions.md_20261119_150347.bak`, `pubspec.yaml_20261119_150832.bak`, `gitignore_20261119_152915.bak`, `DESIGN.md_20261119_153500.bak`, `oldsessions.md_20261119_153500.bak`
 
 ### Εκκρεμότητες (ανοιχτές)
 | # | Θέμα | Κατάσταση |
@@ -424,7 +440,7 @@
 | 1 | `family_economy_security_report.md` — untracked, δεν πρέπει να δημοσιευτεί | ⏳ απόφαση |
 | 2 | Versioning **E4** — `schema_version` σε Firestore + prefs + `migrate()` στην εκκίνηση | ⏳ ανοιχτό (`DESIGN.md` §1.5.4) |
 | 3 | ~~`pubspec.yaml` `description: "A new Flutter project."`~~ → διορθώθηκε στα ελληνικά | ✅ |
-| 4 | `InstallerOutput/` **δεν** είναι στο `.gitignore` | ⏳ πρόταση |
+| 4 | ~~`InstallerOutput/` εκτός `.gitignore`~~ → ignored (55 γραμμές) | ✅ |
 | 5 | `metadata` ασυνέπειες: `lib/*.backup` (2 tracked), `backups/` tracked, `oldsessions.md.backup` | ⏳ απόφαση |
 | 6 | 3 πακέτα με 0 χρήσεις + iOS/macOS χωρίς `Podfile` | 📝 στο `DESIGN.md` §1.3, §2.3 |
 
