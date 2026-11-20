@@ -71,6 +71,7 @@
 - Tests: `account_delete_guard_test.dart` (8) → **97/97**· `flutter analyze` καθαρό.
 - Περιορισμός: η φραγή είναι **τοπική** (βλ. `DESIGN.md` §11 L21 — multi-device race).
 - Έκδοση: `2.1.2+5`.
+- Device tests (POCO X3, build `2.1.2+5`): ✅ φραγή, κενή κατάσταση + CTA, διαγραφή με κίνηση (atomic batch) — βλ. `device test/README.md` § E7. Το chunked >499 δεν δοκιμάστηκε στη συσκευή.
 - Commit: `b2b13a8`.
 
 **E8 — Restore app data (INFO)**

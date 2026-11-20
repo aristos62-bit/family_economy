@@ -46,7 +46,18 @@ E11 transfer σκέλος · E12 budget «Όλοι» · E13 restore >500 · E14 
 
 ### Device tests
 
-Εκτελέστηκαν μετά το commit σε POCO X3 NFC (API 31) — βλ. `device test/README.md` (§ E7).
+Εκτελέστηκαν μετά το commit σε POCO X3 NFC (API 31), build `2.1.2+5` (versionCode 5) — βλ. `device test/README.md` (§ Device tests E7):
+
+| Σενάριο | Αποτέλεσμα |
+|---|---|
+| 1 ενεργός λογαριασμός → warning panel αντί για «Διαγραφή» | ✅ |
+| 0 λογαριασμοί → κενή κατάσταση Συναλλαγών + CTA | ✅ |
+| CTA → καρτέλα «Λογαριασμοί» | ✅ |
+| 2 λογαριασμοί → tile «Διαγραφή» → confirm → success μετά το commit | ✅ |
+| Διαγραφή με κίνηση → λογαριασμός + κίνηση soft-deleted (atomic batch) | ✅ |
+| Διαγραφή εξαιρεμένου λογαριασμού (cleanup `excluded_accounts_*`) | ⚪ χωρίς σφάλμα, prefs μη αναγνώσιμα cross-user |
+
+Η εκτέλεση έγινε σε **δευτερεύοντα Android user** με δοκιμαστικό Firebase χρήστη (Auth/Firestore REST), ώστε ο πραγματικός χρήστης να μείνει ανέγγιχτος· μετά τα tests διαγράφηκαν τα test docs, ο Auth user και ο Android user. Το chunked μονοπάτι (>499) και το multi-device race δεν δοκιμάστηκαν στη συσκευή.
 
 ### Backups
 
