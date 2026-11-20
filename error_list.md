@@ -71,7 +71,7 @@
 - Tests: `account_delete_guard_test.dart` (8) → **97/97**· `flutter analyze` καθαρό.
 - Περιορισμός: η φραγή είναι **τοπική** (βλ. `DESIGN.md` §11 L21 — multi-device race).
 - Έκδοση: `2.1.2+5`.
-- Commit: `073a248`.
+- Commit: `b2b13a8`.
 
 **E8 — Restore app data (INFO)**
 - Το `pm clear` διαγράφει το Keystore key· το `com.google.firebase.auth.api.Store.*.xml` δεν αποκρυπτογραφείται μετά από restore.
