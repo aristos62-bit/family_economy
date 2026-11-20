@@ -582,7 +582,8 @@
 | 2 | `device test/` untracked (48 αρχεία)· μόνο το `backup/` μπήκε στο `.gitignore` | ⏳ |
 | 3 | `DESIGN.md`: μόνο ενημέρωση χάρτη τεκμηρίωσης (§12) — τα L21/L22 **αφαιρέθηκαν** (δεν είναι αρχιτεκτονική) | ✅ |
 | 4 | Δημιουργία **`error_list.md`** (λίστα ευρημάτων/εκκρεμοτήτων): E1–E4 FIXED, E5 DEFERRED, E6 WON'T FIX, E7 OPEN, E8 INFO · ενημερώθηκαν `AGENTS.md` (κανόνας 12 + πίνακας + Session Log) και `DESIGN.md` §12 | ✅ |
+| 5 | E9 (F6): `users.created_at`/`updated_at` σε `Timestamp.now()` στο `onboarding_service.dart` — `analyze` ✅, tests **89/89** | ✅ |
 
 ### Backups αυτού του session
-`onboarding_service_20261120_131335.bak`, `gitignore_20261120_132916.bak`, `oldsessions_20261120_132916.bak`, `DESIGN_20261120_134301.bak`, `oldsessions_20261120_134301.bak`, `DESIGN_20261120_134658.bak`, `AGENTS_20261120_134658.bak`, `oldsessions_20261120_134658.bak`, `pubspec_20261119_192958.bak` (από την αλλαγή έκδοσης)
+`onboarding_service_20261120_131335.bak`, `onboarding_service_20261120_135400.bak`, `gitignore_20261120_132916.bak`, `oldsessions_20261120_132916.bak`, `DESIGN_20261120_134301.bak`, `oldsessions_20261120_134301.bak`, `DESIGN_20261120_134658.bak`, `AGENTS_20261120_134658.bak`, `oldsessions_20261120_134658.bak`, `pubspec_20261119_192958.bak` (από την αλλαγή έκδοσης)
 

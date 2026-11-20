@@ -28,11 +28,13 @@ class OnboardingService {
       if (userData == null) {
         DebugConfig.print('⚠️ User document not found. Creating it now...');
 
+        // F6: Timestamp (όχι ISO string) — ίδιο τύπος με `auth_service.dart`.
+        final now = Timestamp.now();
         await _firestore.collection('users').doc(userId).set({
           'default_currency': 'EUR',
           'onboarding_completed': false,
-          'created_at': DateTime.now().toUtc().toIso8601String(),
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
+          'created_at': now,
+          'updated_at': now,
         }, SetOptions(merge: true));
 
         final retryDoc = await _firestore.collection('users').doc(userId).get();
@@ -58,7 +60,7 @@ class OnboardingService {
 
       await _firestore.collection('users').doc(userId).update({
         'onboarding_completed': true,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': Timestamp.now(),
       });
 
       DebugConfig.print('✅ Onboarding completed successfully!');
