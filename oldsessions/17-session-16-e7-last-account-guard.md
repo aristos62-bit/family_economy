@@ -59,6 +59,8 @@ E11 transfer σκέλος · E12 budget «Όλοι» · E13 restore >500 · E14 
 
 Η εκτέλεση έγινε σε **δευτερεύοντα Android user** με δοκιμαστικό Firebase χρήστη (Auth/Firestore REST), ώστε ο πραγματικός χρήστης να μείνει ανέγγιχτος· μετά τα tests διαγράφηκαν τα test docs, ο Auth user και ο Android user. Το chunked μονοπάτι (>499) και το multi-device race δεν δοκιμάστηκαν στη συσκευή.
 
+**Τελικός έλεγχος:** ο user 0 άνοιξε κανονικά με τα αρχικά δεδομένα (μόνο «Alfa», 12.610,00 €), η εφαρμογή αφέθηκε στην καρτέλα «Λογαριασμοί» όπως ήταν στην αρχή· `pm list users` → μόνο user 0, `stay_on_while_plugged_in=0`, κανένα temp αρχείο στο `/sdcard`.
+
 ### Backups
 
 `backups/`: `error_list_20261120_151102.bak`, `accounts_page_20261120_151102.bak`, `transaction_entry_page_20261120_151102.bak`, `home_page_20261120_151102.bak`, `pubspec_20261120_151102.bak`, `oldsessions_index_20261120_151102.bak`, `DESIGN_20261120_151102.bak`.
