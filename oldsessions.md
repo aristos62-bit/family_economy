@@ -578,9 +578,10 @@
 ### Εκκρεμότητες
 | # | Θέμα | Κατάσταση |
 |---|---|---|
-| 1 | Διαγραφή test χρηστών στη Firebase (`device.test.a/b@example.com`) — **χειροκίνητα από τον χρήστη** | ⏳ |
+| 1 | Διαγραφή test χρηστών στη Firebase (`device.test.a/b@example.com`) — **χειροκίνητα από τον χρήστη** | ✅ |
 | 2 | `device test/` untracked (48 αρχεία)· μόνο το `backup/` μπήκε στο `.gitignore` | ⏳ |
-| 3 | `DESIGN.md` δεν άλλαξε (καμία αρχιτεκτονική αλλαγή) | ✅ |
+| 3 | `DESIGN.md`: καμία αρχιτεκτονική αλλαγή — μόνο καταγραφή L21/L22 στο §11 | ✅ |
+| 4 | F4/F5 (soft-deleted account, offline multi-device) — καταγράφηκαν ως **L21/L22** στο `DESIGN.md` §11, χωρίς αλλαγή κώδικα | ✅ |
 
 ### Backups αυτού του session
 `onboarding_service_20261120_131335.bak`, `gitignore_20261120_132916.bak`, `oldsessions_20261120_132916.bak`, `pubspec_20261119_192958.bak` (από την αλλαγή έκδοσης)
