@@ -1,589 +1,74 @@
 # Session Log — Family Economy
 
-## Session 1 (2026-05-24)
-
-### Αξιολόγηση logs εκκίνησης
-- Αναλύθηκαν logs από release build σε Android (M2007J20CG)
-- Η εφαρμογή τρέχει κανονικά χωρίς errors/crashes
-
-### Αρχιτεκτονική
-- Διαβάστηκαν όλα τα models, services, providers, core utils
-- Επιβεβαιώθηκε ότι η βάση Firestore είναι ήδη εγκατεστημένη
-- Δύο διακριτά paths: auto-login (app_start) και fresh login (login_page)
-
-### Αξιολόγηση ανά αρχείο
-
-**main.dart** ✅ Συμπαγές
-- Εντοπίστηκαν 2 προτάσεις:
-  - Cleanup callback στο `dispose()` — δόθηκαν οδηγίες
-  - Restart button στο `ErrorApp` — δόθηκαν οδηγίες (flutter_phoenix)
-
-**splash_screen.dart** ✅ 1 διόρθωση
-- Unconditional 2.5s delay → conditional με `MediaQuery.accessibleNavigation`
-
-**app_start.dart + login_page.dart** — Αξιολογήθηκαν συνδυαστικά
-- #2 NotificationsService().initialize() — **idempotent, δεν χρειάζεται αλλαγή**
-- #3 app_start catch block — **δόθηκε fix**: προσθήκη accessibility announcement
-- #4 login_page missing mounted check — **δόθηκε fix**
-
-### Εκκρεμότητες Session 1 (όλες ✅ υλοποιημένες)
-| # | Αρχείο | Αλλαγή | Status |
-|---|--------|--------|--------|
-| A | `pubspec.yaml` | Διόρθωση indentation (2 κενά) + `flutter pub get` | ✅ |
-| B | `main.dart` | Import `flutter_phoenix` | ✅ (γρ. 14) |
-| C | `main.dart` | `dispose()`: `widget.connectivityService.onSyncComplete = null` | ✅ (γρ. 127) |
-| D | `main.dart` | Phoenix wrapper γύρω από MaterialApp | ✅ (γρ. 135) |
-| E | `main.dart` | Restart button: `Phoenix.rebirth(context)` | ✅ (γρ. 237) |
-| F | `splash_screen.dart` | Conditional delay with `MediaQuery.accessibleNavigation` | ✅ (γρ. 85–87) |
-| G | `app_start.dart` | Import `accessibility_service` + error announcement | ✅ (γρ. 12, 143–145) |
-| H | `login_page.dart` | `mounted` check μετά signIn/register | ✅ (γρ. 100) |
-| I | `transactions_actions_service.dart` | Απλοποίηση GetOptions | ✅ (γρ. 838, 889) |
-| I | `transactions_actions_service.dart` | Date filter scheduled query | ✅ (υπάρχει ήδη) |
-| — | Uncomment generateAhead()  ❓ Αποφασίζεις εσύ  ---> recurring_notifications_service --> generateAhead() σχολιασμένο και στα 2 σημεία
-| — | graf_1..5 | `toStringAsFixed(2)` στα DebugConfig.print |
-
-## Session 2 (2026-05-25)
-
-### Επιβεβαίωση A–I από Session 1
-- ✅ Όλες οι αλλαγές A–I έχουν εφαρμοστεί (ελέγχθηκαν ένα προς ένα)
-
-### Recurring Notifications
-- Επιβεβαιώθηκε ότι λειτουργούν σωστά (μόνο NotificationsProvider, RecurringNotificationsService είναι ανενεργό/νεκρός κώδικας)
-- generateAhead() παραμένει σχολιασμένο — δεν χρειάζεται
-
-### Bug: Δημιουργία Προϋπολογισμού — input_budget_page.dart
-**Περιγραφή:** Όταν ο χρήστης φιλτράρει μία-μία τις κατηγορίες βάζοντας ποσά, κατά την εναλλαγή φίλτρου το σύνολο της νέας κατηγορίας δείχνει το ποσό της προηγούμενης και δεν ενημερώνεται.
-
-**Δύο bugs που εντοπίστηκαν:**
-
-1. **`custom_currency_field.dart:148`** — `_onFocusChange` καλεί `widget.onChanged?.call(null)` όταν το πεδίο παίρνει focus. Αυτό μηδενίζει προσωρινά το ποσό στο parent.
-   - Επηρεάζει: `input_budget_page.dart` (category/subcategory fields) + `transaction_entry_details_step.dart` (amount field)
-   - Δεν έχει side effects η αφαίρεσή του (κανένα callback δεν βασίζεται στο null από focus)
-
-2. **`input_budget_page.dart`** — `_buildPieChartSections()` (γρ. 270) και `_buildLegend()` (γρ. 334) δεν φιλτράρονται από `_selectedCategoryFilter`
-   - Δεν έχει side effects (private methods, χρησιμοποιούνται μόνο εδώ)
-
-**Εκκρεμεί:** Υλοποίηση των διορθώσεων (επόμενο session)
-
-## Session 3 (2026-05-26)
-
-### Ανάλυση επίδρασης Bug #1
-- Εξετάστηκε αν η αφαίρεση της γραμμής `widget.onChanged?.call(null);` από `custom_currency_field.dart:148` επηρεάζει άλλες σελίδες
-- **Συμπέρασμα:** Επηρεάζει και το `transaction_entry_details_step.dart` (όχι μόνο `input_budget_page.dart`), αλλά κανένα callback δεν βασίζεται στο `null` από focus — η αφαίρεση είναι ασφαλής και βελτιώνει τη συμπεριφορά και στα δύο αρχεία
-
-### Διορθώσεις που εφαρμόστηκαν
-
-**Διόρθωση #1 — `custom_currency_field.dart:148`** ✅
-- Αφαιρέθηκε η γραμμή `widget.onChanged?.call(null);` από τη μέθοδο `_onFocusChange` (κλάση `_CustomCurrencyFieldState`)
-
-**Διόρθωση #2 — `input_budget_page.dart`** (3 σημεία) ✅
-- `_buildPieChartSections()`: Προστέθηκε παράμετρος `CategoriesProvider? categoriesP` + φιλτράρισμα με `_selectedCategoryFilter`
-- `_buildLegend()`: Φιλτράρισμα με `_selectedCategoryFilter`
-- Ενημέρωση των 2 κλήσεων `_buildPieChartSections(income)` → `_buildPieChartSections(income, categoriesP: categoriesP)`
-
-## Session 4 (2026-05-26)
-
-### Bug: Εναλλαγή φίλτρου κατηγορίας — input_budget_page.dart
-**Περιγραφή:** Σε νέο προϋπολογισμό, όταν ο χρήστης επιλέγει κατηγορία (π.χ. Διατροφή), βάζει ποσά σε υποκατηγορίες, και μετά αλλάζει το φίλτρο σε άλλη κατηγορία (π.χ. Στέγαση), η νέα κατηγορία εμφανίζει το ποσό της προηγούμενης και η εισαγωγή υποκατηγοριών δεν αλλάζει το σύνολο. Η αποθήκευση λειτουργεί σωστά.
-
-**Αιτία:** Το `CustomCurrencyField` είναι `StatefulWidget`. Κατά την αλλαγή φίλτρου, το Flutter ξαναχρησιμοποιεί το State (ίδια θέση, ίδιος τύπος), αλλά το `_controller` στο State παραμένει στο παλιό controller. Το `didUpdateWidget` δεν ενημερώνει το `_controller` όταν αλλάζει το `widget.controller`.
-
-**Διόρθωση (εκκρεμεί υλοποίηση):**
-- `custom_currency_field.dart` — `didUpdateWidget`: Προσθήκη ελέγχου `widget.controller != oldWidget.controller` και ανανέωση του `_controller` + disposal παλιού internal controller αν χρειαστεί
-
-## Session 5 (2026-05-26)
-
-### Bug: Μετακίνηση προϋπολογισμού χάνει υποκατηγορίες — budget_page.dart
-**Περιγραφή:** Μετά από "Μετακίνηση" (αλλαγή περιόδου) προϋπολογισμού που έχει κατηγορία με υποκατηγορίες (π.χ. Διατροφή 500€), η κάρτα δείχνει σωστά σύνολα αλλά χωρίς expand arrow για υποκατηγορίες. Αν επιλεγεί "Επεξεργασία", τα ποσά υποκατηγοριών και το σύνολο έχουν χαθεί.
-
-**Αιτία:** Η `_moveGroupedBudget` (γρ. 500–501) περνάει μόνο τα category-level budgets στην `updateBudgetDates`. Οι subcategory budgets δεν μετακινούνται, μένουν με παλιές ημερομηνίες. Αυτό σπάει το date-based matching στο `subBudgets` lookup (γρ. 934–950) και στην `_editGroupedBudget` (γρ. 187–194).
-
-## Session 6 (2026-05-26)
-
-### Bug: Phantom subcategories μετά από Μετακίνηση — budget_page.dart
-**Περιγραφή:** Δημιουργία νέου προϋπολογισμού με 1 κατηγορία (Διατροφή €100, χωρίς ποσά υποκατηγοριών). Η κάρτα εμφανίζεται σωστά χωρίς down arrow. Μετά από "Μετακίνηση" στον επόμενο μήνα, η κάρτα δείχνει phantom υποκατηγορίες (Χωρίς Κατηγορία €100, Σούπερ Μάρκετ €100) με down arrow.
-
-**Αιτία:** 
-1. `_deleteGroupedBudget` διέγραφε μόνο category-level budgets — οι subcategory budgets έμεναν orphaned (`deleted: false`)
-2. `_moveGroupedBudget` δεν φιλτράριζε `budgetType` ή `categoryId`, οπότε τα orphaned subcats με ίδιο όνομα/ημερομηνίες μαζεύονταν και μετακινούνταν κι αυτά
-3. `_editGroupedBudget` είχε ήδη το σωστό query pattern (από Session 5 fix)
-
-### Διορθώσεις που εφαρμόστηκαν ✅
-
-1. **`budget_page.dart` — `_deleteGroupedBudget`**: Query όλων των budgets (category + subcategory) matching name/accountId/startDate/endDate, και διαγραφή όλων — ίδια λογική με `_editGroupedBudget`
-
-2. **`budget_page.dart` — `_moveGroupedBudget`**: Αντικατάσταση `groupBudgets.map((e) => e.model)` με το ίδιο query pattern (category + subcategory)
-
-3. **`budgets_provider.dart`**: Νέο `_cleanupOrphanedSubcategoryBudgets()` — τρέχει μία φορά στο πρώτο load, εντοπίζει subcategory budgets χωρίς parent category budget και τα διαγράφει
-
-4. **`custom_currency_field.dart` — `didUpdateWidget`**: Προσθήκη controller update όταν αλλάζει `widget.controller` (από Session 4)
-
-5. **`input_budget_page.dart`**: Pie chart & legend φιλτράρισμα με `_selectedCategoryFilter` (από Session 3)
-
-6. **`purchase_card.dart`**: Προσθήκη `mounted` checks πριν από SnackBar
-
-## Session 7 (2026-05-26)
-
-### Θέμα: Προϋπολογισμοί — Τελικός έλεγχος
-
-**Ανάλυση logs & κώδικα:**
-- Εξετάστηκαν όλα τα logs από release build — τα budgets λειτουργούν άψογα online, offline, και με custom περιόδους (π.χ. 2-μηνο)
-- Real-time listeners, cache-first spent calculation, batch CRUD με optimistic updates — όλα σωστά
-
-**Διόρθωση που εφαρμόστηκε:**
-- `budgets_provider.dart:127-129` — Αφαιρέθηκε η διπλή (τυχαία) `notifyListeners()` στη `_onBudgetsChanged`
-- Το θέμα έκλεισε ✅
-
-### Future fix: Αργή πρώτη φόρτωση Budgets σελίδας
-
-**Αιτία:** Κάθε `calculateSpentAmount()` κάνει ξεχωριστό Firestore query, αγνοώντας τα transactions που ήδη έχει κατεβάσει το `TransactionsProvider` για το `BUDGETS_PAGE`. Για Ν budgets → Ν επιπλέον queries στη Firestore.
-
-**Πρόταση:** Το recalc loop (`budget_page.dart:649`) να δέχεται τα transactions από `transactionsP.getTransactionsForPeriod('BUDGETS_PAGE')` και να τα φιλτράρει in-memory, αντί να καλεί `calculateSpentAmount()` που κάνει δικά της Firestore queries.
-
-## Session 8 (2026-07-16)
-
-### Βελτιστοποίηση: In-memory spent calculation (αντί Ν Firestore queries)
-
-**Ολοκληρωμένο πλάνο από το προηγούμενο session — υλοποιήθηκε και επιβεβαιώθηκε πλήρως ✅**
-
-| Βήμα | Αρχείο | Αλλαγή | Status |
-|------|--------|--------|--------|
-| 1 | `budget_model.dart:192` | Νέο getter `matchesTransaction(tx)` — ελέγχει ημερομηνία, accountId, budgetType (total/category/subcategory) | ✅ |
-| 2 | `budgets_provider.dart:297` | Νέα μέθοδος `calculateSpentAmountsFromCache(List<TransactionModel> txs)` — 0 Firestore queries, in-memory φιλτράρισμα (skip transfers, skip income, budget matching) | ✅ |
-| 3 | `budget_page.dart:44,47` | `_lastTxHash` + `_buildTxHash()` — content-aware αντί για απλό count (`id:amount` hash) | ✅ |
-| 4 | `budget_page.dart:66-73` | `didChangeAppLifecycleState` (resume) — debounce 2s, αποφυγή διπλού recalc | ✅ |
-| 5 | Παντού | Debug logging σε κάθε βήμα (hash changes, cache update, matched transactions) | ✅ |
-
-**Αρχιτεκτονική after:**
-- `transactionsP.loadPeriod('BUDGETS_PAGE')` → 1 listener (ίδιο)
-- `transactionsP.getTransactionsForPeriod('BUDGETS_PAGE')` → in-memory λίστα
-- `budgetsP.calculateSpentAmountsFromCache(txs, categoryTypes)` → 1 pass, όλα τα budgets
-- `_lastTxHash` → ανιχνεύει αλλαγές περιεχομένου (όχι μόνο πλήθους)
-
-**ΔΕΝ υλοποιήθηκε:** `email_service.dart` (ανεξάρτητο, δεν συμπεριλήφθηκε)
-
-## Session 201+ — Bubble Layout Cache Bug (UNRESOLVED)
-
-### Περιγραφή
-- Bug: MessageBubble layout παγώνει σε λάθος κατάσταση μετά από cold restart
-- navigate-away-and-back διορθώνει το layout (γιατί dispose() καθαρίζει το cache)
-- Η αρχική θεωρία ήταν ότι το `_obtainBubble` cache κάνει identity skip (`child.widget == newWidget`) και δεν καλεί build(), παγώνοντας το layout
-
-### Attempt #1 — Επέκταση ValueKey (Session 202)
-- `ValueKey(msgId)` → `ValueKey('$msgId|${bubbleMaxWidth.toStringAsFixed(0)}')`
-- **Απέτυχε:** bubbleMaxWidth είναι ίδιο σε κάθε build, οπότε το key δεν άλλαζε
-- **REVERTED**
-
-### Attempt #2 — Αφαίρεση cache entirely (Session 202)
-- Αφαιρέθηκαν `_MessageBubbleSignature`, `_bubbleCache`, `_bubbleSignatures`, `_obtainBubble`
-- `MessageBubble(...)` direct στο itemBuilder
-- **Απέτυχε:** layout ακόμα λάθος, πρόβλημα αλλού
-- **REVERTED**
-
-### Debug investigation (Session 202-debugs)
-Προστέθηκαν 3 debug log points (DebugsConfig.log):
-1. `ChatMessagesList.build()` — loggtarei screenW, textScale, itemCount
-2. `_obtainBubble()` — loggtarei cache HIT (identityHashCode) ή cache MISS (existingSig)
-3. `MessageBubble.build()` — loggtarei build counter, key.hashCode, identity, mediaW, textScale, bubbleMaxWidth
-
-### Αποτελέσματα debugs
-- **Το build() καλείται ακόμα και με cache HIT** (ίδιο identity). Π.χ. `BUILD #3` και `BUILD #8` με ίδιο `identity=820304279` — ο Flutter καλεί build() κανονικά, ΔΕΝ γίνεται identity skip
-- `screenW` = **384.0 σε ΟΛΑ τα builds** (σταθερό, όχι transition)
-- `textScale` = **1.00 σε ΟΛΑ** (σταθερό)
-- `bubbleMaxWidth` = **288.0 σε ΟΛΑ** (`384 * 0.75`)
-- Παρατηρήθηκε μαζικό rebuild cascade: `MsgBubble BUILD #1→#538+` σε ένα session
-
-### Συμπέρασμα
-- Η αρχική θεωρία (cache identity skip) **καταρρίφθηκε** — το cache ΔΕΝ παγώνει το layout
-- Όλες οι μετρήσεις (screenW, textScale, bubbleMaxWidth) είναι ίδιες σε κάθε build
-- Το πρόβλημα βρίσκεται **αλλού** (ListView reconciliation, parent constraints, ή MediaQuery propagation)
-- Το bug παραμένει **UNRESOLVED**
-
-## Session 9 (2026-10-02)
-
-### Graf 7 «Πορεία ανά Μήνα» — υλοποιήθηκε ✅
-- Νέο `lib/presentation/screens/charts/graf_7_monthly_trend_page.dart` (~427 γραμμές): toggle Έσοδα/Έξοδα (`SegmentedButton`), dropdowns κατηγορίας/υποκατηγορίας, 1 μπλε γραμμή (`ColorsUI.getInfo`), 12 μήνες από 01/01 τρέχοντος έτους, ποσό + `%` πάνω από τελείες (μόνιμα tooltips), `YEAR_TREND` listener + in-memory buckets, `DebugConfig` + accessibility
-- `chart_registry.dart`: +import/+`graf_7` πριν το `graf_6` (backup `backups/chart_registry_20261002_105610.bak`)
-- `general_view_page.dart`: `case graf_7` (χωρίς περίοδο) + migration insert πριν το `graf_6` (backup `backups/general_view_page_20261002_105733.bak`)
-- `view_option_page.dart`: meta/icon + χρώμα `graf_7`, χωρίς περίοδο (backup `backups/view_option_page_20261002_105817.bak`)
-- `DESIGN.md`: +1 γραμμή `graf_7` (backup `backups/DESIGN_20261002_105915.bak`)
-- Έλεγχοι: `dart analyze` ανά αρχείο + `flutter analyze` → No issues found
-- Διόρθωση κατά την υλοποίηση: `LineBarSpot(bar, barIndex, spot)` (3 ορίσματα) αντί `LineBarSpot(0, i, spot)`
-
-### Graf 7 fixes (ίδιο session)
-- Μόνιμες ετικέτες πάνω από τελείες: custom `_LabelDotPainter` (ποσό + `%`), `clipData: none`, headroom ×1.7, μελλοντικοί μήνες χωρίς ετικέτα. Τα `showingTooltipIndicators` ήθελαν tap — αφαιρέθηκαν (tap tooltip κρατήθηκε)
-- Χρώματα `%`: έσοδα +πράσινο/−κόκκινο, έξοδα αντεστραμμένα +κόκκινο/−πράσινο (`_pctColor`)
-- Refresh κεντρικής: `view_option_page.dart` — `_dirty` flag + `PopScope` (system back γύρναγε `null` και δεν έκανε refresh)
-- Έλεγχοι: `dart analyze` + `flutter analyze` → No issues found
-
-### Build fixes (ίδιο session)
-- Android/Gradle: το Flutter έπαιρνε bundled JBR 25.0.3 (ασύμβατο με Gradle 8.14) → `flutter config --jdk-dir=jdk-21` (AGP 8.11.1 συμβατό)
-- Windows: corrupt `firebase_cpp_sdk_windows_13.4.0.zip` (cmake tar -5, μισό extract) → διαγραφή zip + `extracted` + CMakeCache → φρέσκο download → `Built build\windows\x64\runner\Release\family_economy.exe` ✅
-
-## Session 10 (2026-10-02)
-
-### Tests Βήμα 0+1 ✅ — 19/19 pass
-- Baseline: `flutter test` FAIL (σπασμένο counter `widget_test.dart`, `ProviderNotFound`)
-- Νέα δομή `test/unit/` (καθρέφτης του `lib/`): `currency_formatter_test.dart` (9 tests) + `chart_helpers_test.dart` (9 tests), pure-Dart χωρίς Firebase
-- `widget_test.dart`: αντικατάσταση με `ErrorApp` smoke test (χωρίς tap στο restart — θέλει Phoenix ancestor)
-- Backup: `backups/widget_test_20261002_124058.bak`
-
-### Tests Βήμα 2 ✅ — 33/33 pass
-- `test/unit/providers/transactions_provider_test.dart` (6 tests): `isTransfer/isIncome/isExpense`
-- `test/unit/models/budget_model_test.dart` (8 tests): `matchesTransaction` (category/subcategory/total/account/inclusive όρια)
-- Εύρημα: 1 αποτυχία από λάθος παραδοχή του test (πέρασε `'income'` με null id — ο provider περνά null resolved type, `transactions_provider.dart:400`). Ο κώδικας σωστός, διορθώθηκε το test
-
-### Tests Βήμα 3 ✅ — 44/44 pass
-- Νέο `lib/core/utils/monthly_trend.dart`: pure `computeMonthlyTrend` (εξαγωγή από Graf7, ίδια συμπεριφορά)
-- `graf_7_monthly_trend_page.dart`: 446 γραμμές (<500), `_computeMonthly` → delegate, `_MonthPoint` → `MonthlyPoint`
-- `test/unit/core/utils/monthly_trend_test.dart` (11 tests): zeros, abs sums, +50%, 0→X +100%, X→0 −100%, φίλτρα transfer/category/year/subcategory
-
-### Tests — Firebase mocks ΑΝΑΒΟΛΗ
-- Έλεγχος: `fake_cloud_firestore 4.3.0` + `firebase_auth_mocks 0.15.2` συμβατά, αλλά φέρνουν firebase_core 4.5→4.15 / firestore 6.1→6.10 / auth 6.2→6.7 (24 αλλαγές lock) + 93 σημεία καλούν singletons απευθείας (μόνο BudgetsProvider/TransactionsActionsService injectable)
-- Απόφαση: αναβολή (ρίσκο/όφελος δεν βγαίνει). Παραμένουν 44 hermetic tests + manual QA. Dry-run only, καμία αλλαγή pubspec
-
-## Session 11 (2026-10-02)
-
-### Fix υπολοίπου (float dust) ✅ — 50/50 tests, analyze clean
-- Αιτία: `FieldValue.increment` μαζεύει σκόνη float — υπόλοιπο 99.9999 δείχνει 100,00€ αλλά `amount > balance` έκοβε αγορά 100€
-- Έλεγχος όλης της εφαρμογής: μπλοκάρισμα μόνο σε `transaction_entry_details_step.dart:680,736` (+ ίδιας οικογένειας `budget_page.dart:972,1295` display υπέρβασης)
-- Γενικευμένο fix: `CurrencyFormatter.covers/isOverspent` (σύγκριση στρογγυλοποιημένη στα cents) + 6 tests
-- Backups: currency_formatter, details_step, budget_page
-
-## Session 12 (2026-11-04)
-
-### Security patch: eMudhra CA compromise (Firestore SDKs) ✅
-
-**Αιτία:** Firebase email — compromised private keys των intermediate CA της eMudhra (17/10/2026). Επηρεάζονται τα Firestore SDKs: **Apple, Flutter, C++, Unity**. **ΔΕΝ** επηρεάζονται: Android SDK, Web SDKs, server SDKs. Το TLS root bundle είναι compiled μέσα στο binary → OS/server update δεν αρκεί.
-
-**Κατάσταση πριν (ευάλωτη):**
-- `firebase_core` 4.5.0 → Windows C++ SDK **13.4.0**, Apple SDK **12.9.0**
-- `cloud_firestore` 6.1.3, `firebase_auth` 6.2.0
-
-**Λύση (backport στην 4.x/6.x γραμμή — ΟΧΙ breaking 7.x/5.x):**
-
-| Πακέτο | Πριν | Μετά |
-|---|---|---|
-| `cloud_firestore` | 6.1.3 | **6.10.2** |
-| `firebase_core` | 4.5.0 | **4.15.2** (C++ SDK 13.13.1) |
-| `firebase_auth` | 6.2.0 | **6.7.1** (υποχρεωτικά: platform_interface ^8.1.1) |
-| platform interfaces / webs / _flutterfire_internals | — | +6 πακέτα |
-
-- `pubspec.yaml`: **καμία αλλαγή** — τα υπάρχοντα constraints (`^4.5.0`, `^6.1.3`, `^6.2.0`) επέτρεπαν τις patched εκδόσεις
-- `flutter pub upgrade cloud_firestore firebase_core firebase_auth` → 10 πακέτα, **μόνο** Firebase
-- **Απαραίτητο `flutter clean`**: το `build\windows` είχε ακόμα `firebase_cpp_sdk_windows_13.4.0.zip` + `extracted\`
-
-**Επαληθεύσεις:**
-- `firebase_core-4.15.2/windows/CMakeLists.txt` → `FIREBASE_SDK_VERSION "13.13.1"` ✅
-- `build\windows\x64\extracted\...\version.h` → 13.13.1 (MAJOR 13 / MINOR 13 / REVISION 1) ✅
-- `firebase_core-4.15.2/ios/firebase_sdk_version.rb` → `'12.19.3'` ✅
-- `flutter analyze` → No issues | `flutter test` → **50/50 pass**
-
-**Builds & release:**
-- Version bump `2.0.0+1` → **`2.0.1+2`** (exe FileVersion/ProductVersion = 2.0.1+2, APK versionName 2.0.1 / versionCode 2)
-- `fam_eco_new.iss`: `AppVersion=1.0.0` → **2.0.1** (όνομα installer παραμένει `FamilyBudgetSetup.exe` — απόφαση χρήστη)
-- Artifacts: `build\windows\x64\runner\Release\family_economy.exe`, `build\app\outputs\flutter-apk\app-release.apk` (85.3 MB), `InstallerOutput\FamilyBudgetSetup.exe` (38.6 MB)
-- Windows build 206s (πρώτο, με download SDK) / 85s (incremental) | APK 146s / 68s
-
-**Backups:** `pubspec_20261104_141411.bak`, `pubspec_lock_20261104_141411.bak`, `pubspec_20261104_142538.bak`, `fam_eco_new_20261104_143912.bak`, `oldsessions_20261104_144106.bak`
-
-**Σημειώσεις / εκκρεμότητες:**
-- Ο χρήστης πρέπει να διανείμει τα νέα builds — οι ήδη εγκατεστημένες εκδόσεις μένουν ευάλωτες μέχρι update
-- iOS/macOS: δεν χτίστηκε (Windows host) — με το 4.15.2 θα πάρει αυτόματα Apple SDK 12.19.3 σε build από Mac
-- `flutter build apk` επιστρέφει exit code 1 στο PowerShell λόγω stderr warnings (Gradle) — το build **πετυχαίνει** κανονικά
-- Flutter warnings (όχι blockers): Gradle 8.14 < 9.1, AGP 8.11.1 < 9.0.1, Kotlin 2.2.20 < 2.3.20 — θα γίνουν hard requirement σε επόμενη Flutter
-- Αβλαβές warning: `com.google.firebase.auth.AuthKt has malformed kotlin.Metadata (2.3.0 > max 2.2.0)`
-
-### Build automation: `build_and_setup_final.bat` ✅
-
-**Αιτία:** 3 διαφορετικά scripts (`build_and_setup.bat`, `build_and_setup_new.bat`, `build_and_setup_new 2.bat`) με διαφορετικά bugs. Το ενεργό (`_new`) δεν είχε error handling.
-
-**Προβλήματα που διορθώθηκαν:**
-
-| Πρόβλημα (παλιό) | Διόρθωση (νέο) |
-|---|---|
-| `&& echo done > flag` → **ατέρμονο spinner** σε αποτυχία | έλεγχος exit code + `[ERROR]` + `exit /b 1` |
-| `ISCC ... >nul` χωρίς `errorlevel` → ψεύτικο «DONE» | `if errorlevel 1` + log + έλεγχος ύπαρξης output |
-| APK name hardcoded `FamilyBudget_v1.0.apk` | `FamilyBudget_v<version>.apk` από `pubspec.yaml` |
-| `taskkill /F /IM java.exe` πάντα (σκότωνε Android Studio) | μόνο όταν το `build` είναι locked |
-| χωρίς `windows\flutter\ephemeral` clean (fix Session 9) | καθαρίζεται πάντα |
-| κανένα log | `build_logs\apk_*.log`, `windows_*.log`, `inno_*.log`, `pubget_*.log` |
-| χωρίς έλεγχο C++ SDK | STEP 4/5 → διαβάζει `version.h` και τυπώνει την έκδοση |
-
-**Αυτόματη έκδοση:**
-- `pubspec.yaml` `version: 2.0.1+2` → `APP_VER=2.0.1`, `BUILD_NO=2` (single source of truth)
-- APK: `FamilyBudget_v2.0.1.apk`
-- Installer: `fam_eco_new.iss` → `#ifndef MyAppVersion / #define "2.0.1" / AppVersion={#MyAppVersion}` + ISCC `/DMyAppVersion=<ver>`
-
-**Modes:** `build_and_setup_final.bat` (full clean) · `... fast` (χωρίς clean) · `set NO_PAUSE=1` (headless)
-
-**Επαληθεύσεις:**
-- `/DMyAppVersion=9.9.9` σε temp output → installer `ProductVersion = 9.9.9` ✅ (άρα το override δουλεύει, δεν μένει στο fallback)
-- Full clean run: `EXITCODE=0` — APK `FamilyBudget_v2.0.1.apk` 85.3 MB, EXE `2.0.1+2`, Setup `2.0.1` 38.6 MB, Firebase C++ **13.13.1**
-- Fast run: `EXITCODE=0`, Windows 32.6s (incremental)
-- Encoding `.iss` ελέγχθηκε σε byte level: το ελληνικό κείμενο **απαράλλακτο** (UTF-8 χωρίς BOM)
-
-**Backups:** `build_and_setup.bat_20261104_150042.bak`, `build_and_setup_new.bat_20261104_150042.bak`, `build_and_setup_new_2.bat_20261104_150042.bak`, `fam_eco_new.iss_20261104_150042.bak`, `build_and_setup_final_20261104_151*.bak`, `oldsessions_20261104_151*.bak`
-
-**Εκκρεμότητες:**
-- `build_logs/` και τα παλιά `.bat` δεν είναι στο `.gitignore` (προς απόφαση χρήστη)
-- Τα παλιά 3 scripts παραμένουν στο repo (δεν διαγράφηκαν) — το `_final` είναι το ενεργό
-
-## Session 13 (2026-11-19)
-
-### Security: ανάκληση service-account key & καθαρισμός git history ✅
-
-**Εύρημα:** στο history υπήρχαν `serviceAccountKey.json` (sha256 `9F3072C9…01A9`), `node_modules/` και `InstallerOutput/FamilyBudgetSetup.exe` σε **14 commits**.
-
-| Ενέργεια | Επαλήθευση |
-|---|---|
-| Ανάκληση κλειδιού (gcloud, `--project=family-economy-d1b4d`) | exit 0 · επαλήθευση: `invalid_grant: Invalid JWT Signature` |
-| Repo → **private** | API / raw / παλιό commit URL → **404** |
-| Διαγραφή τοπικού `serviceAccountKey.json` | αντίγραφο μόνο σε `_repo_backups/` **εκτός** repo, ίδιο sha256 |
-| History rewrite (14 commits) + force-push `main` | `HEAD = 6bcc4c3` · `.git` **224,7 MB → 23,3 MB** |
-| `git log -S "BEGIN PRIVATE KEY"` | κενό αποτέλεσμα |
-| `npm ci` | `node_modules/` 5.086 αρχεία / 41,4 MB (τοπικά, εκτός git) |
-
-- Απόφαση: **δεν** χρειάστηκε Support ticket/purge — κλειδί ανακληθεί, history καθαρό, repo private
-- `serviceAccountKey.json` έμεινε στο `.gitignore` για μελλοντική χρήση
-- Για τυχόν μελλοντικό import: προτείνεται **ADC** (Application Default Credentials) αντί JSON key — *δεν υλοποιήθηκε*
-
-### `.gitignore` ✅
-- Προστέθηκε `node_modules/` (49 → **52** γραμμές) · backup `backups/gitignore_20261119_131825.bak` · `git check-ignore` OK
-
-### `DESIGN.md` → μοναδική πηγή τεχνικής αλήθειας ✅
-- **235 → 896 γραμμές**, **13 κεφάλαια (0–12)**, 60 υποενότητες
-- Νέα δομή: 0 ρόλος αρχείων · 1 stack/εκδόσεις + **§1.5 Versioning** · 2 platforms/build/installer · 3 δομή `lib/` + νεκρός κώδικας · 4 boot/routing · 5 αρχιτεκτονική · 6 Firestore · 7 rules/όρια · 8 patterns · 9 tests/gates · 10 tooling/hygiene · 11 περιορισμοί **L1–L17** · 12 χάρτης τεκμηρίωσης
-- §1.5: SemVer `MAJOR.MINOR.PATCH+BUILD`, single source `pubspec.yaml`, πίνακας απόφασης, **εκκρεμότητες E1–E4** (git tags, hardcoded `.iss`, εμφάνιση έκδοσης, `schema_version`/migrations)
-- Backups: `backups/DESIGN_20261119_133539.bak`, `..._134810.bak`, `..._140431.bak`
-
-**Κρίσιμες διορθώσεις έναντι παλιάς τεκμηρίωσης:**
-
-| # | Έλεγε | Μετρήθηκε |
-|---|---|---|
-| 1 | Flutter `^3.10.4` | **Flutter 3.47.8 / Dart 3.13.7** (το `^3.10.4` είναι Dart constraint) |
-| 2 | «Firestore μόνο από Providers/Services» | **82 άμεσες κλήσεις / 29 αρχεία** (42 σε 14 UI αρχεία) |
-| 3 | «`TransactionsActionsService` = μοναδικό CRUD» | **2 αρχεία / 3 κλήσεις** |
-| 4 | «Υπόλοιπα μόνο από `TransactionsActionsService`» | **6 αρχεία** γράφουν `current_balance` |
-| 5 | «`MessageService` κεντρικό» | **1** χρήση vs **180** άμεσα `SnackBar` (28 αρχεία) |
-| 6 | 15 ενεργές συλλογές | **5 με 0 χρήσεις** (`exchange_rates`, `account_snapshots`, `attachments`, `transaction_splits`, `transaction_tags`)· tags = array πεδίο |
-| 7 | 6 chart pages | **7** (registry 1,2,3,4,5,7,6) |
-| 8 | `biometric_gate`, `recurring_notifications_service` ενεργά | **νεκρός κώδικας** (0 imports) |
-| 9 | iOS/macOS/Linux ως πλατφόρμες | χωρίς `Podfile` → **ανεπιβεβαίωτα** |
-
-### `AGENTS.md` → μόνο κανόνες ✅
-- **322 → 77 γραμμές** · αφαιρέθηκαν 9 τεχνικές ενότητες (η αλήθεια ζει πλέον μόνο στο `DESIGN.md`)
-- Κρατήθηκαν: κανόνες 1–11, «Πού βρίσκεται τι», εντολές, σταθερές, session log
-- **Κανόνας 7** επεκτάθηκε: credentials/secrets **δεν** αντιγράφονται ποτέ στο `backups/` (είναι tracked)
-- Backups: `backups/AGENTS_20261119_135238.bak`, `..._135541.bak`
-
-### `README.md` → rewrite ✅
-- **48 → 124 γραμμές** · backup `backups/README_20261119_140658.bak`
-- Διορθώθηκαν: «Flutter 3.10 / Dart 3.10» → 3.47.8 / 3.13.7 · JDK/Java 17 · αφαίρεση λάθος «αποκλειστικά μέσω `TransactionsActionsService`» · πίνακας πλατφορμών · versioning · quality gates
-- Επιβεβαιώθηκε σε byte level ότι το παλιό αρχείο **δεν** είχε κατεστραμμένα ελληνικά (0 `?`, 0 U+FFFD) — η πρώτη εκτίμηση ήταν λάθος
-
-### Build blocker: `assets/images/` ✅
-- `flutter build bundle` απέτυχε (`unable to find directory entry in pubspec.yaml`)
-- Ο φάκελος δημιουργήθηκε + `assets/images/.gitkeep` (το git δεν παρακολουθεί κενούς φακέλους)
-- `flutter build bundle` → **EXIT 0** · σημειώθηκε στο `DESIGN.md` §2.7 ως μόνιμος περιορισμός
-- Διαγράφηκαν τα 3 παλιά build scripts (`build_and_setup.bat`, `build_and_setup_new.bat`, `build_and_setup_new 2.bat`) — ενεργό παραμένει το `build_and_setup_final.bat`
-
-### Quality gates (μετρημένα 2026-11-19)
-| Έλεγχος | Αποτέλεσμα |
-|---|---|
-| `flutter analyze` | ✅ No issues found |
-| `flutter test` | ✅ **50/50** (6 αρχεία) |
-| `flutter build bundle` | ✅ EXIT 0 |
-| Outdated packages | 75 (εκτός constraints) |
-
-### Versioning: E1–E3 ✅ (19/11/2026)
-
-**Στόχος:** μία πηγή έκδοσης (`pubspec.yaml`) και **κανένα** hardcoded νούμερο.
-
-| Αρχείο | Αλλαγή | Επαλήθευση |
-|---|---|---|
-| `fam_eco_new.iss` | `#ifndef MyAppVersion` → **`#error`** (χωρίς fallback) · `+MyBuildNo` · `+MyOutputBase` · `+VersionInfoVersion/ProductVersion/Company/ProductName/Description/Copyright` · απόλυτα paths → **σχετικά** | ISCC χωρίς `/D` → σταματά (line 14) · throwaway build → `FileVersion = ProductVersion = 2.0.1.2` · 0 absolute paths |
-| `build_and_setup_final.bat` | `INST_NAME` μετά το STEP 0 · `+INST_BASE/INST_NAME/SETUP_VER` · `ISCC /DMyBuildNo /DMyOutputBase` · **έλεγχος** `ProductVersion == APP_VER.BUILD_NO` | STEP 0: `2.0.1+2`→`2.0.1.2` · `1.4.4`→`1.4.4.0` · `10.12.3+57`→`10.12.3.57` · E2E ISCC + version check OK |
-| `pubspec.yaml` / `pubspec.lock` | `+package_info_plus ^9.0.1` (το 10.x είναι incompatible) | resolved **9.0.1** |
-| `lib/core/utils/app_info.dart` | **ΝΕΟ** — cached `PackageInfo`, `versionLabel()` → «Έκδοση 2.0.1 (build 2)» | 5 περιπτώσεις σε temp package (Android-style, `+build`, μόνο version, κενό, trim) |
-| `options_page.dart` | footer `_AppVersionFooter` κάτω από `_LogoutCard` | analyze 0 issues · tests 50/50 |
-| `web/index.html` / `web/manifest.json` | «Οικογενειακός Προϋπολογισμός», `lang=el`, περιγραφή αντί template | `flutter build web` OK · `version.json` = `2.0.1` / `2` |
-| `DESIGN.md` | §1.5 R1–R5 + V2/V3 ✅ + E1–E3 ✅ · §2.4/§2.6/§10/§11 ενημερώθηκαν | L13/L14 → λυμένα |
-| `macos/.../GeneratedPluginRegistrant.swift` | 🤖 auto από `pub get` | μόνο plugin registration |
-
-**Bug που βρήκε το testing:** το `VersionInfo.ProductVersion` επιστρέφει **κενά στο τέλος** → χωρίς `.Trim()` ο έλεγχος θα απέτυχε πάντα και κάθε build θα σταματούσε στο τέλος.
-
-### Πλήρες clean build — επαλήθευση (19/11/2026) ✅
-
-| Παραδοτέο | Έκδοση | Μέγεθος |
-|---|---|---|
-| `FamilyBudget_v2.0.1.apk` | `versionName=2.0.1` · `versionCode=2` (aapt) | 85,4 MB |
-| `family_economy.exe` | `FileVersion/ProductVersion = 2.0.1+2` | — |
-| `FamilyBudgetSetup_v2.0.1.exe` | **`FileVersion/ProductVersion = 2.0.1.2`** (ήταν **`0.0.0.0`**) | 38,6 MB |
-
-- `build_and_setup_final.bat` (full clean, `NO_PAUSE=1`) → **`[DONE] Build finished successfully`**
-- Χρόνος: **Windows 566,6s (9,4′)** — το πιο βαρύ βήμα· Firebase C++ SDK 13.13.1
-- Ο ενσωματωμένος έλεγχος πέρασε (`Setup ver. : 2.0.1.2`) — δεν χρειάστηκε χειροκίνητος έλεγχος
-- APK label: «Οικογενειακός Προϋπολογισμός»
-- **Γιατί αργεί:** `--follow-tags`-style clean script → `taskkill java` (κρύος Gradle daemon) + `flutter clean` + AOT για 3 ABI + CMake από την αρχή + `lzma2/ultra64`. Επόμενη φορά: `... fast`
-
-**Hygiene:** `InstallerOutput/` → `.gitignore` (**52 → 55 γραμμές**, commit `26ac6c4`) — το setup exe δεν ανεβαίνει.
-
-**Release:** commit `addcdd0` (`release: v2.0.1`) + tag **`v2.0.1`** → pushed (`origin/main = addcdd0`).
-
-### Backups αυτού του session
-`gitignore_20261119_131825.bak`, `DESIGN_20261119_133539.bak`, `DESIGN_20261119_134810.bak`, `DESIGN_20261119_140431.bak`, `AGENTS_20261119_135238.bak`, `AGENTS_20261119_135541.bak`, `README_20261119_140658.bak`, `oldsessions_20261119_141008.bak`, `fam_eco_new.iss_20261119_143305.bak`, `build_and_setup_final.bat_20261119_143536.bak`, `pubspec.yaml_20261119_143941.bak`, `options_page.dart_20261119_143941.bak`, `index.html_20261119_150109.bak`, `manifest.json_20261119_150109.bak`, `DESIGN.md_20261119_150347.bak`, `oldsessions.md_20261119_150347.bak`, `pubspec.yaml_20261119_150832.bak`, `gitignore_20261119_152915.bak`, `DESIGN.md_20261119_153500.bak`, `oldsessions.md_20261119_153500.bak`
-
-### Εκκρεμότητες (ανοιχτές)
-| # | Θέμα | Κατάσταση |
-|---|---|---|
-| 1 | `family_economy_security_report.md` — untracked, δεν πρέπει να δημοσιευτεί | ⏳ απόφαση |
-| 2 | Versioning **E4** — `schema_version` + migration στην εκκίνηση | ✅ Session 14 (Firestore μόνο, χωρίς prefs) |
-| 3 | ~~`pubspec.yaml` `description: "A new Flutter project."`~~ → διορθώθηκε στα ελληνικά | ✅ |
-| 4 | ~~`InstallerOutput/` εκτός `.gitignore`~~ → ignored (55 γραμμές) | ✅ |
-| 5 | `metadata` ασυνέπειες: `lib/*.backup` (2), `backups/` (62), `oldsessions.md.backup` — **όλα tracked** τότε | ✅ Session 14: `git rm --cached` + `*.backup`/`backups/` ignored (0 tracked) |
-| 6 | 3 πακέτα με 0 χρήσεις + iOS/macOS χωρίς `Podfile` | 📝 στο `DESIGN.md` §1.3, §2.3 |
-
-### Κλείσιμο session 13 (19/11/2026)
-
-**Απόφαση για E4 (versioning δεδομένων): ❌ δεν υλοποιείται.**
-- Το E4 ήταν ήδη καταγεγραμμένο ως εκκρεμότητα στο `DESIGN.md` §1.5.4 από την προηγούμενη φάση — **δεν** ήταν νέα πρόταση αυτού του session.
-- Κρίθηκε **μη απαραίτητο** για την εφαρμογή: μία οικογένεια / λίγοι χρήστες, μικρός όγκος δεδομένων, διορθώσεις εφικτές χειροκίνητα από την κονσόλα, ένας μόνο «πελάτης» (οι δικές μας συσκευές).
-- Αν ποτέ χρειαστεί αλλαγή σημασίας πεδίου: **one-off script** migration, όχι runtime framework.
-- Το `DESIGN.md` §1.5.4 εξακολουθεί να το εμφανίζει ⏳ — να αλλάξει σε «προαιρετικό / απορρίφθηκε» **μόνο** αν ζητηθεί.
-
-> ⚠️ **Ανατράπηκε στη Session 14 (19/11/2026):** το E4 **εγκρίθηκε και υλοποιήθηκε** — `schema_version` στο root doc, **χωρίς** SharedPreferences (βλ. επόμενο κεφάλαιο).
-
-**Επόμενο session:** διορθώσεις **ασφάλειας**, από καθαρή βάση (νέο session).
-
-**Κατάσταση repo στο κλείσιμο:** `HEAD = origin/main`, tag `v2.0.1`, working tree καθαρό (μόνο untracked `family_economy_security_report.md`).
+> **Ρόλος:** ευρετήριο ιστορικού. Το πλήρες κείμενο κάθε φάσης ζει στο `oldsessions/` — **1 αρχείο ανά κεφάλαιο**.
+> **Τεχνική αλήθεια:** `DESIGN.md` · **Εκκρεμότητες:** `error_list.md` · **Κανόνες:** `AGENTS.md`.
 
 ---
 
-## Session 14 (2026-11-19) — E4: Versioning δεδομένων ✅
+## Πώς λειτουργεί
 
-### Απόφαση & πλαίσιο
-- Το E4 **εγκρίθηκε** και υλοποιήθηκε σε 11 μικρά βήματα: ένα αρχείο τη φορά, **backup πρώτα**, `flutter analyze` + `flutter test` μετά από κάθε αλλαγή.
-- **Απόκλιση από την αρχική διατύπωση:** `schema_version` **μόνο** στο Firestore root doc (`users/{uid}`) — **όχι** SharedPreferences. Λόγος: με `persistenceEnabled + CACHE_SIZE_UNLIMITED` (`main.dart:64–67`) το doc είναι διαθέσιμο offline· δεύτερο σημείο αλήθειας θα ξέφευγε (αλλαγή λογαριασμού, καθαρισμός cache).
-- **Καμία αλλαγή στους `firestore.rules`:** το root doc είναι owner read/write χωρίς field validation.
-
-### Νέα αρχεία
-| Αρχείο | Γραμμές | Ρόλος |
-|---|---|---|
-| `lib/core/data/schema.dart` | 249 | Σταθερές (`current = baseline = 1`), ανεκτικός parser, `decide()`, `failureFor()`, `resolveWrite()`, `SchemaBlockedException` |
-| `lib/core/data/schema_service.dart` | 187 | Gate + migrations (κενό registry) + εγγραφή έκδοσης με `timeout(3s)` + επαλήθευση `Source.cache` |
-| `lib/core/widgets/startup_error_view.dart` | 140 | Κοινή διάταξη σφάλματος (scroll, κόκκινο, κύριο + δευτερεύον κουμπί) |
-| `test/unit/core/data/schema_test.dart` | 334 | **34 tests** |
-| `test/unit/core/widgets/startup_error_view_test.dart` | 154 | **5 tests** |
-
-### Αλλαγές σε υπάρχοντα αρχεία
-| Αρχείο | Αλλαγή |
+| Κανόνας | Λεπτομέρεια |
 |---|---|
-| `main.dart` | `ErrorApp` → `StartupErrorView` (ίδια κείμενα· `Phoenix.rebirth` **άθικτο**) |
-| `app_start.dart` | Gate πριν τις scheduled transactions (103) · typed catch (148) · error UI (239) |
-| `login_page.dart` | Gate μετά την ανάγνωση του doc (119) — **μηδέν νέο UI** |
-| `options_page.dart` | `_buildInfoCard` → «Δεδομένα · Έκδοση N» (1434) |
-| `auth_service.dart` | Σφράγισμα νέου χρήστη: `schema_version`, `schema_updated_at` |
+| 1 κεφάλαιο = 1 φάση | Κάθε ολοκληρωμένη φάση προόδου γράφεται σε **δικό της αρχείο** |
+| Ονομασία | `oldsessions/NN-slug.md` · `NN` = επόμενο νούμερο (2 ψηφία), **ποτέ** επανάχρηση |
+| Σειρά | Χρονολογική· το `NN` ακολουθεί τη σειρά των γεγονότων, όχι τον αριθμό του session |
+| Ευρετήριο | Μετά το νέο αρχείο: **1 γραμμή** στον πίνακα «Κεφάλαια» |
+| Μέγεθος | Στόχος < 100 γραμμές, όριο **150**· αν μια φάση ξεπερνά → σπάει σε δύο κεφάλαια |
+| Περιεχόμενο | Μόνο «τι έγινε, πότε, γιατί». Το «πώς είναι τώρα» → `DESIGN.md`, το «τι μένει» → `error_list.md` |
+| Μη αναδρομή | Το παλιό κείμενο **δεν ξαναγράφεται**· διορθώσεις γίνονται μόνο με νέα σημείωση |
 
-### Αποφάσεις-κλειδιά
-1. **Timeout ≠ αποτυχία.** Offline το `set()` **δεν** ολοκληρώνεται (η εγγραφή μένει στην ουρά). Γι' αυτό: timeout → **1 ανάγνωση cache** (`Source.cache` πρώτα, μετά fallback) → `appliedLocally` ή φραγή.
-2. **Φραγή** μόνο σε πραγματικό σφάλμα, σε `newerThanApp`, ή σε μη επιβεβαιωμένη τοπική εφαρμογή.
-3. **Καμία migration framework.** Κενό registry· όσο `current == baseline` η ροή `pending` είναι **μαθηματικά αδύνατη** ⇒ 0 writes για υπάρχοντες χρήστες.
-4. **`ErrorApp` restart δεν διορθώθηκε** (γνωστό bug: `Phoenix.rebirth` χωρίς ancestor, δεν επανατρέχει το `main()`) → `DESIGN.md` §11 L18.
-5. **Login χωρίς νέο UI:** το υπάρχον spinner του κουμπιού + το υπάρχον `catch` αρκούν (το `SchemaBlockedException.toString()` επιστρέφει μόνο το μήνυμα).
+## Τρέχουσα κατάσταση
 
-### Quality gates
-| Έλεγχος | Αποτέλεσμα |
+| | |
 |---|---|
-| `flutter analyze` | ✅ No issues found (~5s) |
-| `flutter test` | ✅ **89/89** (84 + 5) |
+| Έκδοση | **2.1.1+4** |
+| Τελευταίο κεφάλαιο | **16** — Onboarding fixes + device tests (2026-11-20) |
+| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **89/89** |
+| Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`) |
 
-### Εκκρεμότητες
-| # | Θέμα | Κατάσταση |
-|---|---|---|
-| 1 | `_debug = true` προσωρινά για QA → **πρέπει** `false` πριν το commit | ✅ `false` |
-| 2 | `backups/` εκτός `.gitignore` (11 `.bak` untracked) | ✅ προστέθηκε στο `.gitignore` |
-| 3 | Χειροκίνητο QA (offline migration, kill-restart) — μόνο όταν `Schema.current` γίνει 2 | ⏳ |
-| 4 | Τα νέα αρχεία θέλουν `git add` | ✅ commit `211fb86` |
+## Κεφάλαια
 
-### Release
-- Commit κώδικα: `211fb86` (`feat(data): add schema versioning gate at startup (E4)`) · pushed.
-- Version bump: `2.0.1+2` → **`2.1.0+3`** (MINOR: προαιρετικό νέο πεδίο με default, βλ. `DESIGN.md` §1.5.3).
-- Tag: **`v2.1.0`** σε commit `release: v2.1.0`.
+| # | Ημ/νία | Session | Τίτλος | Σύνοψη |
+|---|---|---|---|---|
+| 01 | 2026-05-24 | 1 | [Αρχικός έλεγχος](oldsessions/01-session-1-initial-audit.md) | Έλεγχος logs & αρχιτεκτονικής· 9 διορθώσεις (A–I) σε main, splash, app_start, login |
+| 02 | 2026-05-25 | 2 | [Εντοπισμός bugs budgets](oldsessions/02-session-2-budget-bugs-found.md) | Επιβεβαίωση A–I· 2 bugs στο `input_budget_page` (focus callback, pie/legend χωρίς φίλτρο) |
+| 03 | 2026-05-26 | 3 | [Διορθώσεις bugs budgets](oldsessions/03-session-3-budget-bugs-fixed.md) | Εφαρμογή των 2 διορθώσεων σε `custom_currency_field` & `input_budget_page` |
+| 04 | 2026-05-26 | 4 | [Stale controller στο ποσό](oldsessions/04-session-4-currency-field-controller.md) | Νέα κατηγορία έδειχνε ποσό προηγούμενης· `didUpdateWidget` |
+| 05 | 2026-05-26 | 5 | [Μετακίνηση προϋπολογισμού](oldsessions/05-session-5-budget-move-subcategories.md) | Η μετακίνηση έχανε τα subcategory budgets (ημ/νίες εκτός συγχρονισμού) |
+| 06 | 2026-05-26 | 6 | [Phantom υποκατηγορίες](oldsessions/06-session-6-phantom-subcategories.md) | Delete/move να περιλαμβάνουν subcategories + cleanup orphans + fix Session 4 |
+| 07 | 2026-05-26 | 7 | [Τελικός έλεγχος budgets](oldsessions/07-session-7-budgets-final-check.md) | Αφαίρεση διπλού `notifyListeners`· πλάνο in-memory spent calculation |
+| 08 | 2026-07-16 | 8 | [In-memory spent calculation](oldsessions/08-session-8-inmemory-spent.md) | 0 Firestore queries ανά budget· content-aware hash + debounce στο resume |
+| 09 | 2026-07-16 | 201+ | [Bubble layout cache bug](oldsessions/09-bubble-layout-cache-bug.md) | **UNRESOLVED**· η θεωρία του cache καταρρίφθηκε → **E10** |
+| 10 | 2026-10-02 | 9 | [Graf 7 & build fixes](oldsessions/10-session-9-graf7-and-builds.md) | «Πορεία ανά Μήνα» + JDK 21 & Windows Firebase C++ SDK |
+| 11 | 2026-10-02 | 10 | [Θεμελίωση tests](oldsessions/11-session-10-tests-foundation.md) | 44 hermetic tests· εξαγωγή `monthly_trend.dart`· Firebase mocks αναβλήθηκαν |
+| 12 | 2026-10-02 | 11 | [Float dust](oldsessions/12-session-11-float-dust.md) | `CurrencyFormatter.covers/isOverspent` (σύγκριση στα cents) + 6 tests |
+| 13 | 2026-11-04 | 12 | [Security patch eMudhra](oldsessions/13-session-12-security-emudhra.md) | Firebase SDKs → 4.15.2 / 6.10.2 / 6.7.1· `build_and_setup_final.bat`· v2.0.1 |
+| 14 | 2026-11-19 | 13 | [Security history & docs](oldsessions/14-session-13-security-history-docs.md) | Ανάκληση key + rewrite history· DESIGN/AGENTS/README rewrite· versioning E1–E3· v2.0.1 |
+| 15 | 2026-11-19 | 14 | [E4: versioning δεδομένων](oldsessions/15-session-14-schema-versioning.md) | `schema_version` gate + 39 tests → **89/89**· release v2.1.0 |
+| 16 | 2026-11-20 | 15 | [Onboarding fixes + device tests](oldsessions/16-session-15-onboarding-device-tests.md) | F1/F2/F3/F8· T0–T11 στη συσκευή· v2.1.1+4· δημιουργία `error_list.md` |
 
-### Backups αυτού του session
-`DESIGN_20261119_173403.bak`, `app_start_20261119_173403.bak`, `app_start_20261119_175708.bak`, `auth_service_20261119_173403.bak`, `login_page_20261119_173403.bak`, `login_page_20261119_181125.bak`, `main_20261119_173403.bak`, `oldsessions_20261119_173403.bak`, `options_page_20261119_173403.bak`, `options_page_20261119_182021.bak`, `schema_service_20261119_182916.bak`, `widget_test_20261119_173403.bak`, `DESIGN_20261119_184222.bak`, `oldsessions_20261119_184222.bak`, `DESIGN_20261119_184727.bak`, `gitignore_20261119_184727.bak`, `oldsessions_20261119_184727.bak`, `DESIGN_20261119_185231.bak`, `oldsessions_20261119_185231.bak`, `pubspec_20261119_185231.bak`
+## Έλεγχος συνέπειας
 
-### Έλεγχος συνέπειας `.md` ↔ κώδικας (19/11/2026)
-Πλήρης έλεγχος **όλων** των `.md` με μετρήσεις πάνω στον κώδικα. Διορθώθηκαν:
+| Έλεγχος | Τιμή |
+|---|---|
+| Κεφάλαια στον φάκελο | **16** (01–16) |
+| Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
+| Σύνολο γραμμών κεφαλαίων | **636** |
 
-| Αρχείο | Λάθος πριν | Πραγματικότητα |
-|---|---|---|
-| `AGENTS.md` | `flutter test` → 50/50 · κανόνας 7 «backups tracked» | **89/89** · `backups/` ignored |
-| `README.md` | έκδοση `2.0.1+2`, 50/50, 277 εικονίδια, `FamilyBudgetSetup.exe` | **`2.1.0+3`**, **89/89**, **276**, `FamilyBudgetSetup_v<ver>.exe` |
-| `DESIGN.md` | 75 outdated · 277 icons · 50/50 · 98 Dart · 12 oil · 6 tests/50 · παλιά line refs σε `main.dart` · 82 κλήσεις/29 αρχεία · services+core 17 · 180 SnackBar · 58 accessibility · 141 users refs · uuid 367 · deleted 200 · updated_at 114 · notifyListeners 66 · `backups/` 41 tracked | **77 · 276 · 89 · 102 · 13 · 8/89 · 30–93 · 83/30 · 18 · 186 · 61 · 142 · 423 · 247 · 116 · 67 · 0 (ignored)** |
-| `docs/rules/firestore.rules.md` | ανέφερε ανύπαρκτο `isOwner(data)`, ελλιπείς διαδρομές | ξαναγράφτηκε από το πραγματικό `firestore.rules` (μόνο `isSignedIn`, 15 paths, `settings`, `oil_purchases`, `exchange_rates`) |
-| `docs/tables/users.md` | έλειπαν `schema_version` / `schema_updated_at`, `created_at` ως ISO string | Timestamp πεδία + E4 πεδία + σημείωση |
-| `docs/tables/account_snapshots.md` | σπασμένο markdown (χωρίς heading/κλείσιμο code fence) | πλήρες αρχείο στο ίδιο στυλ |
+> Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 
-**Backups εκτός git:** `git rm -r --cached backups/` + `lib/*.backup` + `oldsessions.md.backup` → **65 αρχεία έφυγαν από το index** (παρέμειναν στον δίσκο), `*.backup` προστέθηκε στο `.gitignore`. Tracked: **635 → 570**.
+## Πρότυπο νέου κεφαλαίου
 
-Νεότερα backups (`*_20261119_190148.bak`): `AGENTS.md`, `README.md`, `DESIGN.md`, `oldsessions.md`, `.gitignore`, `docs_rules_firestore.rules.md`, `docs_tables_users.md`, `docs_tables_account_snapshots.md`.
+```markdown
+# Session N (YYYY-MM-DD) — Σύντομος τίτλος
 
----
-
-## Session 15 (2026-11-20) — Onboarding fixes + device tests ✅
+> **Κεφάλαιο NN/XX** · **Ημερομηνία:** YYYY-MM-DD · **Σχετικά:** E#, commit
 
 ### Πλαίσιο
-- Στόχος: το onboarding να μην ξανατρέχει σε υπάρχοντα λογαριασμό και να αντέχει σε διακοπή.
-- Εγκρίθηκαν και υλοποιήθηκαν **F1, F2, F3** (κώδικας) και **F8** (βρέθηκε στα device tests).
-
-### Fixes
-| # | Αρχείο | Αλλαγή |
-|---|---|---|
-| F2 | `login_page.dart`, `app_start.dart` | Αν λείπει το user doc → `createUserDocumentIfNeeded` + re-read πριν από schema/onboarding |
-| F1 | `onboarding_service.dart` | Guard `accounts.limit(1)` · skip υπαρχουσών κατηγοριών · `display_order = idx + 1` ανά τύπο |
-| F3 | `login_page.dart` | `try/catch` γύρω από `checkAndRunOnboarding` — σφάλμα δεν μπλοκάρει το login |
-| Βασικό | `login_page.dart` | Η ροή οδηγείται από `onboarding_completed` (όχι από `isNewUser`) · `finally` μηδενίζει `_isOnboarding` |
-| F8 | `onboarding_service.dart` | `_existingCategoryKeys` → `_existingCategoryState`: συμπλήρωση **λείπουσων** subcategories ανά κατηγορία |
-
-### Device tests (POCO X3 NFC, Android 12 / API 31)
-| # | Αποτέλεσμα |
+### Αλλαγές
+| Αρχείο | Αλλαγή |
 |---|---|
-| T3–T5 | ✅ νέα εγκατάσταση → εγγραφή → onboarding → Firestore: 1 account, 14 categories, **95** subcategories, flag=true, schema=1 |
-| T6 | ✅ force-stop + relaunch → απευθείας «Αρχική», κανένα διπλότυπο |
-| T7 | ✅ kill στο 15% → flag=false, 14 categories, «Μισθοί» 2/5 subcategories |
-| T8 (πριν F8) | ⚠️ resume → **92/95**: η μισοτελειωμένη κατηγορία παραλειπόταν ολόκληρη |
-| T8 (μετά F8) | ✅ **95/95**, «Μισθοί» 5/5, μηδέν διπλότυπα |
-| T10 | ✅ release **2.1.1+4** (versionCode 4) |
-| T11 | ✅ cleanup συσκευής (temp αρχεία, rotation, autofill, stay-on, animations) |
-
-Πλήρες αρχείο: `device test/README.md` (screenshots, logs, tools).
-
 ### Quality gates
-| Έλεγχος | Αποτέλεσμα |
-|---|---|
-| `flutter analyze` | ✅ No issues found |
-| `flutter test` | ✅ **89/89** |
-| `onboarding_service.dart` | 477 γραμμές · CRLF |
-
-### Αποφάσεις-κλειδιά
-1. **Το idempotency ελέγχεται σε επίπεδο subcategory, όχι κατηγορίας** — αλλιώς μια διακοπή μέσα σε κατηγορία αφήνει μόνιμα κενά.
-2. **Version bump PATCH**: `2.1.0+3` → **`2.1.1+4`** (fixes, χωρίς νέο schema).
-3. **Device tests σε debug build**, γιατί χρειάζεται `run-as` (backup app data)· στο τέλος εγκαταστάθηκε release.
-
-### Γνωστός περιορισμός (νέο)
-- **Restore app data δεν επαναφέρει session:** το `pm clear` διαγράφει το Keystore key, άρα το κρυπτογραφημένο `com.google.firebase.auth.api.Store.*.xml` δεν αποκρυπτογραφείται. Τα δεδομένα/preferences επιστρέφουν, το login γίνεται μία φορά χειροκίνητα.
-
 ### Εκκρεμότητες
-| # | Θέμα | Κατάσταση |
-|---|---|---|
-| 1 | Διαγραφή test χρηστών στη Firebase (`device.test.a/b@example.com`) — **χειροκίνητα από τον χρήστη** | ✅ |
-| 2 | `device test/` untracked (48 αρχεία)· μόνο το `backup/` μπήκε στο `.gitignore` | ⏳ |
-| 3 | `DESIGN.md`: μόνο ενημέρωση χάρτη τεκμηρίωσης (§12) — τα L21/L22 **αφαιρέθηκαν** (δεν είναι αρχιτεκτονική) | ✅ |
-| 4 | Δημιουργία **`error_list.md`** (λίστα ευρημάτων/εκκρεμοτήτων): E1–E4 FIXED, E5 DEFERRED, E6 WON'T FIX, E7 OPEN, E8 INFO · ενημερώθηκαν `AGENTS.md` (κανόνας 12 + πίνακας + Session Log) και `DESIGN.md` §12 | ✅ |
-| 5 | E9 (F6): `users.created_at`/`updated_at` σε `Timestamp.now()` στο `onboarding_service.dart` — `analyze` ✅, tests **89/89** | ✅ |
-
-### Backups αυτού του session
-`onboarding_service_20261120_131335.bak`, `onboarding_service_20261120_135400.bak`, `gitignore_20261120_132916.bak`, `oldsessions_20261120_132916.bak`, `DESIGN_20261120_134301.bak`, `oldsessions_20261120_134301.bak`, `DESIGN_20261120_134658.bak`, `AGENTS_20261120_134658.bak`, `oldsessions_20261120_134658.bak`, `pubspec_20261119_192958.bak` (από την αλλαγή έκδοσης)
-
+### Backups
+```
