@@ -9,9 +9,10 @@
 
 | # | Ενέργεια | ID |
 |---|---|---|
-| 1 | Απόφαση: ντετερμινιστικά IDs στο onboarding για ασφάλεια σε offline multi-device | E5 |
-| 2 | Απόφαση: επιτρέπεται η διαγραφή του τελευταίου λογαριασμού; | E7 |
-| 3 | Διόρθωση: MessageBubble layout μετά από cold restart | E10 |
+| 1 | Διόρθωση: διαγραφή λογαριασμού που μετέχει σε μεταφορά αφήνει ενεργό το άλλο σκέλος | E11 |
+| 2 | Διόρθωση: budget με διαγραμμένο λογαριασμό εμφανίζεται ως «Όλοι» | E12 |
+| 3 | Απόφαση: ντετερμινιστικά IDs στο onboarding για ασφάλεια σε offline multi-device | E5 |
+| 4 | Διόρθωση: MessageBubble layout μετά από cold restart | E10 |
 
 > Τα E6 και E8 είναι κλειστά (σκόπιμη συμπεριφορά / εγγενής περιορισμός) — δεν περιμένουν ενέργεια.
 
@@ -25,10 +26,17 @@
 | E4 | Resume μετά από kill αφήνει μισοτελειωμένη κατηγορία (92/95 subcategories) | F8 | ✅ FIXED | 2026-11-20 |
 | E5 | Offline onboarding σε 2 συσκευές → διπλότυπα (τυχαία doc IDs) | F5 | ⏸ DEFERRED | 2026-11-20 |
 | E6 | Soft-deleted λογαριασμός «μπλοκάρει» τον default | F4 | 🚫 WON'T FIX | 2026-11-20 |
-| E7 | Διαγραφή όλων των λογαριασμών → 0 ενεργοί λογαριασμοί | — | 🔵 OPEN | 2026-11-20 |
+| E7 | Διαγραφή όλων των λογαριασμών → 0 ενεργοί λογαριασμοί | — | ✅ FIXED | 2026-11-20 |
 | E8 | Restore app data δεν επαναφέρει session (Keystore) | — | ℹ️ INFO | 2026-11-20 |
 | E9 | `users.created_at`/`updated_at` ως ISO string στο onboarding fallback (ασυμφωνία με `auth_service` & docs) | F6 | ✅ FIXED | 2026-11-20 |
 | E10 | MessageBubble layout παγώνει σε λάθος κατάσταση μετά από cold restart (η θεωρία περί bubble cache καταρρίφθηκε) | — | 🔵 OPEN | 2026-11-20 |
+| E11 | Διαγραφή λογαριασμού που μετέχει σε μεταφορά: το άλλο σκέλος μένει ενεργό και τα υπόλοιπα δεν αναιρούνται | — | 🔵 OPEN | 2026-11-20 |
+| E12 | Budget που δείχνει διαγραμμένο λογαριασμό εμφανίζεται ως «Όλοι» και με `spent=0` | — | 🔵 OPEN | 2026-11-20 |
+| E13 | `restoreAccountWithBalance` γράφει όλες τις κινήσεις σε **ένα** batch (όριο 500) | — | 🔵 OPEN | 2026-11-20 |
+| E14 | Επαναφορά μετά τον cleanup 30 ημερών: επιστρέφει ο λογαριασμός χωρίς ιστορικό | — | 🔵 OPEN | 2026-11-20 |
+| E15 | `MessageService` υπάρχει αλλά πρακτικά ανενεργό (μόνο `main.dart`) | — | 🔵 OPEN | 2026-11-20 |
+| E16 | `transaction_edit_sheet` με λογαριασμό που διαγράφηκε → orphan επιλογή στο dropdown | — | 🔵 OPEN | 2026-11-20 |
+| E17 | `firestore.indexes.json` δεν είναι πλήρες σε σχέση με το deployed (π.χ. `deleted` + `date` range) | — | 🔵 OPEN | 2026-11-20 |
 
 ### Λεπτομέρειες
 
@@ -55,9 +63,15 @@
 - Απαιτεί `onboarding_completed=false` + soft-deleted λογαριασμό → πρακτικά μη προσπελάσιμο.
 - **Μην προστεθεί φίλτρο:** docs χωρίς πεδίο `deleted` δεν ταιριάζουν σε `where(..., isEqualTo: false)` → θα δημιουργούσε διπλό default.
 
-**E7 — Μηδέν λογαριασμοί (OPEN)**
-- `_deleteAccount` (`accounts_page.dart:1224`) δεν ελέγχει αν είναι ο τελευταίος· μετά την soft-delete όλων, η Αρχική μένει χωρίς λογαριασμό.
-- Χρειάζεται απόφαση προϊόντος: φραγή («δεν μπορεί να διαγραφεί ο τελευταίος») ή επιτρεπτό με κενή κατάσταση + CTA δημιουργίας.
+**E7 — Μηδέν λογαριασμοί**
+- Απόφαση (D1): **φραγή** διαγραφής του τελευταίου **ενεργού** λογαριασμού.
+- `core/utils/account_delete_guard.dart` (νέο, καθαρό Dart): `evaluate(activeCount)` → `lastActiveAccount` / `noActiveAccount` / `none` + ελληνικό μήνυμα. **0 reads** — χρησιμοποιεί `AccountsProvider.accounts.length`.
+- `accounts_page.dart`: warning panel αντί για tile όταν μένει 1· διαγραφή με **ατομικό batch** (≤499 κινήσεις, κινήσεις + λογαριασμός μαζί) ή chunks 500 με λογαριασμό **τελευταίο**· success μετά το commit· καθαρισμός `excluded_accounts_{uid}`.
+- `transaction_entry_page.dart`: κενή κατάσταση + CTA «Δημιουργία λογαριασμού» (callback από `home_page._onTabTap(2)`).
+- Tests: `account_delete_guard_test.dart` (8) → **97/97**· `flutter analyze` καθαρό.
+- Περιορισμός: η φραγή είναι **τοπική** (βλ. `DESIGN.md` §11 L21 — multi-device race).
+- Έκδοση: `2.1.2+5`.
+- Commit: `073a248`.
 
 **E8 — Restore app data (INFO)**
 - Το `pm clear` διαγράφει το Keystore key· το `com.google.firebase.auth.api.Store.*.xml` δεν αποκρυπτογραφείται μετά από restore.
@@ -73,6 +87,37 @@
 - **Καταρρίφθηκε:** η αρχική θεωρία ότι το `_obtainBubble` cache κάνει identity skip. Το `build()` καλείται κανονικά (ίδιο `identity`, `screenW`/`textScale`/`bubbleMaxWidth` σταθερά σε όλα τα builds). Τα δύο attempts (ValueKey, αφαίρεση cache) **αναιρέθηκαν**.
 - Επόμενη κατεύθυνση: ListView reconciliation, parent constraints, `MediaQuery` propagation.
 - Πλήρες ιστορικό ελέγχων: [`oldsessions/09-bubble-layout-cache-bug.md`](oldsessions/09-bubble-layout-cache-bug.md).
+
+**E11 — Μεταφορές με διαγραμμένο λογαριασμό (OPEN)**
+- Το `_deleteAccount` κρύβει μόνο τα docs με `account_id == uuid`. Σε μεταφορά, το άλλο σκέλος έχει `account_id` = **peer** λογαριασμό και δείχνει πίσω με `transfer_peer_account_id` → μένει ενεργό.
+- Αποτέλεσμα: το ποσό παραμένει στο peer υπόλοιπο χωρίς «ταιριαστό» σκέλος· δεν υπάρχει έλεγχος ακεραιότητας.
+- Επηρεάζει και προγραμματισμένες μεταφορές (`scheduled_transactions_service`).
+- Εντοπίστηκε κατά τον έλεγχο του E7· **δεν** διορθώνεται εκεί.
+
+**E12 — Budget με διαγραμμένο λογαριασμό (OPEN)**
+- `budget_page.dart:712–721` → `accountName = acc?.name` = `null` όταν ο λογαριασμός διαγραφεί· η ετικέτα πέφτει στο `?? 'Όλοι'` (`:100, 809, 906`).
+- Το `calculateSpentAmount` φιλτράρει `deleted == false` → το budget δείχνει «Όλοι» με `spent = 0`, ενώ είναι δεσμευμένο σε άλλο λογαριασμό.
+- Mislabel + λάθος ποσό, χωρίς crash.
+
+**E13 — Restore >500 κινήσεις (OPEN)**
+- `account_duplicate_service.dart:121–130`: ένα `batch` για όλες τις κινήσεις του λογαριασμού → αποτυγχάνει πάνω από 500 εγγραφές.
+- Υπάρχει ήδη chunking pattern στο `database_cleanup_service.dart:428,491`.
+
+**E14 — Restore μετά τον cleanup (OPEN)**
+- Ο cleanup διαγράφει οριστικά soft-deleted κινήσεις μετά από 30 ημέρες (`database_cleanup_service.dart:473–499`) αλλά **δεν** αγγίζει `accounts`.
+- Άρα «Με Υπόλοιπο» επαναφέρει τον λογαριασμό χωρίς ιστορικό· το `current_balance` μένει ως είχε → πιθανή ασυμφωνία με το ιστορικό.
+
+**E15 — MessageService ανενεργό (OPEN)**
+- `core/services/message_service.dart` (offline-aware snackbars + a11y) καλείται μόνο από `main.dart:120`.
+- Οι οθόνες χρησιμοποιούν τοπικά `_show*Snack` → διπλός μηχανισμός μηνυμάτων.
+
+**E16 — Transaction edit με διαγραμμένο λογαριασμό (OPEN)**
+- `transaction_edit_sheet.dart:85` κρατά `_accountId` από το tx· το dropdown (`:235`) δεν περιέχει διαγραμμένους → orphan τιμή.
+- Σχετίζεται με E11 (μεταφορές) αλλά αφορά οποιαδήποτε κίνηση.
+
+**E17 — Indexes file vs deployed (OPEN)**
+- Το `firestore.indexes.json` έχει 3 indexes· το `transactions_provider.dart:202–204` (`date` range + `deleted ==`) απαιτεί composite index που **δεν** υπάρχει στο αρχείο.
+- Άρα το αρχείο δεν είναι αξιόπιστος κατάλογος· κάθε νέο query πρέπει να ελέγχεται και στο console.
 
 ## Πώς προσθέτω εύρημα
 

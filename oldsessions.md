@@ -21,10 +21,10 @@
 
 | | |
 |---|---|
-| Έκδοση | **2.1.1+4** |
-| Τελευταίο κεφάλαιο | **16** — Onboarding fixes + device tests (2026-11-20) |
-| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **89/89** |
-| Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`) |
+| Έκδοση | **2.1.2+5** |
+| Τελευταίο κεφάλαιο | **17** — E7: φραγή διαγραφής τελευταίου λογαριασμού (2026-11-20) |
+| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **97/97** |
+| Επόμενη εκκρεμότητα | **E11** — μεταφορά με διαγραμμένο λογαριασμό (`error_list.md`) |
 
 ## Κεφάλαια
 
@@ -46,14 +46,15 @@
 | 14 | 2026-11-19 | 13 | [Security history & docs](oldsessions/14-session-13-security-history-docs.md) | Ανάκληση key + rewrite history· DESIGN/AGENTS/README rewrite· versioning E1–E3· v2.0.1 |
 | 15 | 2026-11-19 | 14 | [E4: versioning δεδομένων](oldsessions/15-session-14-schema-versioning.md) | `schema_version` gate + 39 tests → **89/89**· release v2.1.0 |
 | 16 | 2026-11-20 | 15 | [Onboarding fixes + device tests](oldsessions/16-session-15-onboarding-device-tests.md) | F1/F2/F3/F8· T0–T11 στη συσκευή· v2.1.1+4· δημιουργία `error_list.md` |
+| 17 | 2026-11-20 | 16 | [E7: φραγή τελευταίου λογαριασμού](oldsessions/17-session-16-e7-last-account-guard.md) | Guard 0 reads· ατομικό batch/chunks· κενή κατάσταση Συναλλαγών· E11–E17· v2.1.2+5 |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **16** (01–16) |
+| Κεφάλαια στον φάκελο | **17** (01–17) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **636** |
+| Σύνολο γραμμών κεφαλαίων | **689** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

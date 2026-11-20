@@ -14,6 +14,7 @@ import 'package:family_economy/core/utils/currency_formatter.dart';
 import 'package:family_economy/core/utils/icon_mapper.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
+import 'package:family_economy/core/utils/account_delete_guard.dart';
 // Providers
 import 'package:family_economy/providers/accounts_provider.dart';
 import 'package:family_economy/services/account_duplicate_service.dart';
@@ -1020,6 +1021,9 @@ class _AccountsPageState extends State<AccountsPage>
 
   void _showAccountOptions(BuildContext context, AccountModel account) {
     final brightness = Theme.of(context).brightness;
+    final deleteDecision = AccountDeleteGuard.evaluate(
+      context.read<AccountsProvider>().accounts.length,
+    );
 
     showModalBottomSheet(
       context: context,
@@ -1120,46 +1124,98 @@ class _AccountsPageState extends State<AccountsPage>
               },
             ),
 
-            // Delete
-            // Delete
-            ListTile(
-              leading: Icon(Icons.delete, color: ColorsUI.getError(brightness)),
-              title: Text(
-                'Διαγραφή',
-                style: TypographyUI.bodyMedium(
-                  brightness,
-                ).copyWith(color: ColorsUI.getError(brightness)),
-              ),
-              onTap: () async {
-                // 1) Κλείσε το bottom sheet
-                Navigator.pop(context);
+            // Delete (μόνο αν μένει τουλάχιστον ένας άλλος ενεργός)
+            if (deleteDecision.canDelete)
+              ListTile(
+                leading: Icon(
+                  Icons.delete,
+                  color: ColorsUI.getError(brightness),
+                ),
+                title: Text(
+                  'Διαγραφή',
+                  style: TypographyUI.bodyMedium(
+                    brightness,
+                  ).copyWith(color: ColorsUI.getError(brightness)),
+                ),
+                onTap: () async {
+                  // 1) Κλείσε το bottom sheet
+                  Navigator.pop(context);
 
-                // 2) Επιβεβαίωση διαγραφής (Dialog)
-                final confirmed = await _confirmDeleteAccountDialog(
-                  context,
-                  account,
-                );
-                if (!confirmed) return;
+                  // 2) Επιβεβαίωση διαγραφής (Dialog)
+                  final confirmed = await _confirmDeleteAccountDialog(
+                    context,
+                    account,
+                  );
+                  if (!confirmed) return;
+                  if (!context.mounted) return;
 
-                // 3) Background operation
-                final scaffoldContext = context;
-                if (!context.mounted) return;
+                  final scaffoldContext = context;
 
-                // ✅ Success αμέσως (ONLINE/OFFLINE)
-                _showSuccessSnack(scaffoldContext, 'Ο λογαριασμός διαγράφηκε');
-                AccessibilityService.announceSuccess(
-                  'Ο λογαριασμός διαγράφηκε',
-                );
-                _deleteAccount(account.uuid).catchError((error) {
-                  if (!scaffoldContext.mounted) return;
+                  // 3) Διαγραφή: κινήσεις πρώτα, λογαριασμός τελευταίος
+                  try {
+                    await _deleteAccount(account.uuid);
+                    if (!scaffoldContext.mounted) return;
 
-                  _showErrorSnack(scaffoldContext, 'Σφάλμα Διαγραφής');
-                  DebugConfig.print('Delete account error: $error');
-                });
-              },
-            ),
+                    _showSuccessSnack(
+                      scaffoldContext,
+                      'Ο λογαριασμός διαγράφηκε',
+                    );
+                    AccessibilityService.announceSuccess(
+                      'Ο λογαριασμός διαγράφηκε',
+                    );
+                  } catch (error) {
+                    DebugConfig.print('Delete account error: $error');
+                    if (!scaffoldContext.mounted) return;
+
+                    _showErrorSnack(scaffoldContext, 'Σφάλμα Διαγραφής');
+                    AccessibilityService.announceError(
+                      'Σφάλμα διαγραφής λογαριασμού',
+                    );
+                  }
+                },
+              )
+            else
+              _buildDeleteBlockedTile(brightness, deleteDecision.message),
 
             const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Εναλλακτικό περιεχόμενο όταν η διαγραφή δεν επιτρέπεται
+  /// (τελευταίος ενεργός λογαριασμός). Ίδιο pattern με CategoryActionsDialog.
+  Widget _buildDeleteBlockedTile(Brightness brightness, String message) {
+    final warning = ColorsUI.getWarning(brightness);
+
+    return Semantics(
+      liveRegion: true,
+      label: 'Διαγραφή μη διαθέσιμη. $message',
+      excludeSemantics: true,
+      child: Container(
+        margin: const EdgeInsets.only(top: 4),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: warning.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: warning.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ExcludeSemantics(
+              child: Icon(Icons.lock_outline, color: warning, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TypographyUI.bodySmall(
+                  brightness,
+                ).copyWith(color: warning),
+              ),
+            ),
           ],
         ),
       ),
@@ -1219,8 +1275,9 @@ class _AccountsPageState extends State<AccountsPage>
     return true;
   }
 
-  /// Διαγραφή λογαριασμού (soft delete)
-  /// Διαγραφή λογαριασμού (soft delete) + soft delete των κινήσεων του
+  /// Διαγραφή λογαριασμού (soft delete) + soft delete των κινήσεών του.
+  /// - Έως 499 κινήσεις: ένα ατομικό batch (κινήσεις + λογαριασμός μαζί).
+  /// - Πάνω από 499: chunks των 500 και ο λογαριασμός γράφεται τελευταίος.
   Future<void> _deleteAccount(String uuid) async {
     try {
       // ignore: use_build_context_synchronously
@@ -1232,13 +1289,7 @@ class _AccountsPageState extends State<AccountsPage>
           .collection('accounts')
           .doc(uuid);
 
-      // 1) Soft delete account
-      await accountRef.update({
-        'deleted': true,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-
-      // 2) Soft delete ΟΛΕΣ τις κινήσεις του λογαριασμού
+      // 1) Κινήσεις που θα κρυφτούν μαζί με τον λογαριασμό
       final txSnap = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -1247,18 +1298,60 @@ class _AccountsPageState extends State<AccountsPage>
           .where('deleted', isEqualTo: false)
           .get();
 
-      if (txSnap.docs.isNotEmpty) {
+      final updatedAt = FieldValue.serverTimestamp();
+      final txCount = txSnap.docs.length;
+
+      if (txCount <= 499) {
+        // ✅ Ατομική διαγραφή: ή όλα ή τίποτα
         final batch = FirebaseFirestore.instance.batch();
+
         for (final doc in txSnap.docs) {
           batch.update(doc.reference, {
             'deleted': true,
-            'updated_at': FieldValue.serverTimestamp(),
+            'updated_at': updatedAt,
           });
         }
+
+        batch.update(accountRef, {
+          'deleted': true,
+          'updated_at': updatedAt,
+        });
+
         await batch.commit();
+      } else {
+        // ✅ Πάνω από το όριο του batch: chunks, λογαριασμός τελευταίος
+        var written = 0;
+        var batch = FirebaseFirestore.instance.batch();
+
+        for (final doc in txSnap.docs) {
+          batch.update(doc.reference, {
+            'deleted': true,
+            'updated_at': updatedAt,
+          });
+          written++;
+
+          if (written % 500 == 0) {
+            await batch.commit();
+            batch = FirebaseFirestore.instance.batch();
+          }
+        }
+
+        if (written % 500 != 0) await batch.commit();
+
+        await accountRef.update({
+          'deleted': true,
+          'updated_at': FieldValue.serverTimestamp(),
+        });
       }
 
-      DebugConfig.print('✅ Account deleted: $uuid (and tx soft-deleted)');
+      // 2) Καθαρισμός τοπικής προτίμησης (αποκλεισμός από το συνολικό υπόλοιπο)
+      if (_excludedAccountUuids.remove(uuid) && mounted) {
+        await _saveExcludedAccounts();
+      }
+
+      DebugConfig.print(
+        '✅ Account deleted: $uuid (tx=$txCount, chunked=${txCount > 499})',
+      );
     } catch (e) {
       DebugConfig.print('❌ Error deleting account: $e');
       rethrow;

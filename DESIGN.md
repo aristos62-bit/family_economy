@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 50 tests
+flutter test                       # 97 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -53,7 +53,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | JDK (CLI) | 21.0.2 (ρυθμισμένο στο `flutter config`) |
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Visual Studio | Community 2026 18.1.1 · Windows SDK 10.0.26100.0 |
-| App version | `2.1.0+3` (`pubspec.yaml`) |
+| App version | **`2.1.2+5`** (`pubspec.yaml`, επαληθεύτηκε 20/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -120,17 +120,17 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.1.0+3)          ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.1.2+5)          ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.1.0 · BUILD_NO=3
-         ├── APK      FamilyBudget_v2.1.0.apk
+   └── build_and_setup_final.bat  APP_VER=2.1.2 · BUILD_NO=5   (από pubspec, STEP 0)
+         ├── APK      FamilyBudget_v2.1.2.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.1.0.exe   (FileVersion 2.1.0.3)
+               └── FamilyBudgetSetup_v2.1.2.exe   (FileVersion 2.1.2.5)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -140,10 +140,10 @@ pubspec.yaml  (version: 2.1.0+3)          ← ΜΟΝΟ εδώ αλλάζει η 
 | **R1** | **Μία** πηγή: μόνο το `version:` του `pubspec.yaml` γράφεται με το χέρι | κανένα άλλο αρχείο δεν περιέχει νούμερο έκδοσης |
 | **R2** | Ό,τι μπορεί να παραχθεί, **παράγεται** | Android / iOS / macOS / Windows / Web από το Flutter· installer από το `.bat` |
 | **R3** | Κάθε hardcoded fallback **αποτυγχάνει δυνατά** | `fam_eco_new.iss`: `#error MyAppVersion is not defined` |
-| **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.0.apk`, `FamilyBudgetSetup_v2.1.0.exe` |
+| **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.1.0 (build 3)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.1.2 (build 5)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -229,9 +229,9 @@ pubspec.yaml  (version: 2.1.0+3)          ← ΜΟΝΟ εδώ αλλάζει η 
 |---|---|
 | Script | `fam_eco_new.iss` (Inno Setup 6.6.1) |
 | AppVersion | `{#MyAppVersion}` — **μόνο** από `/D` του script· χωρίς αυτό → `#error` (δεν υπάρχει fallback) |
-| File version (exe) | `VersionInfoVersion={#MyAppVersion}.{#MyBuildNo}` → π.χ. `2.1.0.3` |
+| File version (exe) | `VersionInfoVersion={#MyAppVersion}.{#MyBuildNo}` → π.χ. `2.1.1.4` |
 | Default dir | `{localappdata}\f_budget` |
-| Output | `.\InstallerOutput\FamilyBudgetSetup_v<ver>.exe` (π.χ. `FamilyBudgetSetup_v2.1.0.exe`) |
+| Output | `.\InstallerOutput\FamilyBudgetSetup_v<ver>.exe` (π.χ. `FamilyBudgetSetup_v2.1.1.exe`) |
 | Compression | `lzma2/ultra64` |
 | Privileges | `PrivilegesRequired=lowest` |
 | Εξάρτηση | `Dependencies/VC_redist.x64.exe` (17,7 MB, tracked) |
@@ -246,7 +246,7 @@ pubspec.yaml  (version: 2.1.0+3)          ← ΜΟΝΟ εδώ αλλάζει η 
 |---|---|
 | `flutter build bundle` | ✅ EXIT 0 |
 | `flutter analyze` | ✅ No issues found |
-| `flutter test` | ✅ 89/89 |
+| `flutter test` | ✅ 97/97 |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -258,12 +258,12 @@ pubspec.yaml  (version: 2.1.0+3)          ← ΜΟΝΟ εδώ αλλάζει η 
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **102** (τα 2 `*.backup` είναι πλέον untracked/ignored) |
+| Dart αρχεία στο `lib/` | **103** (τα 2 `*.backup` είναι πλέον untracked/ignored) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 8 αρχεία · **89** `test()`/`testWidgets()` |
+| Tests | 9 αρχεία · **97** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | 5.086 αρχεία, 41,4 MB — **εκτός git** (πλέον ignored) |
 
@@ -294,6 +294,7 @@ lib/
       app_theme.dart                           # lightTheme / darkTheme (Material 3)
       ui_tokens.dart                           # ColorsUI, TypographyUI (primaryFont = Roboto)
     utils/
+      account_delete_guard.dart                # Φραγή διαγραφής τελευταίου ενεργού λογαριασμού (E7, καθαρό Dart)
       app_info.dart                            # έκδοση από package_info_plus (footer Επιλογών)
       chart_helpers.dart
       currency_formatter.dart
@@ -543,6 +544,19 @@ lib/
 - Oil: `oil_page.dart` + `oil/` (12 αρχεία) — ρυθμίσεις σε `settings/oil_tank` (`avg_cost_per_liter`, `liters_at_last_purchase`, `price_per_liter`), ιστορικό σε `oil_purchases`.
 - Εξαγωγή δεδομένων: `pdf` + `excel` + `file_picker` στις σελίδες `stats2_averages_page`, `stats3_page`, `stats4_budget_page`.
 
+### 5.13 Διαγραφή λογαριασμού — φραγή τελευταίου (E7)
+
+| Στοιχείο | Τιμή |
+|---|---|
+| Απόφαση | `core/utils/account_delete_guard.dart` — καθαρό Dart, **0 reads** |
+| Είσοδος | `AccountsProvider.accounts.length` (ήδη φιλτραρισμένο: `deleted == false` ∧ `isActive`) |
+| Κανόνας | `1` ενεργός → φραγή (warning panel αντί για tile)· `≥2` → επιτρέπεται |
+| Εγγραφή | `≤499` κινήσεις: **ένα** batch (κινήσεις + λογαριασμός)· `>499`: chunks 500, λογαριασμός τελευταίος |
+| Μηνύματα | success/error **μετά** το commit (όχι success-first) |
+| Κενή κατάσταση | `transaction_entry_page.dart` — μήνυμα + CTA προς καρτέλα «Λογαριασμοί» (`home_page._onTabTap(2)`) |
+
+> Ο κανόνας **δεν** αγγίζει υπόλοιπα: ο λογαριασμός αφαιρείται ως σύνολο. Τα budget docs που τον δείχνουν δεν καθαρίζονται (E12).
+
 ---
 
 ## 6. Firestore μοντέλο
@@ -789,11 +803,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (89 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (97 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ No issues found (~5s) |
-| `flutter test` | ✅ 89/89 |
+| `flutter test` | ✅ 97/97 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 ### 9.2 Τι καλύπτεται
@@ -808,6 +822,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `widget_test.dart` | 1 | `ErrorApp` εμφανίζει μήνυμα σφάλματος |
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
 | `startup_error_view_test.dart` | 5 | Κείμενα, ενέργειες, λεπτομέρειες, `textScale 1.45` χωρίς overflow |
+| `account_delete_guard_test.dart` | 8 | Φραγή διαγραφής τελευταίου λογαριασμού (E7): 0/1/2/N, μηνύματα |
 
 ### 9.3 Τι **δεν** καλύπτεται
 
@@ -894,6 +909,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | L18 | `ErrorApp` «Επανεκκίνηση» → `Null check operator` (το `ErrorApp` χτίζεται **έξω** από το `Phoenix`, όταν το Firebase init αποτυγχάνει) · ακόμη κι αν έμπαινε μέσα, **δεν** επανατρέχει το `main()` | §4.4 |
 | L19 | Web: `persistentLocalCache` **χωρίς** multi-tab manager → 2 tabs μπορεί να δουν διαφορετικά δεδομένα | §2.4 |
 | L20 | `schema_version` χωρίς field validation στους rules (γράφεται μόνο από την εφαρμογή, στον δικό της λογαριασμό) | §7.2 |
+| L21 | Φραγή διαγραφής **μόνο τοπικά**: δύο συσκευές μπορούν να διαγράψουν ταυτόχρονα τους δύο τελευταίους λογαριασμούς → 0 ενεργοί (καλύπτεται από κενή κατάσταση + CTA, χωρίς server-side guard) | §5.13 |
 
 ---
 

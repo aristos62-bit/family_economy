@@ -325,7 +325,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       const GeneralViewPage(),
-      const TransactionEntryPage(),
+      TransactionEntryPage(onGoToAccounts: () => _onTabTap(2)),
       const AccountsPage(),
       const ScheduledTransactionsPage(),
       const CalendarPage(),

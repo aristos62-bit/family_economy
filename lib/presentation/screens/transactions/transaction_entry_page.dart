@@ -18,19 +18,24 @@ import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 
 class TransactionEntryPage extends StatelessWidget {
-  const TransactionEntryPage({super.key});
+  const TransactionEntryPage({super.key, this.onGoToAccounts});
+
+  /// Όταν δεν υπάρχει λογαριασμός, το CTA οδηγεί στην καρτέλα «Λογαριασμοί».
+  final VoidCallback? onGoToAccounts;
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => TransactionEntryState(),
-      child: const _TransactionEntryView(),
+      child: _TransactionEntryView(onGoToAccounts: onGoToAccounts),
     );
   }
 }
 
 class _TransactionEntryView extends StatelessWidget {
-  const _TransactionEntryView();
+  const _TransactionEntryView({this.onGoToAccounts});
+
+  final VoidCallback? onGoToAccounts;
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +123,12 @@ class _TransactionEntryView extends StatelessWidget {
                               style: TypographyUI.bodyMedium(brightness),
                             ),
                           ),
+                        );
+                      }
+
+                      if (accountsProvider.accounts.isEmpty) {
+                        return _NoAccountsState(
+                          onGoToAccounts: onGoToAccounts,
                         );
                       }
 
@@ -382,6 +393,65 @@ class _TransactionTypeSelector extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Κενή κατάσταση όταν δεν υπάρχει κανένας ενεργός λογαριασμός.
+/// Προστατεύει τη ροή καταχώρησης από «αδιέξοδο» (E7).
+class _NoAccountsState extends StatelessWidget {
+  const _NoAccountsState({this.onGoToAccounts});
+
+  final VoidCallback? onGoToAccounts;
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          liveRegion: true,
+          label:
+              'Δεν υπάρχει λογαριασμός. Για να καταχωρήσετε κίνηση χρειάζεται '
+              'τουλάχιστον ένας λογαριασμός.',
+          excludeSemantics: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ExcludeSemantics(
+                child: Icon(
+                  Icons.account_balance_wallet_outlined,
+                  size: 40,
+                  color: ColorsUI.getTextSecondary(brightness),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Δεν υπάρχει λογαριασμός',
+                style: TypographyUI.titleMedium(brightness),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Για να καταχωρήσετε κίνηση χρειάζεται τουλάχιστον ένας '
+                'λογαριασμός.',
+                style: TypographyUI.bodyMedium(
+                  brightness,
+                ).copyWith(color: ColorsUI.getTextSecondary(brightness)),
+              ),
+            ],
+          ),
+        ),
+        if (onGoToAccounts != null) ...[
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: onGoToAccounts,
+            icon: const Icon(Icons.add, size: 20),
+            label: const Text('Δημιουργία λογαριασμού'),
+          ),
+        ],
+      ],
     );
   }
 }
