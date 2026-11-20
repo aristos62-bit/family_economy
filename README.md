@@ -118,6 +118,7 @@ SemVer `MAJOR.MINOR.PATCH+BUILD` — η έκδοση αλλάζει **μόνο**
 | [`DESIGN.md`](DESIGN.md) | Τεχνική αλήθεια: stack, δομή, αρχιτεκτονική, Firestore, build, tests |
 | [`AGENTS.md`](AGENTS.md) | Κανόνες λειτουργίας για agents |
 | [`oldsessions.md`](oldsessions.md) | Ιστορικό ανά session |
+| [`error_list.md`](error_list.md) | Ευρήματα & εκκρεμότητες: κατάσταση και σειρά διόρθωσης |
 | `docs/` | Legacy περιγραφές schema (import script) |
 | `data/*.json` | Δεδομένα εισαγωγής |
 

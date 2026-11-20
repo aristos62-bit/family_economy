@@ -893,8 +893,6 @@ schema_version (int), schema_updated_at (Timestamp)
 | L18 | `ErrorApp` «Επανεκκίνηση» → `Null check operator` (το `ErrorApp` χτίζεται **έξω** από το `Phoenix`, όταν το Firebase init αποτυγχάνει) · ακόμη κι αν έμπαινε μέσα, **δεν** επανατρέχει το `main()` | §4.4 |
 | L19 | Web: `persistentLocalCache` **χωρίς** multi-tab manager → 2 tabs μπορεί να δουν διαφορετικά δεδομένα | §2.4 |
 | L20 | `schema_version` χωρίς field validation στους rules (γράφεται μόνο από την εφαρμογή, στον δικό της λογαριασμό) | §7.2 |
-| L21 | Onboarding: ο έλεγχος «υπάρχει ήδη λογαριασμός» (`accounts.limit(1)`) **δεν** φιλτράρει `deleted` — **σκόπιμα**: αν λείπει το user doc αλλά μένουν accounts, η φραγή εμποδίζει διπλό default. Χρειάζεται `onboarding_completed=false` + soft-deleted λογαριασμό → πρακτικά μη προσπελάσιμο. **Μην προσθέσεις φίλτρο:** docs χωρίς πεδίο `deleted` δεν ταιριάζουν σε `where(..., isEqualTo: false)` → θα δημιουργούσε διπλό default | §6.2 |
-| L22 | Onboarding offline σε 2 συσκευές: τυχαία doc IDs (`uuid.v4`) → δύο runs γράφουν **διαφορετικά** docs (κανένα conflict) → διπλότυπα (2 accounts, 28 categories, ~190 subcategories). Το `runTransaction` **δεν** λύνει (απαιτεί server → σπάει το offline-first) και batch δεν κάνει conflict detection σε διαφορετικά IDs. Αν χρειαστεί: **ντετερμινιστικά IDs** (`default-account`, `cat-income-1…6`, `cat-expense-1…8`, `sub-1…n`) ώστε το `set()` να είναι idempotent — μόνο για νέους χρήστες, καμία migration | §6.2 |
 
 ---
 
@@ -907,6 +905,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `DESIGN.md` | **Τεχνική αλήθεια** | Ό,τι περιγράφεται σε αυτό το αρχείο |
 | `AGENTS.md` | Κανόνες agent | Διαδικασία + παραπομπή εδώ |
 | `oldsessions.md` | Ιστορικό | Τι έγινε ανά session |
+| `error_list.md` | **Ευρήματα & εκκρεμότητες** | Προβλήματα που βρέθηκαν, κατάσταση, σειρά διόρθωσης |
 | `README.md` | Παρουσίαση | Intro + links |
 | `docs/` | Legacy λεπτομέρειες | Πίνακες schema (import script) |
 | `data/*.json` | Datasets | Δεδομένα εισαγωγής |
@@ -939,4 +938,5 @@ schema_version (int), schema_updated_at (Timestamp)
 1. Αλλαγή σε stack/δομή/schema → **μόνο** `DESIGN.md` (με ημερομηνία επαλήθευσης).
 2. Αλλαγή σε κανόνες λειτουργίας → `AGENTS.md`.
 3. Κάθε session/fix → `oldsessions.md`.
-4. Καμία αντιγραφή τεχνικών ενοτήτων σε άλλα αρχεία.
+4. Κάθε νέο εύρημα/διόρθωση → `error_list.md` (μόνο εκεί η λίστα εκκρεμοτήτων).
+5. Καμία αντιγραφή τεχνικών ενοτήτων σε άλλα αρχεία.

@@ -580,9 +580,9 @@
 |---|---|---|
 | 1 | Διαγραφή test χρηστών στη Firebase (`device.test.a/b@example.com`) — **χειροκίνητα από τον χρήστη** | ✅ |
 | 2 | `device test/` untracked (48 αρχεία)· μόνο το `backup/` μπήκε στο `.gitignore` | ⏳ |
-| 3 | `DESIGN.md`: καμία αρχιτεκτονική αλλαγή — μόνο καταγραφή L21/L22 στο §11 | ✅ |
-| 4 | F4/F5 (soft-deleted account, offline multi-device) — καταγράφηκαν ως **L21/L22** στο `DESIGN.md` §11, χωρίς αλλαγή κώδικα | ✅ |
+| 3 | `DESIGN.md`: μόνο ενημέρωση χάρτη τεκμηρίωσης (§12) — τα L21/L22 **αφαιρέθηκαν** (δεν είναι αρχιτεκτονική) | ✅ |
+| 4 | Δημιουργία **`error_list.md`** (λίστα ευρημάτων/εκκρεμοτήτων): E1–E4 FIXED, E5 DEFERRED, E6 WON'T FIX, E7 OPEN, E8 INFO · ενημερώθηκαν `AGENTS.md` (κανόνας 12 + πίνακας + Session Log) και `DESIGN.md` §12 | ✅ |
 
 ### Backups αυτού του session
-`onboarding_service_20261120_131335.bak`, `gitignore_20261120_132916.bak`, `oldsessions_20261120_132916.bak`, `pubspec_20261119_192958.bak` (από την αλλαγή έκδοσης)
+`onboarding_service_20261120_131335.bak`, `gitignore_20261120_132916.bak`, `oldsessions_20261120_132916.bak`, `DESIGN_20261120_134301.bak`, `oldsessions_20261120_134301.bak`, `DESIGN_20261120_134658.bak`, `AGENTS_20261120_134658.bak`, `oldsessions_20261120_134658.bak`, `pubspec_20261119_192958.bak` (από την αλλαγή έκδοσης)
 
