@@ -70,6 +70,20 @@ class OnboardingService {
   }
 
   Future<void> _createDefaultAccount(String userId) async {
+    // ✅ Idempotency: αν υπάρχει ήδη έστω ένας λογαριασμός, μη δημιουργήσεις
+    // δεύτερο (onboarding που κόπηκε μετά τη δημιουργία του λογαριασμού).
+    final existingAccounts = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('accounts')
+        .limit(1)
+        .get();
+
+    if (existingAccounts.docs.isNotEmpty) {
+      DebugConfig.print('✅ Default account already exists — skipping');
+      return;
+    }
+
     final now = DateTime.now();
     final accountUuid = _uuid.v4();
 
@@ -97,11 +111,36 @@ class OnboardingService {
     DebugConfig.print('✅ Default account created');
   }
 
+  /// ✅ Idempotency: επιστρέφει map `type|name` → (categoryId, {υπάρχοντα
+  /// subcategory names}), ώστε το onboarding που ξανατρέχει (μετά από διακοπή)
+  /// να μη δημιουργεί διπλές κατηγορίες ΚΑΙ να συμπληρώνει τα subcategories
+  /// που έλειψαν από μια μισοτελειωμένη κατηγορία.
+  Future<Map<String, MapEntry<String, Set<String>>>> _existingCategoryState(
+      String userId) async {
+    final snap = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('categories')
+        .get();
+
+    final result = <String, MapEntry<String, Set<String>>>{};
+    for (final doc in snap.docs) {
+      final data = doc.data();
+      final subs = await doc.reference.collection('subcategories').get();
+      result['${data['type']}|${data['name']}'] = MapEntry(doc.id, {
+        for (final s in subs.docs)
+          if (s.data()['name'] is String) s.data()['name'] as String,
+      });
+    }
+    return result;
+  }
+
   Future<void> _createDefaultCategories(
       String userId, {
         OnboardingProgressCallback? onProgress,
       }) async {
     final now = DateTime.now();
+    final existingState = await _existingCategoryState(userId);
 
     // ============================================================
     // INCOME: Categories + ALL Subcategories
@@ -170,37 +209,48 @@ class OnboardingService {
       },
     ];
 
-    int displayOrder = 1;
-
     final incomeTotalCats = incomeCategories.length;
     for (int incomeIdx = 0; incomeIdx < incomeCategories.length; incomeIdx++) {
       final cat = incomeCategories[incomeIdx];
       onProgress?.call(0.30 + (incomeIdx / incomeTotalCats) * 0.30, "Κατηγορία εσόδων: ${cat['name']}");
-      final categoryUuid = _uuid.v4();
 
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('categories')
-          .doc(categoryUuid)
-          .set({
-        'user_id': userId,
-        'name': cat['name'],
-        'type': 'income',
-        'icon_index': cat['icon_index'],
-        'color': '#4CAF50',
-        'is_system': false,
-        'hidden': false,
-        'display_order': displayOrder++,
-        'created_at': Timestamp.fromDate(now),
-        'updated_at': Timestamp.fromDate(now),
-        'deleted': false,
-      });
+      final state = existingState['income|${cat['name']}'];
+      final existingSubNames = state?.value ?? const <String>{};
+      final categoryUuid = state?.key ?? _uuid.v4();
+
+      if (state == null) {
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('categories')
+            .doc(categoryUuid)
+            .set({
+          'user_id': userId,
+          'name': cat['name'],
+          'type': 'income',
+          'icon_index': cat['icon_index'],
+          'color': '#4CAF50',
+          'is_system': false,
+          'hidden': false,
+          'display_order': incomeIdx + 1,
+          'created_at': Timestamp.fromDate(now),
+          'updated_at': Timestamp.fromDate(now),
+          'deleted': false,
+        });
+      } else {
+        DebugConfig.print(
+            '✅ Income category exists: ${cat['name']} — έλεγχος subcategories');
+      }
 
       final subcats = (cat['subcategories'] as List);
       int subOrder = 1;
 
       for (final sc in subcats) {
+        final subName = sc['name'] as String;
+        if (existingSubNames.contains(subName)) {
+          subOrder++;
+          continue;
+        }
         final subcategoryUuid = _uuid.v4();
 
         await _firestore
@@ -354,37 +404,48 @@ class OnboardingService {
       },
     ];
 
-    displayOrder = 1;
-
     final expenseTotalCats = expenseCategories.length;
     for (int expIdx = 0; expIdx < expenseCategories.length; expIdx++) {
       final cat = expenseCategories[expIdx];
       onProgress?.call(0.60 + (expIdx / expenseTotalCats) * 0.37, "Κατηγορία εξόδων: ${cat['name']}");
-      final categoryUuid = _uuid.v4();
 
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('categories')
-          .doc(categoryUuid)
-          .set({
-        'user_id': userId,
-        'name': cat['name'],
-        'type': 'expense',
-        'icon_index': cat['icon_index'],
-        'color': '#F44336',
-        'is_system': false,
-        'hidden': false,
-        'display_order': displayOrder++,
-        'created_at': Timestamp.fromDate(now),
-        'updated_at': Timestamp.fromDate(now),
-        'deleted': false,
-      });
+      final state = existingState['expense|${cat['name']}'];
+      final existingSubNames = state?.value ?? const <String>{};
+      final categoryUuid = state?.key ?? _uuid.v4();
+
+      if (state == null) {
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('categories')
+            .doc(categoryUuid)
+            .set({
+          'user_id': userId,
+          'name': cat['name'],
+          'type': 'expense',
+          'icon_index': cat['icon_index'],
+          'color': '#F44336',
+          'is_system': false,
+          'hidden': false,
+          'display_order': expIdx + 1,
+          'created_at': Timestamp.fromDate(now),
+          'updated_at': Timestamp.fromDate(now),
+          'deleted': false,
+        });
+      } else {
+        DebugConfig.print(
+            '✅ Expense category exists: ${cat['name']} — έλεγχος subcategories');
+      }
 
       final subcats = (cat['subcategories'] as List);
       int subOrder = 1;
 
       for (final sc in subcats) {
+        final subName = sc['name'] as String;
+        if (existingSubNames.contains(subName)) {
+          subOrder++;
+          continue;
+        }
         final subcategoryUuid = _uuid.v4();
 
         await _firestore

@@ -57,3 +57,6 @@ node_modules/
 # Local backups (pre-edit copies) — ποτέ στο repo
 backups/
 *.backup
+
+# Device test artifacts: το tar backup των app data είναι ~100MB
+device test/backup/

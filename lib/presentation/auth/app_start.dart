@@ -15,6 +15,7 @@ import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 
 import 'package:family_economy/services/notifications_service.dart';
+import 'package:family_economy/services/onboarding_service.dart';
 
 import 'package:family_economy/providers/accounts_provider.dart';
 import 'package:family_economy/providers/categories_provider.dart';
@@ -76,7 +77,15 @@ class _AppStartState extends State<AppStart> {
       final uid = user.uid;
 
       // 1) Load user data (for Session currency)
-      final userDoc = await _authService.getUserDocument(uid);
+      var userDoc = await _authService.getUserDocument(uid);
+
+      // ✅ Αν λείπει το user document, το δημιουργούμε με όλα τα πεδία πριν
+      // το onboarding (η μέθοδος γράφει `onboarding_completed: false`).
+      if (!userDoc.exists) {
+        await _authService.createUserDocumentIfNeeded(user);
+        userDoc = await _authService.getUserDocument(uid);
+      }
+
       final userData = userDoc.data();
       final currency = (userData?['default_currency'] as String?) ?? 'EUR';
       DebugConfig.print('🔑 Loaded user document for uid=$uid with default currency=$currency');
@@ -105,6 +114,12 @@ class _AppStartState extends State<AppStart> {
         exists: userDoc.exists,
         data: userDoc.data(),
       );
+
+      // ✅ ONBOARDING RECOVERY: αν το flag είναι ρητά `false`, το onboarding
+      // είχε διακοπεί (kill/δίκτυο) → ξανατρέχει εδώ, ώστε χρήστης με
+      // persisted session να μην μπει σε άδεια εφαρμογή.
+      // Το flag διαβάζεται από το doc που ήδη φορτώθηκε (0 επιπλέον reads).
+      await _runOnboardingIfNeeded(uid, userData);
 
       // ✅ ΚΡΙΣΙΜΗ ΔΙΟΡΘΩΣΗ: Check scheduled transactions BEFORE navigating
       await _checkScheduledTransactions(uid);
@@ -185,6 +200,26 @@ class _AppStartState extends State<AppStart> {
       '🗂️ schema: ${decision.status.name} '
           '(${decision.fromVersion} → ${decision.toVersion})',
     );
+  }
+
+  // ✅ Ανάκτηση διακοπέντος onboarding στην εκκίνηση με persisted session.
+  // Χρησιμοποιεί το ήδη φορτωμένο doc (0 επιπλέον reads όταν δεν χρειάζεται).
+  // Αν λείπει το πεδίο => θεωρείται ολοκληρωμένο (legacy users χωρίς διπλό
+  // «Κύριο Λογαριασμό»). Σε αποτυχία ΔΕΝ μπλοκάρει την είσοδο στην εφαρμογή.
+  Future<void> _runOnboardingIfNeeded(
+    String uid,
+    Map<String, dynamic>? userData,
+  ) async {
+    final completed = (userData?['onboarding_completed'] as bool?) ?? true;
+    if (completed) return;
+
+    DebugConfig.print('🔁 Onboarding incomplete — resuming for uid=$uid');
+    try {
+      await OnboardingService().checkAndRunOnboarding(uid);
+      DebugConfig.print('✅ Onboarding resumed and completed for uid=$uid');
+    } catch (e) {
+      DebugConfig.print('⚠️ Onboarding resume failed (app continues): $e');
+    }
   }
 
   // ✅ ΝΕΟΣ ΜΕΘΟΔΟΣ: Έλεγχος προγραμματισμένων κινήσεων

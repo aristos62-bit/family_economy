@@ -99,7 +99,6 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         user = await _authService.register(email, password);
       }
       if (!mounted) return;
-      final bool isNewUser = !_isLogin;
 
       final uid = user?.uid;
       if (uid == null) {
@@ -110,7 +109,16 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         return;
       }
 
-      final userDoc = await _authService.getUserDocument(uid);
+      var userDoc = await _authService.getUserDocument(uid);
+
+      // ✅ Αν λείπει το user document (π.χ. χάθηκε η αρχική εγγραφή), το
+      // δημιουργούμε με όλα τα πεδία πριν το onboarding. Η μέθοδος γράφει
+      // `onboarding_completed: false`, άρα η κανονική ροή συνεχίζει ως έχει.
+      if (!userDoc.exists) {
+        await _authService.createUserDocumentIfNeeded(user!);
+        userDoc = await _authService.getUserDocument(uid);
+      }
+
       final userData = userDoc.data();
       final currency = userData?['default_currency'] as String? ?? 'EUR';
 
@@ -133,8 +141,13 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         );
       }
 
-      // ✅ ONBOARDING: Τρέχει μόνο την πρώτη φορά
-      if (isNewUser) {
+      // ✅ ONBOARDING: το αποφασίζει το αποθηκευμένο flag, όχι το κουμπί Εγγραφή/Σύνδεση.
+      // Αν το πεδίο λείπει => θεωρείται ολοκληρωμένο (παλιοί χρήστες δεν παίρνουν
+      // δεύτερο default λογαριασμό). Οι νέοι χρήστες γράφονται πάντα με `false`.
+      final bool onboardingCompleted =
+          (userData?['onboarding_completed'] as bool?) ?? true;
+
+      if (!onboardingCompleted) {
         // ✅ ΝΕΟ: Εμφάνιση overlay progress
         setState(() {
           _isLoading = false;
@@ -144,10 +157,16 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         });
 
         final onboardingService = OnboardingService();
-        await onboardingService.checkAndRunOnboarding(
-          uid,
-          onProgress: _onOnboardingProgress,
-        );
+        try {
+          await onboardingService.checkAndRunOnboarding(
+            uid,
+            onProgress: _onOnboardingProgress,
+          );
+        } catch (e) {
+          // Το onboarding δεν μπλοκάρει την είσοδο: το flag μένει `false` και
+          // η αποκατάσταση ξαναγίνεται στο επόμενο άνοιγμα (AppStart gate).
+          DebugConfig.print('⚠️ Onboarding failed (continuing): $e');
+        }
 
         // Μικρή παύση ώστε ο χρήστης να δει το 100%
         await Future.delayed(const Duration(milliseconds: 600));
@@ -231,7 +250,10 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
       AccessibilityService.announceError(errorMessage);
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _isOnboarding = false;
+        });
       }
     }
   }
