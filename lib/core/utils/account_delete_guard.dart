@@ -129,11 +129,15 @@ class AccountDeleteGuard {
     }
 
     if (pendingCount > 0) {
+      final pendingText = pendingCount == 1
+          ? 'Υπάρχει 1 εκκρεμής προγραμματισμένη κίνηση. '
+          : 'Υπάρχουν $pendingCount εκκρεμείς προγραμματισμένες κινήσεις. ';
       return AccountActionDecision(
         action: AccountAction.blockPending,
         message:
-            'Υπάρχουν $pendingCount εκκρεμείς προγραμματισμένες κινήσεις. '
-            'Ακυρώστε τις πρώτα από την καρτέλα «Προγραμματισμένες».',
+            '$pendingText'
+            'Ακυρώστε ${pendingCount == 1 ? 'την' : 'τις'} πρώτα από την '
+            'καρτέλα «Προγραμματισμένες».',
       );
     }
 

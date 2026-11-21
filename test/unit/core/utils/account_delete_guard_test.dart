@@ -613,6 +613,19 @@ void main() {
       expect(decision.message, contains('Προγραμματισμένες'));
     });
 
+    test('μία εκκρεμής → ενικός αριθμός στο μήνυμα', () {
+      final decision = AccountDeleteGuard.decide(
+        activeAccountCount: 2,
+        hasAnyTransaction: true,
+        budgetsCount: 0,
+        pendingCount: 1,
+      );
+
+      expect(decision.action, AccountAction.blockPending);
+      expect(decision.message, startsWith('Υπάρχει 1 εκκρεμής'));
+      expect(decision.message, contains('Ακυρώστε την πρώτα'));
+    });
+
     test('μηδέν ενεργοί → φραγή', () {
       final decision = AccountDeleteGuard.decide(
         activeAccountCount: 0,

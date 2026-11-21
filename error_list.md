@@ -179,6 +179,7 @@
 - **Φραγές:** τελευταίος ενεργός λογαριασμός (όπως E7)· εκκρεμείς προγραμματισμένες κινήσεις (ο executor δεν ελέγχει `is_active`, άρα δεν πρέπει να μείνουν εκκρεμείς).
 - **Αρχεία:** `account_delete_guard.dart` (καθαρή απόφαση + `pendingLegUuids` με 0 επιπλέον reads), `account_totals.dart` (νέο, ένα σημείο αλήθειας για το σύνολο), `accounts_provider.dart`, `transactions_actions_service.dart` (`archiveAccount` / `restoreArchivedAccount`, 1 write), `accounts_page.dart`, `input_budget_page.dart`, `transaction_edit_sheet.dart`, `graf_4_page.dart`.
 - **Έκδοση:** `2.3.0+7` (προαιρετικό νέο πεδίο → MINOR).
+- **✅ Device test 21/11/2026:** 12/12 σενάρια στο POCO X3 — σύνολο 17.560,00 € αμετάβλητο μετά την αρχειοθέτηση, διαγραφή «καθαρού» λογαριασμού OK, offline αρχειοθέτηση + sync OK, φραγή εκκρεμούς OK. Εύρημα: λάθος ενικός («1 εκκρεμείς») → διορθώθηκε + test (131/131). Στοιχεία: `device test/README.md` § E26, screenshots `e26_*`.
 
 **E27 — graf_4 αγνοεί τις εξαιρέσεις (OPEN)**
 - `graf_4_page.dart:175,193` χρησιμοποιεί `accountsProvider.accounts` και αθροίζει **όλα** τα υπόλοιπα· η σελίδα λογαριασμών αφαιρεί όσα είναι στο `excluded_accounts_{uid}` (`accounts_page.dart:169–206`).

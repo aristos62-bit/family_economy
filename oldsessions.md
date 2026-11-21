@@ -23,7 +23,7 @@
 |---|---|
 | Έκδοση | **2.3.0+7** |
 | Τελευταίο κεφάλαιο | **19** — E26: αρχειοθέτηση λογαριασμού αντί διαγραφής (2026-11-21) |
-| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **130/130** |
+| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **131/131** |
 | Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`) |
 
 ## Κεφάλαια

@@ -827,7 +827,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ No issues found (~5s) |
-| `flutter test` | ✅ 130/130 |
+| `flutter test` | ✅ 131/131 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 ### 9.2 Τι καλύπτεται
@@ -842,7 +842,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `widget_test.dart` | 1 | `ErrorApp` εμφανίζει μήνυμα σφάλματος |
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
 | `startup_error_view_test.dart` | 5 | Κείμενα, ενέργειες, λεπτομέρειες, `textScale 1.45` χωρίς overflow |
-| `account_delete_guard_test.dart` | 35 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης & μετρήσεις (E26) |
+| `account_delete_guard_test.dart` | 36 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) |
 | `account_totals_test.dart` | 6 | `countsInTotal`, εξαιρέσεις χρήστη, legacy `is_active=false`, αρνητικά υπόλοιπα (E26) |
 
 ### 9.3 Τι **δεν** καλύπτεται

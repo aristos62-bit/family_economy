@@ -1577,11 +1577,15 @@ class _AccountsPageState extends State<AccountsPage>
 
     // 3) Εκκρεμείς προγραμματισμένες → φραγή (ο executor δεν ελέγχει is_active).
     if (current.hasPendingScheduled) {
+      final pendingCount = current.pendingLegUuids.length;
+      final pendingText = pendingCount == 1
+          ? 'Υπάρχει 1 εκκρεμής προγραμματισμένη κίνηση. '
+          : 'Υπάρχουν $pendingCount εκκρεμείς προγραμματισμένες κινήσεις. ';
       await _showArchiveBlockedDialog(
         scaffoldContext,
-        'Υπάρχουν ${current.pendingLegUuids.length} εκκρεμείς '
-        'προγραμματισμένες κινήσεις. Ακυρώστε τις πρώτα από την καρτέλα '
-        '«Προγραμματισμένες».',
+        '$pendingText'
+        'Ακυρώστε ${pendingCount == 1 ? 'την' : 'τις'} πρώτα από την '
+        'καρτέλα «Προγραμματισμένες».',
       );
       return;
     }
