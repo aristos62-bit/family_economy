@@ -9,12 +9,14 @@
 
 | # | Ενέργεια | ID |
 |---|---|---|
-| 1 | Διόρθωση: διαγραφή λογαριασμού που μετέχει σε μεταφορά αφήνει ενεργό το άλλο σκέλος | E11 |
-| 2 | Διόρθωση: budget με διαγραμμένο λογαριασμό εμφανίζεται ως «Όλοι» | E12 |
-| 3 | Απόφαση: ντετερμινιστικά IDs στο onboarding για ασφάλεια σε offline multi-device | E5 |
-| 4 | Διόρθωση: MessageBubble layout μετά από cold restart | E10 |
+| 1 | Διόρθωση: budget με διαγραμμένο λογαριασμό εμφανίζεται ως «Όλοι» | E12 |
+| 2 | Απόφαση: ντετερμινιστικά IDs στο onboarding για ασφάλεια σε offline multi-device | E5 |
+| 3 | Διόρθωση: MessageBubble layout μετά από cold restart | E10 |
+| 4 | Απόφαση: σημασιολογία «διαγραμμένο από χρήστη» vs «διαγραμμένο με λογαριασμό» στην επαναφορά | E19 |
 
 > Τα E6 και E8 είναι κλειστά (σκόπιμη συμπεριφορά / εγγενής περιορισμός) — δεν περιμένουν ενέργεια.
+> Τα **E11**, **E13**, **E24** διορθώθηκαν μαζί (έκδοση `2.2.0+6`, 21/11/2026)· τα **E18/E21/E22/E23/E25** είναι ℹ️ INFO.
+> **Εκκρεμεί εξωτερικός έλεγχος (δεν μπλοκάρει):** (α) deployed rules = repo rules, (β) ύπαρξη ήδη σπασμένων ζευγών στα δεδομένα (θα χρειαστεί χωριστή επισκευή — L23).
 
 ## Ευρήματα
 
@@ -30,13 +32,21 @@
 | E8 | Restore app data δεν επαναφέρει session (Keystore) | — | ℹ️ INFO | 2026-11-20 |
 | E9 | `users.created_at`/`updated_at` ως ISO string στο onboarding fallback (ασυμφωνία με `auth_service` & docs) | F6 | ✅ FIXED | 2026-11-20 |
 | E10 | MessageBubble layout παγώνει σε λάθος κατάσταση μετά από cold restart (η θεωρία περί bubble cache καταρρίφθηκε) | — | 🔵 OPEN | 2026-11-20 |
-| E11 | Διαγραφή λογαριασμού που μετέχει σε μεταφορά: το άλλο σκέλος μένει ενεργό και τα υπόλοιπα δεν αναιρούνται | — | 🔵 OPEN | 2026-11-20 |
+| E11 | Διαγραφή λογαριασμού που μετέχει σε μεταφορά: το άλλο σκέλος μένει ενεργό και τα υπόλοιπα δεν αναιρούνται | — | ✅ FIXED | 2026-11-21 |
 | E12 | Budget που δείχνει διαγραμμένο λογαριασμό εμφανίζεται ως «Όλοι» και με `spent=0` | — | 🔵 OPEN | 2026-11-20 |
-| E13 | `restoreAccountWithBalance` γράφει όλες τις κινήσεις σε **ένα** batch (όριο 500) | — | 🔵 OPEN | 2026-11-20 |
+| E13 | `restoreAccountWithBalance` γράφει όλες τις κινήσεις σε **ένα** batch (όριο 500) | — | ✅ FIXED | 2026-11-21 |
 | E14 | Επαναφορά μετά τον cleanup 30 ημερών: επιστρέφει ο λογαριασμός χωρίς ιστορικό | — | 🔵 OPEN | 2026-11-20 |
 | E15 | `MessageService` υπάρχει αλλά πρακτικά ανενεργό (μόνο `main.dart`) | — | 🔵 OPEN | 2026-11-20 |
 | E16 | `transaction_edit_sheet` με λογαριασμό που διαγράφηκε → orphan επιλογή στο dropdown | — | 🔵 OPEN | 2026-11-20 |
 | E17 | `firestore.indexes.json` δεν είναι πλήρες σε σχέση με το deployed (π.χ. `deleted` + `date` range) | — | 🔵 OPEN | 2026-11-20 |
+| E18 | `deleteTransaction` peer path δεν ελέγχει `deleted` του peer → μη idempotent (μόνο με αλλοιωμένο δεδομένο) | — | ℹ️ INFO | 2026-11-20 |
+| E19 | Επαναφορά λογαριασμού ανασταίνει και κινήσεις που διέγραψε ο χρήστης | — | 🔵 OPEN | 2026-11-20 |
+| E20 | `_recalculateAccountBalance` περιλαμβάνει overdue pending → λάθος υπόλοιπο | — | 🔵 OPEN | 2026-11-20 |
+| E21 | `_getQueryWithCacheFallback` / `_getDocWithCacheFallback` δεν κάνουν fallback | — | ℹ️ INFO | 2026-11-20 |
+| E22 | `applyLocalBalanceDelta` + `updateAccountBalance` νεκρές· DESIGN §3.3 ελλιπές | — | ℹ️ INFO | 2026-11-20 |
+| E23 | `getScheduledTransactions` επιστρέφει 2 γραμμές ανά εκκρεμή μεταφορά | — | ℹ️ INFO | 2026-11-20 |
+| E24 | Offline διαγραφή λογαριασμού με ατελή cache αφήνει ενεργές κινήσεις (και peer leg με E11) | — | ✅ FIXED | 2026-11-21 |
+| E25 | Επαναφορά εκκρεμούς ζεύγους με παρελθούσα ημερομηνία → εκτελείται αμέσως | — | ℹ️ INFO | 2026-11-20 |
 
 ### Λεπτομέρειες
 
@@ -94,6 +104,13 @@
 - Αποτέλεσμα: το ποσό παραμένει στο peer υπόλοιπο χωρίς «ταιριαστό» σκέλος· δεν υπάρχει έλεγχος ακεραιότητας.
 - Επηρεάζει και προγραμματισμένες μεταφορές (`scheduled_transactions_service`).
 - Εντοπίστηκε κατά τον έλεγχο του E7· **δεν** διορθώνεται εκεί.
+- **Πλήρες scope (απόφαση Session 18):** (1) cascade ακύρωση ζεύγους + αντιστροφή υπολοίπων με την **ίδια** σημασιολογία όπως η διαγραφή μεταφοράς, (2) συμμετρική επαναφορά με marker `annulled_by_account_deleted`, (3) έλεγχος ακεραιότητας στον executor (skip + log — **όχι** `execution_failed`, γιατί ο διάλογος του `home_page` είναι blocking).
+- **Κανόνες:** ολοκληρωμένο ζεύγος → κρύψιμο 2 legs + 2 deltas· εκκρεμές → κρύψιμο 2 legs, 0 deltas· μερικό → κρύψιμο μόνο του ενεργού, 0 deltas, **χωρίς** marker. Ένα ζεύγος = **ένα** batch· deltas **ανά chunk** (σωστό retry)· λογαριασμός τελευταίος· μετράμε **writes** (όχι docs).
+- **Επαναφορά:** τα marked legs εξαιρούνται από τη γενική επαναφορά· ζεύγος επανέρχεται μόνο αν 2 legs, **και τα δύο** με marker, έγκυρο σχήμα και ενεργό peer· deltas μόνο για ολοκληρωμένα· chunking ≤499 (κλείνει και **E13**).
+- **Αρχεία:** `account_delete_guard.dart` (pure πλάνο), `transactions_actions_service.dart` (+2 μέθοδοι I/O), `accounts_page.dart` (preflight + φραγή offline E24), `account_duplicate_service.dart` (restore), `scheduled_transactions_service.dart` (integrity guard). **0 νέα αρχεία κώδικα.**
+- **Indexes/rules:** καμία αλλαγή· όλες οι νέες αναγνώσεις είναι equality-only (το E17 δεν μπλοκάρει).
+- **Έκδοση:** `2.2.0+6` (νέο προαιρετικό πεδίο → MINOR, `DESIGN.md` §1.5.3).
+- **✅ Διορθώθηκε 21/11/2026 (`2.2.0+6`):** `account_delete_guard.dart` (πλάνο + chunks + restore units), `transactions_actions_service.dart` (`previewAccountDelete` / `applyAccountDeletePlan`), `accounts_page.dart` (preflight + διάλογος με επίπτωση + φραγή offline E24), `scheduled_transactions_service.dart` (peer πεδία + `_isTransferPairIntact`), `account_duplicate_service.dart` (συμμετρική επαναφορά + chunking E13). Tests: `account_delete_guard_test.dart` 8→26. `flutter analyze` καθαρό, `flutter test` 115/115, device test POCO X3.
 
 **E12 — Budget με διαγραμμένο λογαριασμό (OPEN)**
 - `budget_page.dart:712–721` → `accountName = acc?.name` = `null` όταν ο λογαριασμός διαγραφεί· η ετικέτα πέφτει στο `?? 'Όλοι'` (`:100, 809, 906`).
@@ -119,6 +136,34 @@
 **E17 — Indexes file vs deployed (OPEN)**
 - Το `firestore.indexes.json` έχει 3 indexes· το `transactions_provider.dart:202–204` (`date` range + `deleted ==`) απαιτεί composite index που **δεν** υπάρχει στο αρχείο.
 - Άρα το αρχείο δεν είναι αξιόπιστος κατάλογος· κάθε νέο query πρέπει να ελέγχεται και στο console.
+
+**E18 — Peer path μη idempotent (INFO)**
+- `deleteTransaction` peer path (`transactions_actions_service.dart:367–406`) αντιστρέφει πάντα τα 2 υπόλοιπα χωρίς να ελέγχει `deleted` του peer· το group path (`:482–490`) φιλτράρει.
+- **Απόφαση:** δεν διορθώνεται — ο έλεγχος απαιτεί ανάγνωση peer, που θα χαλούσε το offline-safe μονοπάτι (`:366`). Μετά το E11 η εφαρμογή δεν παράγει μισά ζεύγη.
+
+**E19 — Ανάσταση κινήσεων χρήστη (OPEN)**
+- `restoreAccountWithBalance` (`account_duplicate_service.dart:112–130`) επαναφέρει **όλες** τις `deleted` κινήσεις του λογαριασμού, άρα και όσες διέγραψε ο χρήστης μεμονωμένα.
+- Με το E11 καλύπτεται **μόνο** το τμήμα των ζευγών μεταφορών (marker + έλεγχος σχήματος)· οι μεμονωμένες κινήσεις παραμένουν → χρειάζεται χωριστή σημασιολογία (π.χ. `deleted_by`).
+
+**E20 — Recalc με overdue pending (OPEN)**
+- `_recalculateAccountBalance` (`accounts_page.dart:884–945`, κλήση `:771`) = `initial_balance + Σ amounts` με `date < αύριο` → περιλαμβάνει εκκρεμείς κινήσεις που **δεν** εκτελέστηκαν (π.χ. app κλειστό 3 ημέρες).
+- Είναι **feature** («Επαναϋπολογισμός Υπολοίπου»), γι' αυτό δεν χρησιμοποιείται ούτε ως μηχανισμός ούτε ως επισκευή στο E11.
+
+**E21 — Cache fallback no-op (INFO)**
+- `_getQueryWithCacheFallback` (`:836–839`) & `_getDocWithCacheFallback` (`:887–890`) καλούν **μόνο** `get()`· τα σχόλια περί fallback δεν ισχύουν. Το offline δουλεύει λόγω `persistenceEnabled` (`main.dart:65–68`).
+
+**E22 — Νεκρές μέθοδοι υπολοίπου (INFO)**
+- `applyLocalBalanceDelta` (`accounts_provider.dart:228–263`) & `updateAccountBalance` (`:270–290`) → **0** call sites. Το `DESIGN.md` §3.3 αναφέρει μόνο τη δεύτερη.
+
+**E23 — Διπλές γραμμές scheduled transfer (INFO)**
+- `getScheduledTransactions` (`scheduled_transactions_service.dart:665–682`) επιστρέφει **2 γραμμές** ανά εκκρεμή μεταφορά (μία ανά leg).
+
+**E24 — Offline διαγραφή με ατελή cache (OPEN)**
+- Το default `Source.serverAndCache` επιστρέφει offline **κενό/μερικό** `QuerySnapshot` **χωρίς exception**. Άρα το `_deleteAccount` (`accounts_page.dart:1293–1299`) μπορεί να κρύψει μόνο τον λογαριασμό και να αφήσει **ενεργές** κινήσεις (αόρατες μόνο επειδή ο λογαριασμός κρύφτηκε)· με το E11 το ίδιο αφήνει **ενεργό peer σκέλος**.
+- **Διόρθωση (στο πλαίσιο E11):** φραγή διαγραφής όταν `ConnectivityService.isInitialized && isOffline`, με σαφές μήνυμα. Το service είναι ήδη provider (`main.dart:83–85`, `connectivity_service.dart:27–29`).
+
+**E25 — Επαναφορά εκκρεμούς ζεύγους (INFO)**
+- Μετά από επαναφορά, εκκρεμές ζεύγος με παρελθούσα `scheduled_for_date` εκτελείται στον επόμενο έλεγχο — υπάρχουσα συμπεριφορά για **όλες** τις εκκρεμείς κινήσεις, όχι νέα παρενέργεια.
 
 ## Πώς προσθέτω εύρημα
 

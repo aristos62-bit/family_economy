@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 
 import 'package:family_economy/providers/accounts_provider.dart';
+import 'package:family_economy/core/utils/account_delete_guard.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
@@ -90,56 +91,129 @@ class AccountDuplicateService {
     }
   }
 
-  /// Επαναφορά διεγραμμένου λογαριασμού ΜΕ υπόλοιπο και transactions
+  /// Επαναφορά διεγραμμένου λογαριασμού ΜΕ υπόλοιπο και transactions.
+  ///
+  /// E11: τα ζεύγη μεταφορών που ακυρώθηκαν λόγω διαγραφής λογαριασμού
+  /// (marker `annulled_by_account_deleted`) επανέρχονται **συμμετρικά**
+  /// (και τα δύο σκέλη + αντιστροφή υπολοίπων)· ζεύγη που δεν είναι πλήρη
+  /// ή δείχνουν σε διαγραμμένο λογαριασμό μένουν κρυφά. Γράφει σε chunks
+  /// ≤499 (E13).
   Future<void> restoreAccountWithBalance(
     String userId,
     AccountModel deletedAccount,
   ) async {
+    final db = FirebaseFirestore.instance;
+    final accountUuid = deletedAccount.uuid;
+    final usersCol = db.collection('users').doc(userId);
+    final txCol = usersCol.collection('transactions');
+    final accountsCol = usersCol.collection('accounts');
+
     try {
       // 1. Επαναφορά λογαριασμού
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('accounts')
-          .doc(deletedAccount.uuid)
-          .update({
-            'deleted': false,
-            'is_active': true,
-            'updated_at': FieldValue.serverTimestamp(),
-          });
+      await accountsCol.doc(accountUuid).update({
+        'deleted': false,
+        'is_active': true,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
 
-      // 2. Επαναφορά transactions του λογαριασμού
-      final transactionsSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('transactions')
-          .where('account_id', isEqualTo: deletedAccount.uuid)
+      // 2. Ενεργοί λογαριασμοί (έλεγχος peer των ζευγών)
+      final accountsSnap =
+          await accountsCol.where('deleted', isEqualTo: false).get();
+      final activeAccountIds = accountsSnap.docs.map((doc) => doc.id).toSet()
+        ..add(accountUuid);
+
+      // 3. Σκέλη με marker ακύρωσης λόγω διαγραφής ΑΥΤΟΥ του λογαριασμού
+      final markedSnap = await txCol
+          .where('annulled_by_account_deleted', isEqualTo: accountUuid)
+          .get();
+      final markedLegs = markedSnap.docs
+          .map((doc) => <String, dynamic>{'uuid': doc.id, ...doc.data()})
+          .toList();
+      final markedIds = markedLegs
+          .map((leg) => (leg['uuid'] as String?)?.trim() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+
+      final units = AccountDeleteGuard.buildRestoreUnits(
+        accountUuid: accountUuid,
+        markedLegs: markedLegs,
+        activeAccountIds: activeAccountIds,
+      );
+
+      // 4. Λοιπές διεγραμμένες κινήσεις του λογαριασμού (χωρίς marker)
+      final generalSnap = await txCol
+          .where('account_id', isEqualTo: accountUuid)
           .where('deleted', isEqualTo: true)
           .get();
+      final generalIds = generalSnap.docs
+          .map((doc) => doc.id)
+          .where((id) => !markedIds.contains(id))
+          .toList();
 
-      if (transactionsSnapshot.docs.isNotEmpty) {
-        final batch = FirebaseFirestore.instance.batch();
+      // 5. Γραφή σε chunks ≤499: ζεύγη (με deltas) πρώτα, μετά τα υπόλοιπα.
+      final updatedAt = FieldValue.serverTimestamp();
+      var batch = db.batch();
+      var writes = 0;
 
-        for (var doc in transactionsSnapshot.docs) {
-          batch.update(doc.reference, {
+      Future<void> commitIfNeeded(int needed) async {
+        if (writes + needed > AccountDeleteGuard.maxWritesPerBatch) {
+          await batch.commit();
+          batch = db.batch();
+          writes = 0;
+        }
+      }
+
+      var restoredPairs = 0;
+      var skippedPairs = 0;
+
+      for (final unit in units) {
+        if (!unit.canRestore) {
+          skippedPairs++;
+          DebugConfig.print(
+            'ℹ️ Restore: group ${unit.groupId} skipped (${unit.skipReason})',
+          );
+          continue;
+        }
+
+        final needed = unit.legUuids.length + unit.deltasByAccount.length;
+        await commitIfNeeded(needed);
+
+        for (final legId in unit.legUuids) {
+          batch.update(txCol.doc(legId), {
             'deleted': false,
-            'updated_at': FieldValue.serverTimestamp(),
+            'annulled_by_account_deleted': FieldValue.delete(),
+            'updated_at': updatedAt,
           });
         }
 
-        await batch.commit();
+        unit.deltasByAccount.forEach((accountId, delta) {
+          batch.update(accountsCol.doc(accountId), {
+            'current_balance': FieldValue.increment(delta),
+            'updated_at': updatedAt,
+          });
+        });
 
-        DebugConfig.print(
-          '✅ Account restored with balance: ${deletedAccount.uuid}',
-        );
-        DebugConfig.print(
-          '   Restored ${transactionsSnapshot.docs.length} transactions',
-        );
-      } else {
-        DebugConfig.print(
-          '✅ Account restored with balance: ${deletedAccount.uuid} (no transactions)',
-        );
+        writes += needed;
+        restoredPairs++;
       }
+
+      for (final txId in generalIds) {
+        await commitIfNeeded(1);
+        batch.update(txCol.doc(txId), {
+          'deleted': false,
+          'updated_at': updatedAt,
+        });
+        writes++;
+      }
+
+      if (writes > 0) await batch.commit();
+
+      DebugConfig.print(
+        '✅ Account restored with balance: $accountUuid '
+        '(pairs=$restoredPairs, skipped=$skippedPairs, '
+        'transactions=${generalIds.length}, writes<='
+        '${AccountDeleteGuard.maxWritesPerBatch}/batch)',
+      );
     } catch (e) {
       DebugConfig.print('❌ Error restoring account with balance: $e');
       rethrow;

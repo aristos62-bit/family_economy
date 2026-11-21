@@ -101,6 +101,7 @@ class ScheduledTransactionsService {
 
       // Transaction 1: Source account (outgoing = negative)
       final sourceTransactionUuid = _uuid.v4();
+      final targetTransactionUuid = _uuid.v4();
       final sourceData = {
         'user_id': userId,
         'account_id': sourceAccountUuid,
@@ -115,6 +116,9 @@ class ScheduledTransactionsService {
         'attachment_path': null,
         'transaction_type': 'transfer',
         'transfer_group_id': transferGroupId,
+        // E11: δείκτης προς το άλλο σκέλος (0 επιπλέον reads στη διαγραφή)
+        'transfer_peer_uuid': targetTransactionUuid,
+        'transfer_peer_account_id': targetAccountUuid,
         'is_recurring': false,
         'recurring_schedule_id': null,
         'tags': <String>[],
@@ -131,7 +135,6 @@ class ScheduledTransactionsService {
       };
 
       // Transaction 2: Target account (incoming = positive)
-      final targetTransactionUuid = _uuid.v4();
       final targetData = {
         'user_id': userId,
         'account_id': targetAccountUuid,
@@ -146,6 +149,9 @@ class ScheduledTransactionsService {
         'attachment_path': null,
         'transaction_type': 'transfer',
         'transfer_group_id': transferGroupId,
+        // E11: δείκτης προς το άλλο σκέλος (0 επιπλέον reads στη διαγραφή)
+        'transfer_peer_uuid': sourceTransactionUuid,
+        'transfer_peer_account_id': sourceAccountUuid,
         'is_recurring': false,
         'recurring_schedule_id': null,
         'tags': <String>[],
@@ -230,6 +236,18 @@ class ScheduledTransactionsService {
       final transactionType = data['transaction_type'] as String;
       final amount = (data['amount'] as num).toDouble();
       final accountId = data['account_id'] as String;
+
+      // ✅ E11: ακεραιότητα ζεύγους μεταφοράς — αν λείπει/είναι ακυρωμένο το
+      // άλλο σκέλος ΔΕΝ εκτελείται (καμία μερική εφαρμογή υπολοίπων).
+      if (transactionType == 'transfer') {
+        final intact = await _isTransferPairIntact(userId, data);
+        if (!intact) {
+          DebugConfig.print(
+            '⛔ Transfer NOT executed (broken/annulled pair): $transactionUuid',
+          );
+          return false;
+        }
+      }
 
       // ✅ BALANCE CHECK κατά την ΕΚΤΕΛΕΣΗ (όχι κατά την εισαγωγή)
       final insufficient = await _findInsufficientDebit(userId, data);
@@ -402,6 +420,74 @@ class ScheduledTransactionsService {
       DebugConfig.print('🔴 Error checking pending transactions: $e');
       return [];
     }
+  }
+
+  /// E11: Έλεγχος ακεραιότητας ζεύγους μεταφοράς πριν την εκτέλεση.
+  ///
+  /// Απαιτεί **ακριβώς 2 ενεργά** legs με έγκυρο σχήμα (transfer, αντίθετα
+  /// ποσά ίδιου ύψους, διαφορετικοί λογαριασμοί) **χωρίς** marker ακύρωσης
+  /// και με σωστούς peer δείκτες (αν υπάρχουν).
+  Future<bool> _isTransferPairIntact(
+    String userId,
+    Map<String, dynamic> data,
+  ) async {
+    const epsilon = 0.005;
+
+    final groupId = (data['transfer_group_id'] as String?)?.trim() ?? '';
+    if (groupId.isEmpty) return false;
+
+    final legs = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('transactions')
+        .where('transfer_group_id', isEqualTo: groupId)
+        .get();
+
+    final active =
+        legs.docs.where((doc) => doc.data()['deleted'] != true).toList();
+    if (active.length != 2) return false;
+
+    final a = active[0].data();
+    final b = active[1].data();
+
+    final aAmount = (a['amount'] as num?)?.toDouble();
+    final bAmount = (b['amount'] as num?)?.toDouble();
+    final aAccount = (a['account_id'] as String?)?.trim() ?? '';
+    final bAccount = (b['account_id'] as String?)?.trim() ?? '';
+
+    if (aAmount == null || bAmount == null) return false;
+    if (aAmount.abs() < epsilon || bAmount.abs() < epsilon) return false;
+
+    final noMarker = (a['annulled_by_account_deleted'] as String?)
+                ?.trim()
+                .isEmpty ??
+            true;
+    final noMarkerB = (b['annulled_by_account_deleted'] as String?)
+                ?.trim()
+                .isEmpty ??
+            true;
+
+    final validShape = a['transaction_type'] == 'transfer' &&
+        b['transaction_type'] == 'transfer' &&
+        noMarker &&
+        noMarkerB &&
+        ((aAmount > 0) != (bAmount > 0)) &&
+        (aAmount.abs() - bAmount.abs()).abs() < epsilon &&
+        aAccount.isNotEmpty &&
+        bAccount.isNotEmpty &&
+        aAccount != bAccount;
+
+    if (!validShape) return false;
+
+    // Αν το σκέλος δηλώνει peer, πρέπει να δείχνει στο άλλο ενεργό σκέλος.
+    final activeIds = <String>{active[0].id, active[1].id};
+    for (final leg in <Map<String, dynamic>>[a, b]) {
+      final peerUuid =
+          (leg['transfer_peer_uuid'] as String?)?.trim() ?? '';
+      if (peerUuid.isNotEmpty && !activeIds.contains(peerUuid)) return false;
+    }
+
+    return true;
   }
 
   /// Αν ο λογαριασμός χρέωσης ΔΕΝ καλύπτει το ποσό επιστρέφει στοιχεία, αλλιώς null

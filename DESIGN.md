@@ -53,7 +53,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | JDK (CLI) | 21.0.2 (ρυθμισμένο στο `flutter config`) |
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Visual Studio | Community 2026 18.1.1 · Windows SDK 10.0.26100.0 |
-| App version | **`2.1.2+5`** (`pubspec.yaml`, επαληθεύτηκε 20/11/2026) |
+| App version | **`2.2.0+6`** (`pubspec.yaml`, επαληθεύτηκε 20/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -120,17 +120,17 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.1.2+5)          ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.2.0+6)          ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.1.2 · BUILD_NO=5   (από pubspec, STEP 0)
-         ├── APK      FamilyBudget_v2.1.2.apk
+   └── build_and_setup_final.bat  APP_VER=2.2.0 · BUILD_NO=6   (από pubspec, STEP 0)
+         ├── APK      FamilyBudget_v2.2.0.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.1.2.exe   (FileVersion 2.1.2.5)
+               └── FamilyBudgetSetup_v2.2.0.exe   (FileVersion 2.2.0.6)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -246,7 +246,7 @@ pubspec.yaml  (version: 2.1.2+5)          ← ΜΟΝΟ εδώ αλλάζει η 
 |---|---|
 | `flutter build bundle` | ✅ EXIT 0 |
 | `flutter analyze` | ✅ No issues found |
-| `flutter test` | ✅ 97/97 |
+| `flutter test` | ✅ 115/115 |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -544,18 +544,25 @@ lib/
 - Oil: `oil_page.dart` + `oil/` (12 αρχεία) — ρυθμίσεις σε `settings/oil_tank` (`avg_cost_per_liter`, `liters_at_last_purchase`, `price_per_liter`), ιστορικό σε `oil_purchases`.
 - Εξαγωγή δεδομένων: `pdf` + `excel` + `file_picker` στις σελίδες `stats2_averages_page`, `stats3_page`, `stats4_budget_page`.
 
-### 5.13 Διαγραφή λογαριασμού — φραγή τελευταίου (E7)
+### 5.13 Διαγραφή λογαριασμού — φραγή & μεταφορές (E7, E11)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Απόφαση | `core/utils/account_delete_guard.dart` — καθαρό Dart, **0 reads** |
-| Είσοδος | `AccountsProvider.accounts.length` (ήδη φιλτραρισμένο: `deleted == false` ∧ `isActive`) |
-| Κανόνας | `1` ενεργός → φραγή (warning panel αντί για tile)· `≥2` → επιτρέπεται |
-| Εγγραφή | `≤499` κινήσεις: **ένα** batch (κινήσεις + λογαριασμός)· `>499`: chunks 500, λογαριασμός τελευταίος |
+| Απόφαση E7 | `core/utils/account_delete_guard.dart` — καθαρό Dart, **0 reads** |
+| Είσοδος E7 | `AccountsProvider.accounts.length` (ήδη φιλτραρισμένο: `deleted == false` ∧ `isActive`) |
+| Κανόνας E7 | `1` ενεργός → φραγή (warning panel αντί για tile)· `≥2` → επιτρέπεται |
+| Preflight E11 | `TransactionsActionsService.previewAccountDelete` — ενεργές κινήσεις λογαριασμού (`account_id` + `deleted`), 0 επιπλέον reads για νέα ζεύγη (peer δείκτες) |
+| Πλάνο E11 | `AccountDeleteGuard.buildPlan` → ζεύγη (complete/pending), απλά legs, deltas ανά λογαριασμό |
+| Σημασιολογία | Ολοκληρωμένο ζεύγος → **2 legs** + αντιστροφή **και των δύο** υπολοίπων· εκκρεμές (`is_scheduled && !is_executed`) → 2 legs, 0 deltas· μερικό/άγνωστο → μόνο το ενεργό leg, 0 deltas, **χωρίς** marker |
+| Marker | `annulled_by_account_deleted: <uuid>` σε **κάθε** ακυρωμένο leg· καθαρισμός με `FieldValue.delete()` στην επαναφορά |
+| Εγγραφή | `≤499` writes: **ένα** batch· `>499`: απλά legs → ζεύγη (ποτέ split, deltas **ανά chunk**) → λογαριασμός **τελευταίος** |
+| Offline E24 | Φραγή όταν `ConnectivityService.isInitialized && isOffline` (ατελής cache → ορφανές κινήσεις) |
+| Executor guard | `_isTransferPairIntact` πριν την εκτέλεση: 2 ενεργά legs, έγκυρο σχήμα, χωρίς marker, σωστοί peer δείκτες → αλλιώς skip + log (**όχι** `execution_failed`, γιατί ο διάλογος `home_page` είναι blocking) |
+| Επαναφορά | `restoreAccountWithBalance` → `buildRestoreUnits`: ζεύγος επανέρχεται μόνο με 2 legs, **και τα δύο** marked για αυτόν τον λογαριασμό, έγκυρο σχήμα, **ενεργούς** και τους δύο λογαριασμούς· deltas μόνο για ολοκληρωμένα· chunks ≤499 (E13) |
 | Μηνύματα | success/error **μετά** το commit (όχι success-first) |
 | Κενή κατάσταση | `transaction_entry_page.dart` — μήνυμα + CTA προς καρτέλα «Λογαριασμοί» (`home_page._onTabTap(2)`) |
 
-> Ο κανόνας **δεν** αγγίζει υπόλοιπα: ο λογαριασμός αφαιρείται ως σύνολο. Τα budget docs που τον δείχνουν δεν καθαρίζονται (E12).
+> Ο κανόνας E7 **δεν** αγγίζει υπόλοιπα· το E11 αντιστρέφει **μόνο** τα deltas των ζευγών μεταφορών που ακυρώνει. Τα budget docs που δείχνουν στον λογαριασμό δεν καθαρίζονται (E12).
 
 ---
 
@@ -597,7 +604,9 @@ created_at, updated_at, deleted
 ```
 uuid (doc id), user_id, account_id, category_id, subcategory_id,
 date (Timestamp), amount (signed), currency, exchange_rate, notes,
-attachment_path, transaction_type ('income'|'expense'), transfer_group_id,
+attachment_path, transaction_type ('income'|'expense'|'transfer'), transfer_group_id,
+transfer_peer_uuid, transfer_peer_account_id,
+annulled_by_account_deleted (uuid — E11 marker, καθαρίζεται στην επαναφορά),
 is_recurring, recurring_schedule_id, tags (array), location_lat, location_lng,
 is_split, is_scheduled, is_executed, scheduled_for_date,
 created_at, updated_at, last_modified_device_id, deleted
@@ -732,6 +741,8 @@ schema_version (int), schema_updated_at (Timestamp)
 | Ποσό | `amount` **με πρόσημο** (income θετικό, expense αρνητικό) |
 | Τύπος | `transaction_type`: `'income'` / `'expense'` (+ `isTransfer` από `transfer_group_id`) |
 | Μεταφορά | **2 docs** με κοινό `transfer_group_id` (πηγή αρνητική, προορισμός θετική) — 31 αναφορές |
+| Peer δείκτες | `transfer_peer_uuid` + `transfer_peer_account_id` σε κάθε σκέλος (νέα ζεύγη) → 0 reads για το άλλο σκέλος |
+| Ακύρωση ζεύγους | Διαγραφή λογαριασμού → marker `annulled_by_account_deleted` + αντιστροφή και των 2 υπολοίπων (ολοκληρωμένο) ή 0 deltas (εκκρεμές) — §5.13 |
 | Κατηγορία μεταφοράς | Δημιουργείται αυτόματα (`_getOrCreateTransferCategory`) όταν χρειάζεται |
 | Tags | Array πεδίο μέσα στο transaction (`'tags': [...]`), όχι ξεχωριστή συλλογή |
 | Συνάλλαγμα | `currency` + `exchange_rate` (σήμερα πάντα `1.0`) |
@@ -803,11 +814,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (97 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (115 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ No issues found (~5s) |
-| `flutter test` | ✅ 97/97 |
+| `flutter test` | ✅ 115/115 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 ### 9.2 Τι καλύπτεται
@@ -822,7 +833,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `widget_test.dart` | 1 | `ErrorApp` εμφανίζει μήνυμα σφάλματος |
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
 | `startup_error_view_test.dart` | 5 | Κείμενα, ενέργειες, λεπτομέρειες, `textScale 1.45` χωρίς overflow |
-| `account_delete_guard_test.dart` | 8 | Φραγή διαγραφής τελευταίου λογαριασμού (E7): 0/1/2/N, μηνύματα |
+| `account_delete_guard_test.dart` | 26 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) |
 
 ### 9.3 Τι **δεν** καλύπτεται
 
@@ -893,7 +904,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | L2 | Τα υπόλοιπα γράφονται από **6** διαφορετικά αρχεία | §5.4 |
 | L3 | 5 συλλογές υπάρχουν στους κανόνες αλλά δεν χρησιμοποιούνται | §6.1 |
 | L4 | Κανόνες χωρίς validation πεδίων/ορίων | §7.2 |
-| L5 | Καμία cascade διαγραφή δεδομένων χρήστη | §6.4 |
+| L5 | Cascade διαγραφή **μόνο** για τα ζεύγη μεταφορών κατά τη διαγραφή λογαριασμού (E11)· καμία άλλη cascade δεδομένων χρήστη | §5.13 |
 | L6 | Νεκρός κώδικας (`biometric_gate`, `recurring_notifications_service`, `updateAccountBalance`) | §3.3 |
 | L7 | 3 πακέτα με 0 χρήση + 77 outdated | §1.3 |
 | L8 | iOS/macOS χωρίς `Podfile` → builds ανεπιβεβαίωτα | §2.3 |
@@ -910,6 +921,9 @@ schema_version (int), schema_updated_at (Timestamp)
 | L19 | Web: `persistentLocalCache` **χωρίς** multi-tab manager → 2 tabs μπορεί να δουν διαφορετικά δεδομένα | §2.4 |
 | L20 | `schema_version` χωρίς field validation στους rules (γράφεται μόνο από την εφαρμογή, στον δικό της λογαριασμό) | §7.2 |
 | L21 | Φραγή διαγραφής **μόνο τοπικά**: δύο συσκευές μπορούν να διαγράψουν ταυτόχρονα τους δύο τελευταίους λογαριασμούς → 0 ενεργοί (καλύπτεται από κενή κατάσταση + CTA, χωρίς server-side guard) | §5.13 |
+| L22 | Offline διαγραφή λογαριασμού με **ατελή cache** θα άφηνε ορφανές κινήσεις (και peer leg) → η διαγραφή **μπλοκάρεται** offline (E24) | §5.13 |
+| L23 | Ημιτελή/legacy ζεύγη (χωρίς peer δείκτες, χωρίς ενεργό peer) → κρύβονται **μόνο** ως προς τον λογαριασμό, χωρίς marker → δεν επανέρχονται αυτόματα· χρειάζεται χωριστή επισκευή δεδομένων | §5.13 |
+| L24 | Η επαναφορά λογαριασμού «με υπόλοιπο» επαναφέρει **και** μεμονωμένες κινήσεις που διέγραψε ο χρήστης (E19)· τα ζεύγη μεταφορών πλέον ελέγχονται με marker/σχήμα | §5.13 |
 
 ---
 

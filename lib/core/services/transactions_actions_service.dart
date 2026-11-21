@@ -19,6 +19,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:family_economy/core/utils/account_delete_guard.dart';
+import 'package:family_economy/core/utils/debug_config.dart';
+
 class TransactionsActionsService {
   final FirebaseFirestore _db;
   final Uuid _uuid;
@@ -822,6 +825,210 @@ class TransactionsActionsService {
     }
 
     await batch.commit();
+  }
+
+  // ============================================================
+  // E11 — ΔΙΑΓΡΑΦΗ ΛΟΓΑΡΙΑΣΜΟΥ: ΑΚΥΡΩΣΗ ΜΕΤΑΦΟΡΩΝ
+  // ============================================================
+
+  /// Διαβάζει τις ενεργές κινήσεις του λογαριασμού και χτίζει το πλάνο
+  /// ακύρωσης των μεταφορών του. **Καμία εγγραφή.**
+  ///
+  /// - Νέα ζεύγη (`transfer_peer_uuid`): 0 επιπλέον reads.
+  /// - Scheduled/legacy: 1 query ανά `transfer_group_id` (best effort).
+  Future<AccountDeletePlan> previewAccountDelete({
+    required String userId,
+    required String accountUuid,
+  }) async {
+    final txCol = _db
+        .collection('users')
+        .doc(userId)
+        .collection('transactions');
+
+    final snapshot = await txCol
+        .where('account_id', isEqualTo: accountUuid)
+        .where('deleted', isEqualTo: false)
+        .get();
+
+    final activeLegs = snapshot.docs
+        .map((doc) => <String, dynamic>{'uuid': doc.id, ...doc.data()})
+        .toList();
+
+    // Σκέλη χωρίς peer πεδία (scheduled/legacy) → 1 query ανά ομάδα.
+    final groupsToRead = <String>{};
+    for (final leg in activeLegs) {
+      if (leg['transaction_type'] != 'transfer') continue;
+      final hasPeer =
+          ((leg['transfer_peer_uuid'] as String?) ?? '').trim().isNotEmpty &&
+              ((leg['transfer_peer_account_id'] as String?) ?? '')
+                  .trim()
+                  .isNotEmpty;
+      if (hasPeer) continue;
+      final groupId = (leg['transfer_group_id'] as String?)?.trim() ?? '';
+      if (groupId.isNotEmpty) groupsToRead.add(groupId);
+    }
+
+    final peerLegsByGroup = <String, List<Map<String, dynamic>>>{};
+    for (final groupId in groupsToRead) {
+      try {
+        final legsSnap = await _getQueryWithCacheFallback(
+          txCol.where('transfer_group_id', isEqualTo: groupId),
+        );
+        peerLegsByGroup[groupId] = legsSnap.docs
+            .map((doc) => <String, dynamic>{'uuid': doc.id, ...doc.data()})
+            .toList();
+      } catch (e) {
+        // Best effort (π.χ. offline χωρίς cache): κρύβεται μόνο το σκέλος.
+        DebugConfig.print('⚠️ previewAccountDelete group=$groupId: $e');
+      }
+    }
+
+    return AccountDeleteGuard.buildPlan(
+      accountUuid: accountUuid,
+      activeLegs: activeLegs,
+      peerLegsByGroup: peerLegsByGroup,
+    );
+  }
+
+  /// Εφαρμόζει το πλάνο:
+  /// - ≤499 writes: **ένα** ατομικό batch (legs + deltas + λογαριασμός).
+  /// - >499: chunks (λοιπά legs → ζεύγη **ποτέ split** → λογαριασμός τελευταίος).
+  Future<void> applyAccountDeletePlan({
+    required String userId,
+    required AccountDeletePlan plan,
+  }) async {
+    final updatedAt = FieldValue.serverTimestamp();
+    final txCol = _db
+        .collection('users')
+        .doc(userId)
+        .collection('transactions');
+
+    DocumentReference<Map<String, dynamic>> legRef(String uuid) =>
+        txCol.doc(uuid);
+
+    Map<String, dynamic> annulFields() => <String, dynamic>{
+          'deleted': true,
+          'annulled_by_account_deleted': plan.accountUuid,
+          'updated_at': updatedAt,
+        };
+
+    final ownDelta = plan.deltasByAccount[plan.accountUuid] ?? 0.0;
+
+    if (plan.fitsSingleBatch) {
+      final batch = _db.batch();
+
+      for (final uuid in plan.plainLegUuids) {
+        batch.update(legRef(uuid), {
+          'deleted': true,
+          'updated_at': updatedAt,
+        });
+      }
+
+      for (final pair in plan.annulledPairs) {
+        batch.set(legRef(pair.legUuid), annulFields(), SetOptions(merge: true));
+        batch.set(legRef(pair.peerUuid), annulFields(), SetOptions(merge: true));
+      }
+
+      plan.deltasByAccount.forEach((accountId, delta) {
+        if (accountId == plan.accountUuid) return;
+        batch.update(_accountRef(userId, accountId), {
+          'current_balance': FieldValue.increment(delta),
+          'updated_at': updatedAt,
+        });
+      });
+
+      final accountUpdate = <String, dynamic>{
+        'deleted': true,
+        'updated_at': updatedAt,
+      };
+      if (ownDelta.abs() >= AccountDeleteGuard.epsilon) {
+        accountUpdate['current_balance'] = FieldValue.increment(ownDelta);
+      }
+      batch.update(_accountRef(userId, plan.accountUuid), accountUpdate);
+
+      await batch.commit();
+      return;
+    }
+
+    // 1) Λοιπά legs (ανεξάρτητα writes).
+    for (final chunk in plan.buildPlainChunks()) {
+      final batch = _db.batch();
+      for (final uuid in chunk) {
+        batch.update(legRef(uuid), {
+          'deleted': true,
+          'updated_at': updatedAt,
+        });
+      }
+      await batch.commit();
+    }
+
+    // 2) Ζεύγη: κάθε chunk κουβαλά **μόνο** τα δικά του deltas (σωστό retry).
+    for (final chunk in plan.buildPairChunks()) {
+      await _commitTransferAnnulmentChunk(
+        userId: userId,
+        plan: plan,
+        chunk: chunk,
+        annulFields: annulFields,
+        updatedAt: updatedAt,
+      );
+    }
+
+    // 3) Ο λογαριασμός τελευταίος (τα deltas έχουν ήδη εφαρμοστεί).
+    await _accountRef(userId, plan.accountUuid).update({
+      'deleted': true,
+      'updated_at': updatedAt,
+    });
+  }
+
+  Future<void> _commitTransferAnnulmentChunk({
+    required String userId,
+    required AccountDeletePlan plan,
+    required AccountDeletePairChunk chunk,
+    required Map<String, dynamic> Function() annulFields,
+    required FieldValue updatedAt,
+  }) async {
+    final txCol = _db
+        .collection('users')
+        .doc(userId)
+        .collection('transactions');
+
+    Future<void> commit({required bool withDeltas}) async {
+      final batch = _db.batch();
+
+      for (final pair in chunk.pairs) {
+        batch.set(txCol.doc(pair.legUuid), annulFields(),
+            SetOptions(merge: true));
+        batch.set(txCol.doc(pair.peerUuid), annulFields(),
+            SetOptions(merge: true));
+      }
+
+      if (withDeltas) {
+        chunk.deltasByAccount.forEach((accountId, delta) {
+          batch.update(_accountRef(userId, accountId), {
+            'current_balance': FieldValue.increment(delta),
+            'updated_at': updatedAt,
+          });
+        });
+      }
+
+      await batch.commit();
+    }
+
+    try {
+      await commit(withDeltas: true);
+    } on FirebaseException catch (e) {
+      // Peer account doc που δεν υπάρχει (μόνο με αλλοιωμένο/legacy δεδομένο):
+      // κρύβουμε χωρίς deltas ώστε να μη μπλοκάρεται η διαγραφή.
+      if (e.code == 'not-found' || e.code == 'failed-precondition') {
+        DebugConfig.print(
+          '⚠️ Account delete (${plan.accountUuid}): '
+          'chunk χωρίς deltas λόγω ${e.code}',
+        );
+        await commit(withDeltas: false);
+        return;
+      }
+      rethrow;
+    }
   }
 
   // ============================================================

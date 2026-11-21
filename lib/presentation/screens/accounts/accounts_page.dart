@@ -20,6 +20,7 @@ import 'package:family_economy/providers/accounts_provider.dart';
 import 'package:family_economy/services/account_duplicate_service.dart';
 import 'package:family_economy/providers/categories_provider.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
+import 'package:family_economy/core/services/transactions_actions_service.dart';
 // Pages
 import 'package:family_economy/presentation/screens/transactions/transactions_show_page.dart';
 
@@ -61,6 +62,17 @@ class _AccountsPageState extends State<AccountsPage>
       return context.read<ConnectivityService>().isOffline;
     } catch (_) {
       return false; // αν δεν υπάρχει provider για κάποιο λόγο
+    }
+  }
+
+  /// E24: offline η ανάγνωση κινήσεων μπορεί να είναι κενή/μερική (cache).
+  /// Η διαγραφή λογαριασμού απαιτεί σύνδεση για να μη μείνουν ορφανές κινήσεις.
+  bool _isOfflineConfirmed(BuildContext context) {
+    try {
+      final connectivity = context.read<ConnectivityService>();
+      return connectivity.isInitialized && connectivity.isOffline;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -1141,37 +1153,8 @@ class _AccountsPageState extends State<AccountsPage>
                   // 1) Κλείσε το bottom sheet
                   Navigator.pop(context);
 
-                  // 2) Επιβεβαίωση διαγραφής (Dialog)
-                  final confirmed = await _confirmDeleteAccountDialog(
-                    context,
-                    account,
-                  );
-                  if (!confirmed) return;
-                  if (!context.mounted) return;
-
-                  final scaffoldContext = context;
-
-                  // 3) Διαγραφή: κινήσεις πρώτα, λογαριασμός τελευταίος
-                  try {
-                    await _deleteAccount(account.uuid);
-                    if (!scaffoldContext.mounted) return;
-
-                    _showSuccessSnack(
-                      scaffoldContext,
-                      'Ο λογαριασμός διαγράφηκε',
-                    );
-                    AccessibilityService.announceSuccess(
-                      'Ο λογαριασμός διαγράφηκε',
-                    );
-                  } catch (error) {
-                    DebugConfig.print('Delete account error: $error');
-                    if (!scaffoldContext.mounted) return;
-
-                    _showErrorSnack(scaffoldContext, 'Σφάλμα Διαγραφής');
-                    AccessibilityService.announceError(
-                      'Σφάλμα διαγραφής λογαριασμού',
-                    );
-                  }
+                  // 2) E24 + preflight + επιβεβαίωση + εφαρμογή
+                  await _handleDeleteAccount(context, account);
                 },
               )
             else
@@ -1228,9 +1211,17 @@ class _AccountsPageState extends State<AccountsPage>
 
   Future<bool> _confirmDeleteAccountDialog(
     BuildContext context,
-    AccountModel account,
-  ) async {
+    AccountModel account, {
+    AccountDeletePlan? plan,
+  }) async {
     final brightness = Theme.of(context).brightness;
+
+    final transferCount = plan?.transferCount ?? 0;
+    final completedPairs = plan?.completedPairs ?? 0;
+    final pendingPairs = plan?.pendingPairs ?? 0;
+    final orphanLegs = (plan?.partialPairs ?? 0) + (plan?.unknownPairs ?? 0);
+    final hasTransfers =
+        transferCount > 0 || orphanLegs > 0;
 
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -1240,9 +1231,67 @@ class _AccountsPageState extends State<AccountsPage>
           'Διαγραφή Λογαριασμού',
           style: TypographyUI.titleLarge(brightness),
         ),
-        content: Text(
-          'Είστε σίγουροι ότι θέλετε να διαγράψετε τον λογαριασμό "${account.name}";',
-          style: TypographyUI.bodyMedium(brightness),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Είστε σίγουροι ότι θέλετε να διαγράψετε τον λογαριασμό "${account.name}";',
+              style: TypographyUI.bodyMedium(brightness),
+            ),
+            if (hasTransfers) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: ColorsUI.getWarning(brightness).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: ColorsUI.getWarning(brightness).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (transferCount > 0)
+                      Text(
+                        'Ο λογαριασμός μετέχει σε $transferCount '
+                        '${transferCount == 1 ? "μεταφορά" : "μεταφορές"}:',
+                        style: TypographyUI.bodyMedium(brightness),
+                      ),
+                    if (completedPairs > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          '• $completedPairs ολοκληρωμένες: θα ακυρωθούν και '
+                          'στα δύο σκέλη και τα ποσά θα επιστραφούν στα '
+                          'υπόλοιπα.',
+                          style: TypographyUI.bodySmall(brightness),
+                        ),
+                      ),
+                    if (pendingPairs > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          '• $pendingPairs εκκρεμείς: θα ακυρωθούν (δεν είχαν '
+                          'επηρεάσει υπόλοιπα).',
+                          style: TypographyUI.bodySmall(brightness),
+                        ),
+                      ),
+                    if (orphanLegs > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          '• $orphanLegs ημιτελή/μη ταυτοποιημένα ζεύγη: θα '
+                          'κρυφτούν μόνο ως προς αυτόν τον λογαριασμό.',
+                          style: TypographyUI.bodySmall(brightness),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
           TextButton(
@@ -1275,86 +1324,90 @@ class _AccountsPageState extends State<AccountsPage>
     return true;
   }
 
-  /// Διαγραφή λογαριασμού (soft delete) + soft delete των κινήσεών του.
-  /// - Έως 499 κινήσεις: ένα ατομικό batch (κινήσεις + λογαριασμός μαζί).
-  /// - Πάνω από 499: chunks των 500 και ο λογαριασμός γράφεται τελευταίος.
-  Future<void> _deleteAccount(String uuid) async {
+  /// Διαγραφή λογαριασμού (soft delete) μαζί με τις κινήσεις του:
+  /// - Κινήσεις εκτός μεταφορών → κρύβονται.
+  /// - Μεταφορές → ακυρώνεται **ολόκληρο** το ζεύγος και αντιστρέφονται τα
+  ///   υπόλοιπα (E11), με marker για συμμετρική επαναφορά.
+  /// - Λογαριασμός γράφεται **τελευταίος**· >499 writes → chunks.
+  Future<void> _handleDeleteAccount(
+    BuildContext context,
+    AccountModel account,
+  ) async {
+    final scaffoldContext = context;
+    final uuid = account.uuid;
+
+    // E24: offline η ανάγνωση κινήσεων μπορεί να είναι κενή/μερική (cache).
+    if (_isOfflineConfirmed(scaffoldContext)) {
+      _showErrorSnack(
+        scaffoldContext,
+        'Η διαγραφή λογαριασμού απαιτεί σύνδεση στο internet',
+      );
+      AccessibilityService.announceError(
+        'Η διαγραφή λογαριασμού απαιτεί σύνδεση στο internet',
+      );
+      return;
+    }
+
+    final userId = scaffoldContext.session.userId;
+    final actions = TransactionsActionsService();
+
+    // 1) Preflight για τον διάλογο (καμία εγγραφή).
+    AccountDeletePlan plan;
     try {
-      // ignore: use_build_context_synchronously
-      final userId = context.session.userId;
+      plan = await actions.previewAccountDelete(
+        userId: userId,
+        accountUuid: uuid,
+      );
+    } catch (error) {
+      DebugConfig.print('Delete account preflight error: $error');
+      if (!scaffoldContext.mounted) return;
+      _showErrorSnack(scaffoldContext, 'Σφάλμα Ανάγνωσης Κινήσεων');
+      AccessibilityService.announceError(
+        'Σφάλμα ανάγνωσης κινήσεων λογαριασμού',
+      );
+      return;
+    }
+    if (!scaffoldContext.mounted) return;
 
-      final accountRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('accounts')
-          .doc(uuid);
+    // 2) Επιβεβαίωση (με ενημέρωση για τις μεταφορές).
+    final confirmed = await _confirmDeleteAccountDialog(
+      scaffoldContext,
+      account,
+      plan: plan,
+    );
+    if (!confirmed) return;
+    if (!scaffoldContext.mounted) return;
 
-      // 1) Κινήσεις που θα κρυφτούν μαζί με τον λογαριασμό
-      final txSnap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('transactions')
-          .where('account_id', isEqualTo: uuid)
-          .where('deleted', isEqualTo: false)
-          .get();
+    try {
+      // 3) Φρέσκο preflight πριν τη γραφή (μπορεί να άλλαξαν τα δεδομένα).
+      plan = await actions.previewAccountDelete(
+        userId: userId,
+        accountUuid: uuid,
+      );
+      if (!scaffoldContext.mounted) return;
 
-      final updatedAt = FieldValue.serverTimestamp();
-      final txCount = txSnap.docs.length;
+      // 4) Εφαρμογή: κινήσεις/ζεύγη → deltas → λογαριασμός τελευταίος.
+      await actions.applyAccountDeletePlan(userId: userId, plan: plan);
 
-      if (txCount <= 499) {
-        // ✅ Ατομική διαγραφή: ή όλα ή τίποτα
-        final batch = FirebaseFirestore.instance.batch();
-
-        for (final doc in txSnap.docs) {
-          batch.update(doc.reference, {
-            'deleted': true,
-            'updated_at': updatedAt,
-          });
-        }
-
-        batch.update(accountRef, {
-          'deleted': true,
-          'updated_at': updatedAt,
-        });
-
-        await batch.commit();
-      } else {
-        // ✅ Πάνω από το όριο του batch: chunks, λογαριασμός τελευταίος
-        var written = 0;
-        var batch = FirebaseFirestore.instance.batch();
-
-        for (final doc in txSnap.docs) {
-          batch.update(doc.reference, {
-            'deleted': true,
-            'updated_at': updatedAt,
-          });
-          written++;
-
-          if (written % 500 == 0) {
-            await batch.commit();
-            batch = FirebaseFirestore.instance.batch();
-          }
-        }
-
-        if (written % 500 != 0) await batch.commit();
-
-        await accountRef.update({
-          'deleted': true,
-          'updated_at': FieldValue.serverTimestamp(),
-        });
-      }
-
-      // 2) Καθαρισμός τοπικής προτίμησης (αποκλεισμός από το συνολικό υπόλοιπο)
+      // 5) Καθαρισμός τοπικής προτίμησης (αποκλεισμός από το συνολικό υπόλοιπο)
       if (_excludedAccountUuids.remove(uuid) && mounted) {
         await _saveExcludedAccounts();
       }
 
       DebugConfig.print(
-        '✅ Account deleted: $uuid (tx=$txCount, chunked=${txCount > 499})',
+        '✅ Account deleted: $uuid (plain=${plan.plainLegUuids.length}, '
+        'pairs=${plan.transferCount}, writes=${plan.totalWrites})',
       );
-    } catch (e) {
-      DebugConfig.print('❌ Error deleting account: $e');
-      rethrow;
+
+      if (!scaffoldContext.mounted) return;
+      _showSuccessSnack(scaffoldContext, 'Ο λογαριασμός διαγράφηκε');
+      AccessibilityService.announceSuccess('Ο λογαριασμός διαγράφηκε');
+    } catch (error) {
+      DebugConfig.print('Delete account error: $error');
+      if (!scaffoldContext.mounted) return;
+
+      _showErrorSnack(scaffoldContext, 'Σφάλμα Διαγραφής');
+      AccessibilityService.announceError('Σφάλμα διαγραφής λογαριασμού');
     }
   }
 
