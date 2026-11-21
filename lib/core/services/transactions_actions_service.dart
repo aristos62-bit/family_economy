@@ -828,6 +828,41 @@ class TransactionsActionsService {
   }
 
   // ============================================================
+  // E26 — ΑΡΧΕΙΟΘΕΤΗΣΗ ΛΟΓΑΡΙΑΣΜΟΥ (1 write, 0 reads)
+  // ============================================================
+
+  /// Αρχειοθετεί τον λογαριασμό: `is_active=false` + `archived_at`.
+  ///
+  /// **Καμία κίνηση δεν αγγίζεται** → ιστορικό και υπόλοιπο μένουν.
+  /// Το `archived_at` γράφεται με **client** timestamp, ώστε το τοπικό
+  /// snapshot να το βλέπει αμέσως (με `serverTimestamp` θα ήταν `null`
+  /// μέχρι το ack και ο λογαριασμός θα έβγαινε στιγμιαία από το σύνολο).
+  Future<void> archiveAccount({
+    required String userId,
+    required String accountUuid,
+  }) async {
+    await _accountRef(userId, accountUuid).update({
+      'is_active': false,
+      'archived_at': Timestamp.fromDate(DateTime.now()),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+    DebugConfig.print('🗄️ Account archived: $accountUuid');
+  }
+
+  /// Επαναφέρει αρχειοθετημένο λογαριασμό. Δεν αγγίζει κινήσεις.
+  Future<void> restoreArchivedAccount({
+    required String userId,
+    required String accountUuid,
+  }) async {
+    await _accountRef(userId, accountUuid).update({
+      'is_active': true,
+      'archived_at': FieldValue.delete(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+    DebugConfig.print('♻️ Account unarchived: $accountUuid');
+  }
+
+  // ============================================================
   // E11 — ΔΙΑΓΡΑΦΗ ΛΟΓΑΡΙΑΣΜΟΥ: ΑΚΥΡΩΣΗ ΜΕΤΑΦΟΡΩΝ
   // ============================================================
 

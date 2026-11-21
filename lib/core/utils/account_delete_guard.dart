@@ -31,6 +31,42 @@ class AccountDeleteDecision {
   bool get canDelete => block == AccountDeleteBlock.none;
 }
 
+/// Ενέργεια που επιτρέπεται για έναν λογαριασμό (E26).
+enum AccountAction {
+  /// Καθαρός λογαριασμός (χωρίς κινήσεις/budgets) → πραγματική διαγραφή.
+  delete,
+
+  /// Έχει ιστορικό → αρχειοθέτηση (καμία κίνηση δεν αγγίζεται).
+  archive,
+
+  /// Εκκρεμούν προγραμματισμένες κινήσεις.
+  blockPending,
+
+  /// Είναι ο τελευταίος ενεργός λογαριασμός.
+  blockLast,
+
+  /// Δεν υπάρχει ενεργός λογαριασμός.
+  blockNone,
+}
+
+/// Απόφαση E26: τι επιτρέπεται (διαγραφή / αρχειοθέτηση / φραγή) + μήνυμα.
+class AccountActionDecision {
+  const AccountActionDecision({
+    required this.action,
+    required this.message,
+  });
+
+  final AccountAction action;
+  final String message;
+
+  bool get canDelete => action == AccountAction.delete;
+  bool get canArchive => action == AccountAction.archive;
+  bool get isBlocked =>
+      action == AccountAction.blockPending ||
+      action == AccountAction.blockLast ||
+      action == AccountAction.blockNone;
+}
+
 class AccountDeleteGuard {
   AccountDeleteGuard._();
 
@@ -55,6 +91,61 @@ class AccountDeleteGuard {
 
     return const AccountDeleteDecision(
       block: AccountDeleteBlock.none,
+      message: '',
+    );
+  }
+
+  // ============================================================
+  // E26 — ΠΟΙΑ ΕΝΕΡΓΕΙΑ ΕΠΙΤΡΕΠΕΤΑΙ (καθαρό Dart, 0 reads)
+  // ============================================================
+
+  /// Αποφασίζει αν ο λογαριασμός **διαγράφεται** (καθαρός) ή
+  /// **αρχειοθετείται** (έχει ιστορικό) ή αν υπάρχει φραγή.
+  ///
+  /// [activeAccountCount] : `AccountsProvider.accounts.length` (ενεργοί).
+  /// [hasAnyTransaction] : υπάρχει έστω μία μη διαγραμμένη κίνηση.
+  /// [budgetsCount] : ενεργά budgets που δείχνουν στον λογαριασμό.
+  /// [pendingCount] : εκκρεμείς προγραμματισμένες κινήσεις του λογαριασμού.
+  static AccountActionDecision decide({
+    required int activeAccountCount,
+    required bool hasAnyTransaction,
+    required int budgetsCount,
+    int pendingCount = 0,
+  }) {
+    if (activeAccountCount <= 0) {
+      return const AccountActionDecision(
+        action: AccountAction.blockNone,
+        message: 'Δεν υπάρχει ενεργός λογαριασμός.',
+      );
+    }
+
+    if (activeAccountCount == 1) {
+      return const AccountActionDecision(
+        action: AccountAction.blockLast,
+        message:
+            'Ο λογαριασμός είναι ο τελευταίος ενεργός. '
+            'Δημιουργήστε πρώτα έναν νέο λογαριασμό.',
+      );
+    }
+
+    if (pendingCount > 0) {
+      return AccountActionDecision(
+        action: AccountAction.blockPending,
+        message:
+            'Υπάρχουν $pendingCount εκκρεμείς προγραμματισμένες κινήσεις. '
+            'Ακυρώστε τις πρώτα από την καρτέλα «Προγραμματισμένες».',
+      );
+    }
+
+    if (hasAnyTransaction || budgetsCount > 0) {
+      return const AccountActionDecision(
+        action: AccountAction.archive,
+        message: '',
+      );
+    }
+
+    return const AccountActionDecision(
+      action: AccountAction.delete,
       message: '',
     );
   }
@@ -103,12 +194,19 @@ class AccountDeleteGuard {
     final pairs = <TransferAnnulmentPair>[];
     final plain = <String>[];
     final deltas = <String, double>{};
+    final pendingLegUuids = <String>[];
+    var activeLegCount = 0;
     var partial = 0;
     var unknown = 0;
 
     for (final leg in activeLegs) {
       final uuid = (leg['uuid'] as String?)?.trim() ?? '';
       if (uuid.isEmpty) continue;
+
+      activeLegCount++;
+      final isScheduled = leg['is_scheduled'] as bool? ?? false;
+      final isExecuted = leg['is_executed'] as bool? ?? false;
+      if (isScheduled && !isExecuted) pendingLegUuids.add(uuid);
 
       final type = leg['transaction_type'] as String?;
       final amount = (leg['amount'] as num?)?.toDouble() ?? 0.0;
@@ -198,6 +296,8 @@ class AccountDeleteGuard {
       deltasByAccount: Map<String, double>.unmodifiable(deltas),
       partialPairs: partial,
       unknownPairs: unknown,
+      activeLegCount: activeLegCount,
+      pendingLegUuids: List<String>.unmodifiable(pendingLegUuids),
     );
   }
 
@@ -356,6 +456,8 @@ class AccountDeletePlan {
     required this.deltasByAccount,
     required this.partialPairs,
     required this.unknownPairs,
+    required this.activeLegCount,
+    required this.pendingLegUuids,
   });
 
   final String accountUuid;
@@ -364,6 +466,17 @@ class AccountDeletePlan {
   final Map<String, double> deltasByAccount;
   final int partialPairs;
   final int unknownPairs;
+
+  /// Πλήθος μη διαγραμμένων κινήσεων του λογαριασμού (E26 gate).
+  final int activeLegCount;
+
+  /// Legs με `is_scheduled && !is_executed` (εκκρεμείς).
+  final List<String> pendingLegUuids;
+
+  /// Υπάρχει έστω μία κίνηση → δεν επιτρέπεται πραγματική διαγραφή.
+  bool get hasAnyTransaction => activeLegCount > 0;
+
+  bool get hasPendingScheduled => pendingLegUuids.isNotEmpty;
 
   int get completedPairs =>
       annulledPairs.where((pair) => pair.isComplete).length;

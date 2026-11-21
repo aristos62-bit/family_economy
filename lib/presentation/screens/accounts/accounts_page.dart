@@ -15,8 +15,10 @@ import 'package:family_economy/core/utils/icon_mapper.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/utils/account_delete_guard.dart';
+import 'package:family_economy/core/utils/account_totals.dart';
 // Providers
 import 'package:family_economy/providers/accounts_provider.dart';
+import 'package:family_economy/providers/budgets_provider.dart';
 import 'package:family_economy/services/account_duplicate_service.dart';
 import 'package:family_economy/providers/categories_provider.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
@@ -198,11 +200,22 @@ class _AccountsPageState extends State<AccountsPage>
     }
   }
 
-  /// Υπολογισμός συνολικού υπολοίπου
+  /// Υπολογισμός συνολικού υπολοίπου (E26: ενεργοί **και** αρχειοθετημένοι,
+  /// μείον τις εξαιρέσεις του χρήστη).
   double _calculateTotalBalance(List<AccountModel> accounts) {
-    return accounts
-        .where((a) => !_excludedAccountUuids.contains(a.uuid))
-        .fold(0.0, (total, account) => total + account.currentBalance);
+    return AccountTotals.sum(accounts, excluded: _excludedAccountUuids);
+  }
+
+  /// Ενεργά budgets που δείχνουν στον λογαριασμό (0 reads — από τον provider).
+  /// Το query του `BudgetsProvider` φιλτράρει `deleted=false & is_active=true`,
+  /// άρα ανενεργά budgets δεν φαίνονται εδώ (τεκμηριωμένος περιορισμός).
+  int _activeBudgetsFor(String accountUuid) {
+    try {
+      final budgets = context.read<BudgetsProvider>().budgets;
+      return budgets.where((b) => b.accountId == accountUuid).length;
+    } catch (_) {
+      return 0;
+    }
   }
 
   // ============================================================
@@ -1004,6 +1017,14 @@ class _AccountsPageState extends State<AccountsPage>
                   'Τύπος: ${_accountTypeLabel(account.accountType)}',
                   style: TypographyUI.bodyMedium(brightness),
                 ),
+                if (account.isArchived)
+                  Text(
+                    'Κατάσταση: Αρχειοθετημένος'
+                    '${account.archivedAt == null ? '' : ' από ${_formatShortDate(account.archivedAt!)}'}',
+                    style: TypographyUI.bodyMedium(brightness).copyWith(
+                      color: ColorsUI.getTextSecondary(brightness),
+                    ),
+                  ),
                 Row(
                   children: [
                     Text(
@@ -1033,6 +1054,7 @@ class _AccountsPageState extends State<AccountsPage>
 
   void _showAccountOptions(BuildContext context, AccountModel account) {
     final brightness = Theme.of(context).brightness;
+    final isArchived = account.isArchived;
     final deleteDecision = AccountDeleteGuard.evaluate(
       context.read<AccountsProvider>().accounts.length,
     );
@@ -1064,8 +1086,9 @@ class _AccountsPageState extends State<AccountsPage>
             ),
             const SizedBox(height: 16),
 
-            // Edit
-            ListTile(
+            // Edit (μόνο για ενεργούς — E26)
+            if (!isArchived)
+              ListTile(
               leading: Icon(
                 Icons.edit,
                 color: ColorsUI.getTextPrimary(brightness),
@@ -1120,24 +1143,71 @@ class _AccountsPageState extends State<AccountsPage>
               },
             ),
 
-            // Recalculate
-            ListTile(
-              leading: Icon(
-                Icons.calculate,
-                color: ColorsUI.getTextPrimary(brightness),
+            // Recalculate (μόνο για ενεργούς — E26)
+            if (!isArchived)
+              ListTile(
+                leading: Icon(
+                  Icons.calculate,
+                  color: ColorsUI.getTextPrimary(brightness),
+                ),
+                title: Text(
+                  'Επαναϋπολογισμός Υπολοίπου',
+                  style: TypographyUI.bodyMedium(brightness),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showRecalculateConfirmDialog(context, account);
+                },
               ),
-              title: Text(
-                'Επαναϋπολογισμός Υπολοίπου',
-                style: TypographyUI.bodyMedium(brightness),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showRecalculateConfirmDialog(context, account);
-              },
-            ),
 
-            // Delete (μόνο αν μένει τουλάχιστον ένας άλλος ενεργός)
-            if (deleteDecision.canDelete)
+            // Επαναφορά (E26) — μόνο για αρχειοθετημένους
+            if (isArchived)
+              ListTile(
+                leading: Icon(
+                  Icons.unarchive_outlined,
+                  color: ColorsUI.getPrimary(brightness),
+                ),
+                title: Text(
+                  'Επαναφορά',
+                  style: TypographyUI.bodyMedium(brightness),
+                ),
+                subtitle: Text(
+                  'Επιστρέφει στις λίστες επιλογής',
+                  style: TypographyUI.labelSmall(
+                    brightness,
+                  ).copyWith(color: ColorsUI.getTextSecondary(brightness)),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _handleRestoreAccount(context, account);
+                },
+              ),
+
+            // Αρχειοθέτηση (E26) — μόνο για ενεργούς, όχι τον τελευταίο
+            if (!isArchived && deleteDecision.canDelete)
+              ListTile(
+                leading: Icon(
+                  Icons.archive_outlined,
+                  color: ColorsUI.getTextPrimary(brightness),
+                ),
+                title: Text(
+                  'Αρχειοθέτηση',
+                  style: TypographyUI.bodyMedium(brightness),
+                ),
+                subtitle: Text(
+                  'Κρατά ιστορικό και υπόλοιπο',
+                  style: TypographyUI.labelSmall(
+                    brightness,
+                  ).copyWith(color: ColorsUI.getTextSecondary(brightness)),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _handleArchiveAccount(context, account);
+                },
+              ),
+
+            // Delete: πραγματική διαγραφή μόνο για «καθαρούς» (E26).
+            if (isArchived || deleteDecision.canDelete)
               ListTile(
                 leading: Icon(
                   Icons.delete,
@@ -1154,7 +1224,11 @@ class _AccountsPageState extends State<AccountsPage>
                   Navigator.pop(context);
 
                   // 2) E24 + preflight + επιβεβαίωση + εφαρμογή
-                  await _handleDeleteAccount(context, account);
+                  await _handleDeleteAccount(
+                    context,
+                    account,
+                    allowArchiveFallback: !isArchived,
+                  );
                 },
               )
             else
@@ -1174,7 +1248,7 @@ class _AccountsPageState extends State<AccountsPage>
 
     return Semantics(
       liveRegion: true,
-      label: 'Διαγραφή μη διαθέσιμη. $message',
+      label: 'Διαγραφή ή αρχειοθέτηση μη διαθέσιμη. $message',
       excludeSemantics: true,
       child: Container(
         margin: const EdgeInsets.only(top: 4),
@@ -1331,8 +1405,9 @@ class _AccountsPageState extends State<AccountsPage>
   /// - Λογαριασμός γράφεται **τελευταίος**· >499 writes → chunks.
   Future<void> _handleDeleteAccount(
     BuildContext context,
-    AccountModel account,
-  ) async {
+    AccountModel account, {
+    bool allowArchiveFallback = true,
+  }) async {
     final scaffoldContext = context;
     final uuid = account.uuid;
 
@@ -1368,6 +1443,53 @@ class _AccountsPageState extends State<AccountsPage>
       return;
     }
     if (!scaffoldContext.mounted) return;
+
+    // 1β) E26: διαγραφή μόνο «καθαρού» λογαριασμού· αλλιώς προσφορά αρχειοθέτησης.
+    final budgetsCount = _activeBudgetsFor(uuid);
+    final actionDecision = AccountDeleteGuard.decide(
+      activeAccountCount:
+          scaffoldContext.read<AccountsProvider>().accounts.length,
+      hasAnyTransaction: plan.hasAnyTransaction,
+      budgetsCount: budgetsCount,
+      pendingCount: plan.pendingLegUuids.length,
+    );
+
+    if (actionDecision.isBlocked) {
+      await _showArchiveBlockedDialog(scaffoldContext, actionDecision.message);
+      return;
+    }
+
+    if (actionDecision.action == AccountAction.archive) {
+      if (!allowArchiveFallback) {
+        // Αρχειοθετημένος με ιστορικό → μένει αρχειοθετημένος.
+        await _showArchiveBlockedDialog(
+          scaffoldContext,
+          'Ο λογαριασμός έχει ιστορικό (${plan.activeLegCount} κινήσεις) και '
+          'δεν μπορεί να διαγραφεί. Παραμένει αρχειοθετημένος.',
+        );
+        return;
+      }
+
+      final wantsArchive = await _confirmArchiveDialog(
+        scaffoldContext,
+        account,
+        transactionsCount: plan.activeLegCount,
+        budgetsCount: budgetsCount,
+        intro:
+            'Ο λογαριασμός "${account.name}" έχει ιστορικό, οπότε δεν '
+            'διαγράφεται. Μπορείτε να τον αρχειοθετήσετε:',
+      );
+      if (!wantsArchive) return;
+      if (!scaffoldContext.mounted) return;
+
+      await _handleArchiveAccount(
+        scaffoldContext,
+        account,
+        plan: plan,
+        skipConfirm: true,
+      );
+      return;
+    }
 
     // 2) Επιβεβαίωση (με ενημέρωση για τις μεταφορές).
     final confirmed = await _confirmDeleteAccountDialog(
@@ -1412,6 +1534,239 @@ class _AccountsPageState extends State<AccountsPage>
   }
 
   // ============================================================
+  // E26 — ΑΡΧΕΙΟΘΕΤΗΣΗ / ΕΠΑΝΑΦΟΡΑ ΛΟΓΑΡΙΑΣΜΟΥ
+  // ============================================================
+
+  Future<void> _handleArchiveAccount(
+    BuildContext context,
+    AccountModel account, {
+    AccountDeletePlan? plan,
+    bool skipConfirm = false,
+  }) async {
+    final scaffoldContext = context;
+    final userId = scaffoldContext.session.userId;
+
+    // 1) Φραγή τελευταίου ενεργού (0 reads).
+    final activeDecision = AccountDeleteGuard.evaluate(
+      scaffoldContext.read<AccountsProvider>().accounts.length,
+    );
+    if (!activeDecision.canDelete) {
+      await _showArchiveBlockedDialog(scaffoldContext, activeDecision.message);
+      return;
+    }
+
+    // 2) Πλάνο κινήσεων (1 read, μόνο αν δεν δόθηκε).
+    AccountDeletePlan? current = plan;
+    if (current == null) {
+      try {
+        current = await TransactionsActionsService().previewAccountDelete(
+          userId: userId,
+          accountUuid: account.uuid,
+        );
+      } catch (error) {
+        DebugConfig.print('Archive account preview error: $error');
+        if (!scaffoldContext.mounted) return;
+        _showErrorSnack(scaffoldContext, 'Σφάλμα Ανάγνωσης Κινήσεων');
+        AccessibilityService.announceError(
+          'Σφάλμα ανάγνωσης κινήσεων λογαριασμού',
+        );
+        return;
+      }
+      if (!scaffoldContext.mounted) return;
+    }
+
+    // 3) Εκκρεμείς προγραμματισμένες → φραγή (ο executor δεν ελέγχει is_active).
+    if (current.hasPendingScheduled) {
+      await _showArchiveBlockedDialog(
+        scaffoldContext,
+        'Υπάρχουν ${current.pendingLegUuids.length} εκκρεμείς '
+        'προγραμματισμένες κινήσεις. Ακυρώστε τις πρώτα από την καρτέλα '
+        '«Προγραμματισμένες».',
+      );
+      return;
+    }
+
+    // 4) Επιβεβαίωση.
+    if (!skipConfirm) {
+      final confirmed = await _confirmArchiveDialog(
+        scaffoldContext,
+        account,
+        transactionsCount: current.activeLegCount,
+        budgetsCount: _activeBudgetsFor(account.uuid),
+      );
+      if (!confirmed) return;
+      if (!scaffoldContext.mounted) return;
+    }
+
+    // 5) Εγγραφή: 1 doc update, offline-safe, καμία κίνηση δεν αγγίζεται.
+    try {
+      await TransactionsActionsService().archiveAccount(
+        userId: userId,
+        accountUuid: account.uuid,
+      );
+
+      if (!scaffoldContext.mounted) return;
+      _showSuccessSnack(scaffoldContext, 'Ο λογαριασμός αρχειοθετήθηκε');
+      AccessibilityService.announceSuccess('Ο λογαριασμός αρχειοθετήθηκε');
+    } catch (error) {
+      DebugConfig.print('Archive account error: $error');
+      if (!scaffoldContext.mounted) return;
+      _showErrorSnack(scaffoldContext, 'Σφάλμα Αρχειοθέτησης');
+      AccessibilityService.announceError('Σφάλμα αρχειοθέτησης λογαριασμού');
+    }
+  }
+
+  Future<void> _handleRestoreAccount(
+    BuildContext context,
+    AccountModel account,
+  ) async {
+    final scaffoldContext = context;
+    final userId = scaffoldContext.session.userId;
+
+    try {
+      await TransactionsActionsService().restoreArchivedAccount(
+        userId: userId,
+        accountUuid: account.uuid,
+      );
+
+      if (!scaffoldContext.mounted) return;
+      _showSuccessSnack(scaffoldContext, 'Ο λογαριασμός επανήλθε');
+      AccessibilityService.announceSuccess('Ο λογαριασμός επανήλθε');
+    } catch (error) {
+      DebugConfig.print('Restore account error: $error');
+      if (!scaffoldContext.mounted) return;
+      _showErrorSnack(scaffoldContext, 'Σφάλμα Επαναφοράς');
+      AccessibilityService.announceError('Σφάλμα επαναφοράς λογαριασμού');
+    }
+  }
+
+  Future<void> _showArchiveBlockedDialog(
+    BuildContext context,
+    String message,
+  ) async {
+    final brightness = Theme.of(context).brightness;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: ColorsUI.getSurface(brightness),
+        title: Text(
+          'Αρχειοθέτηση μη διαθέσιμη',
+          style: TypographyUI.titleLarge(brightness),
+        ),
+        content: Text(message, style: TypographyUI.bodyMedium(brightness)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(
+              'Εντάξει',
+              style: TypographyUI.buttonBase().copyWith(
+                color: ColorsUI.getPrimary(brightness),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    AccessibilityService.announcePolite(message);
+  }
+
+  Future<bool> _confirmArchiveDialog(
+    BuildContext context,
+    AccountModel account, {
+    required int transactionsCount,
+    required int budgetsCount,
+    String? intro,
+  }) async {
+    final brightness = Theme.of(context).brightness;
+    final offline = _isOfflineConfirmed(context);
+    final balanceText = CurrencyFormatter.format(
+      account.currentBalance,
+      currency: account.currency,
+    );
+    final transactionsText = transactionsCount == 1
+        ? 'Η 1 κίνηση'
+        : 'Οι $transactionsCount κινήσεις';
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: ColorsUI.getSurface(brightness),
+        title: Text(
+          'Αρχειοθέτηση Λογαριασμού',
+          style: TypographyUI.titleLarge(brightness),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              intro ?? 'Ο λογαριασμός "${account.name}" θα αρχειοθετηθεί.',
+              style: TypographyUI.bodyMedium(brightness),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '• Κρύβεται από τις λίστες επιλογής.\n'
+              '• $transactionsText και το υπόλοιπο $balanceText '
+              'διατηρούνται.\n'
+              '• Συνεχίζει να μετράει στο συνολικό υπόλοιπο.\n'
+              '• Μπορείτε να τον επαναφέρετε όποτε θέλετε.',
+              style: TypographyUI.bodySmall(brightness),
+            ),
+            if (budgetsCount > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '• $budgetsCount ενεργά budgets συνεχίζουν να τον '
+                  'χρησιμοποιούν.',
+                  style: TypographyUI.bodySmall(brightness),
+                ),
+              ),
+            if (offline)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '• Χωρίς σύνδεση δεν ελέγχονται εκκρεμείς κινήσεις άλλης '
+                  'συσκευής.',
+                  style: TypographyUI.bodySmall(
+                    brightness,
+                  ).copyWith(color: ColorsUI.getWarning(brightness)),
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(
+              'Ακύρωση',
+              style: TypographyUI.buttonBase().copyWith(
+                color: ColorsUI.getTextSecondary(brightness),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ColorsUI.getPrimary(brightness),
+              foregroundColor: ColorsUI.getOnPrimary(brightness),
+            ),
+            child: const Text('Αρχειοθέτηση'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      AccessibilityService.announcePolite('Ακυρώθηκε η αρχειοθέτηση');
+      return false;
+    }
+
+    return true;
+  }
+
+  // ============================================================
   // BUILD METHOD
   // ============================================================
 
@@ -1420,10 +1775,11 @@ class _AccountsPageState extends State<AccountsPage>
     final brightness = Theme.of(context).brightness;
     final accountsProvider = context.watch<AccountsProvider>();
     final accounts = accountsProvider.accounts;
+    final archivedAccounts = accountsProvider.archivedAccounts;
     final isLoading = accountsProvider.isLoading;
     final error = accountsProvider.error;
 
-    final totalBalance = _calculateTotalBalance(accounts);
+    final totalBalance = _calculateTotalBalance(accountsProvider.allAccounts);
 
     // Responsive layout
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1440,7 +1796,7 @@ class _AccountsPageState extends State<AccountsPage>
       content = _buildLoadingState(brightness);
     } else if (error != null) {
       content = _buildErrorState(brightness, error);
-    } else if (accounts.isEmpty) {
+    } else if (accounts.isEmpty && archivedAccounts.isEmpty) {
       content = _buildEmptyState(brightness);
     } else {
       content = useGrid
@@ -1449,8 +1805,9 @@ class _AccountsPageState extends State<AccountsPage>
               accounts,
               crossAxisCount,
               childAspectRatio,
+              archivedAccounts,
             )
-          : _buildAccountsList(brightness, accounts);
+          : _buildAccountsList(brightness, accounts, archivedAccounts);
     }
 
     return Scaffold(
@@ -1668,40 +2025,160 @@ class _AccountsPageState extends State<AccountsPage>
     List<AccountModel> accounts,
     int crossAxisCount,
     double childAspectRatio,
+    List<AccountModel> archivedAccounts,
   ) {
     // ✅ extra bottom space για να μην καλύπτει ο FAB το τελευταίο row
     const bottomSafeSpace = 96.0;
 
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, bottomSafeSpace),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: childAspectRatio,
-        crossAxisSpacing: 6,
-        mainAxisSpacing: 6,
-      ),
-      itemCount: accounts.length,
-      itemBuilder: (context, index) {
-        return _buildAccountCard(brightness, accounts[index]);
-      },
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: childAspectRatio,
+              crossAxisSpacing: 6,
+              mainAxisSpacing: 6,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) =>
+                  _buildAccountCard(brightness, accounts[index]),
+              childCount: accounts.length,
+            ),
+          ),
+        ),
+        if (archivedAccounts.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _buildArchivedSection(brightness, archivedAccounts),
+            ),
+          ),
+        const SliverToBoxAdapter(child: SizedBox(height: bottomSafeSpace)),
+      ],
     );
   }
 
   Widget _buildAccountsList(
     Brightness brightness,
     List<AccountModel> accounts,
+    List<AccountModel> archivedAccounts,
   ) {
     // ✅ extra bottom space για να μην καλύπτει ο FAB το τελευταίο item
     const bottomSafeSpace = 96.0;
+    final hasArchived = archivedAccounts.isNotEmpty;
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, bottomSafeSpace),
-      itemCount: accounts.length,
+      itemCount: accounts.length + (hasArchived ? 1 : 0),
       separatorBuilder: (_, _) => const SizedBox(height: 1),
       itemBuilder: (context, index) {
-        return _buildAccountCard(brightness, accounts[index]);
+        if (index < accounts.length) {
+          return _buildAccountCard(brightness, accounts[index]);
+        }
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: _buildArchivedSection(brightness, archivedAccounts),
+        );
       },
     );
+  }
+
+  // ============================================================
+  // E26 — ΑΡΧΕΙΟΘΕΤΗΜΕΝΟΙ ΛΟΓΑΡΙΑΣΜΟΙ
+  // ============================================================
+
+  Widget _buildArchivedSection(
+    Brightness brightness,
+    List<AccountModel> archivedAccounts,
+  ) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: Container(
+        decoration: BoxDecoration(
+          color: ColorsUI.getCard(brightness),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: ColorsUI.getBorder(brightness), width: 1),
+        ),
+        child: ExpansionTile(
+          key: const PageStorageKey<String>('archived_accounts_section'),
+          shape: const Border(),
+          collapsedShape: const Border(),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+          childrenPadding: const EdgeInsets.only(bottom: 4),
+          leading: ExcludeSemantics(
+            child: Icon(
+              Icons.archive_outlined,
+              color: ColorsUI.getTextSecondary(brightness),
+            ),
+          ),
+          title: Text(
+            'Αρχειοθετημένοι (${archivedAccounts.length})',
+            style: TypographyUI.titleSmall(brightness),
+          ),
+          subtitle: Text(
+            'Μετράνε στο σύνολο · δεν εμφανίζονται στις επιλογές',
+            style: TypographyUI.labelSmall(
+              brightness,
+            ).copyWith(color: ColorsUI.getTextSecondary(brightness)),
+          ),
+          children: [
+            for (final account in archivedAccounts)
+              _buildArchivedTile(brightness, account),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildArchivedTile(Brightness brightness, AccountModel account) {
+    final archivedAt = account.archivedAt;
+    final archivedText = archivedAt == null
+        ? ''
+        : ' · Αρχειοθετήθηκε: ${_formatShortDate(archivedAt)}';
+    final balanceText = CurrencyFormatter.format(
+      account.currentBalance,
+      currency: account.currency,
+    );
+
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      title: Text(
+        account.name,
+        style: TypographyUI.bodyMedium(
+          brightness,
+        ).copyWith(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        '${_accountTypeLabel(account.accountType)} · $balanceText$archivedText',
+        style: TypographyUI.labelSmall(
+          brightness,
+        ).copyWith(color: ColorsUI.getTextSecondary(brightness)),
+      ),
+      trailing: SizedBox(
+        width: 32,
+        height: 32,
+        child: IconButton(
+          padding: EdgeInsets.zero,
+          iconSize: 20,
+          visualDensity: VisualDensity.compact,
+          icon: Icon(
+            Icons.more_vert,
+            color: ColorsUI.getTextSecondary(brightness),
+          ),
+          onPressed: () => _showAccountOptions(context, account),
+          tooltip: 'Επιλογές',
+        ),
+      ),
+      onTap: () => _showAccountInfo(context, account),
+    );
+  }
+
+  String _formatShortDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   Widget _buildAccountCard(Brightness brightness, AccountModel account) {

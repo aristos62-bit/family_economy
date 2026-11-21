@@ -630,7 +630,15 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
     return Consumer4<AccountsProvider, CategoriesProvider, BudgetsProvider, TransactionsProvider>(
       builder: (context, accountsP, categoriesP, budgetsP, transactionsP, _) {
         // 1) categories/accounts from providers
-        final accounts = accountsP.accounts.where((a) => !a.deleted && a.isActive).toList();
+        // E16/E26: κρατά τον ήδη επιλεγμένο λογαριασμό ακόμη κι αν είναι
+        // αρχειοθετημένος, ώστε το dropdown να μην έχει orphan `initialValue`.
+        final accounts = accountsP.accounts
+            .where(
+              (a) =>
+                  !a.deleted &&
+                  (a.isActive || a.uuid == _selectedAccountId),
+            )
+            .toList();
         final expenseCats = categoriesP.getCategoriesByType('expense');
 
         // 2) First load: prepare controllers once

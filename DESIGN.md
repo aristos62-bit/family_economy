@@ -143,7 +143,7 @@ pubspec.yaml  (version: 2.2.0+6)          ← ΜΟΝΟ εδώ αλλάζει η 
 | **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.2.0 (build 6)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.0 (build 7)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -294,7 +294,8 @@ lib/
       app_theme.dart                           # lightTheme / darkTheme (Material 3)
       ui_tokens.dart                           # ColorsUI, TypographyUI (primaryFont = Roboto)
     utils/
-      account_delete_guard.dart                # Φραγή διαγραφής τελευταίου ενεργού λογαριασμού (E7, καθαρό Dart)
+      account_delete_guard.dart                # Φραγή/απόφαση διαγραφής-αρχειοθέτησης λογαριασμού (E7, E26, καθαρό Dart)
+      account_totals.dart                      # Ένα σημείο αλήθειας για το συνολικό υπόλοιπο (E26)
       app_info.dart                            # έκδοση από package_info_plus (footer Επιλογών)
       chart_helpers.dart
       currency_formatter.dart
@@ -544,14 +545,20 @@ lib/
 - Oil: `oil_page.dart` + `oil/` (12 αρχεία) — ρυθμίσεις σε `settings/oil_tank` (`avg_cost_per_liter`, `liters_at_last_purchase`, `price_per_liter`), ιστορικό σε `oil_purchases`.
 - Εξαγωγή δεδομένων: `pdf` + `excel` + `file_picker` στις σελίδες `stats2_averages_page`, `stats3_page`, `stats4_budget_page`.
 
-### 5.13 Διαγραφή λογαριασμού — φραγή & μεταφορές (E7, E11)
+### 5.13 Διαγραφή & αρχειοθέτηση λογαριασμού (E7, E11, E26)
 
 | Στοιχείο | Τιμή |
 |---|---|
 | Απόφαση E7 | `core/utils/account_delete_guard.dart` — καθαρό Dart, **0 reads** |
 | Είσοδος E7 | `AccountsProvider.accounts.length` (ήδη φιλτραρισμένο: `deleted == false` ∧ `isActive`) |
 | Κανόνας E7 | `1` ενεργός → φραγή (warning panel αντί για tile)· `≥2` → επιτρέπεται |
+| Απόφαση E26 | `AccountDeleteGuard.decide(activeAccountCount, hasAnyTransaction, budgetsCount, pendingCount)` → `delete` / `archive` / `block*` |
+| Κανόνας E26 | Διαγραφή **μόνο** χωρίς κινήσεις **και** χωρίς budgets· αλλιώς αρχειοθέτηση· φραγή για τελευταίο ενεργό ή εκκρεμείς προγραμματισμένες |
+| Αρχειοθέτηση | `is_active=false` + `archived_at` (client `Timestamp.fromDate`)· `updated_at` = `serverTimestamp`· **1 write, 0 reads, offline-safe**· καμία κίνηση δεν αγγίζεται |
+| Σύνολο E26 | `countsInTotal = isActive || archivedAt != null` → οι legacy `is_active=false` χωρίς marker μένουν **εκτός** (0 migration)· υπολογισμός μόνο μέσω `AccountTotals` |
+| Αναγνώριση ονόματος | `getAccountByUuid` ψάχνει σε **όλους** τους μη διαγραμμένους (`_accounts`) → σωστό όνομα σε budgets/κινήσεις (E12) |
 | Preflight E11 | `TransactionsActionsService.previewAccountDelete` — ενεργές κινήσεις λογαριασμού (`account_id` + `deleted`), 0 επιπλέον reads για νέα ζεύγη (peer δείκτες) |
+| Μετρήσεις E26 | Το ίδιο preflight δίνει `activeLegCount` + `pendingLegUuids` (`is_scheduled && !is_executed`) — **0 επιπλέον reads** |
 | Πλάνο E11 | `AccountDeleteGuard.buildPlan` → ζεύγη (complete/pending), απλά legs, deltas ανά λογαριασμό |
 | Σημασιολογία | Ολοκληρωμένο ζεύγος → **2 legs** + αντιστροφή **και των δύο** υπολοίπων· εκκρεμές (`is_scheduled && !is_executed`) → 2 legs, 0 deltas· μερικό/άγνωστο → μόνο το ενεργό leg, 0 deltas, **χωρίς** marker |
 | Marker | `annulled_by_account_deleted: <uuid>` σε **κάθε** ακυρωμένο leg· καθαρισμός με `FieldValue.delete()` στην επαναφορά |
@@ -562,7 +569,7 @@ lib/
 | Μηνύματα | success/error **μετά** το commit (όχι success-first) |
 | Κενή κατάσταση | `transaction_entry_page.dart` — μήνυμα + CTA προς καρτέλα «Λογαριασμοί» (`home_page._onTabTap(2)`) |
 
-> Ο κανόνας E7 **δεν** αγγίζει υπόλοιπα· το E11 αντιστρέφει **μόνο** τα deltas των ζευγών μεταφορών που ακυρώνει. Τα budget docs που δείχνουν στον λογαριασμό δεν καθαρίζονται (E12).
+> Ο κανόνας E7 **δεν** αγγίζει υπόλοιπα· το E11 αντιστρέφει **μόνο** τα deltas των ζευγών μεταφορών που ακυρώνει. Η αρχειοθέτηση (E26) δεν αγγίζει καμία κίνηση και δεν χρειάζεται preflight για εγγραφή· τα budget docs που δείχνουν σε αρχειοθετημένο λογαριασμό συνεχίζουν να δουλεύουν και δείχνουν σωστό όνομα (E12).
 
 ---
 
@@ -596,8 +603,10 @@ lib/
 ```
 uuid (doc id), user_id, name, initial_balance, current_balance, currency,
 account_type, icon_index, color, is_active, display_order,
-created_at, updated_at, deleted
+created_at, updated_at, deleted, archived_at (nullable Timestamp — E26)
 ```
+
+> `archived_at != null` ⇒ αρχειοθετημένος: `is_active=false` αλλά **μετράει** στο σύνολο (`countsInTotal`). Legacy docs με `is_active=false` **χωρίς** `archived_at` μένουν εκτός συνόλου (χωρίς migration).
 
 **transactions**
 
@@ -818,7 +827,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ No issues found (~5s) |
-| `flutter test` | ✅ 115/115 |
+| `flutter test` | ✅ 130/130 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 ### 9.2 Τι καλύπτεται
@@ -833,7 +842,8 @@ schema_version (int), schema_updated_at (Timestamp)
 | `widget_test.dart` | 1 | `ErrorApp` εμφανίζει μήνυμα σφάλματος |
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
 | `startup_error_view_test.dart` | 5 | Κείμενα, ενέργειες, λεπτομέρειες, `textScale 1.45` χωρίς overflow |
-| `account_delete_guard_test.dart` | 26 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) |
+| `account_delete_guard_test.dart` | 35 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης & μετρήσεις (E26) |
+| `account_totals_test.dart` | 6 | `countsInTotal`, εξαιρέσεις χρήστη, legacy `is_active=false`, αρνητικά υπόλοιπα (E26) |
 
 ### 9.3 Τι **δεν** καλύπτεται
 
@@ -924,6 +934,8 @@ schema_version (int), schema_updated_at (Timestamp)
 | L22 | Offline διαγραφή λογαριασμού με **ατελή cache** θα άφηνε ορφανές κινήσεις (και peer leg) → η διαγραφή **μπλοκάρεται** offline (E24) | §5.13 |
 | L23 | Ημιτελή/legacy ζεύγη (χωρίς peer δείκτες, χωρίς ενεργό peer) → κρύβονται **μόνο** ως προς τον λογαριασμό, χωρίς marker → δεν επανέρχονται αυτόματα· χρειάζεται χωριστή επισκευή δεδομένων | §5.13 |
 | L24 | Η επαναφορά λογαριασμού «με υπόλοιπο» επαναφέρει **και** μεμονωμένες κινήσεις που διέγραψε ο χρήστης (E19)· τα ζεύγη μεταφορών πλέον ελέγχονται με marker/σχήμα | §5.13 |
+| L25 | Αρχειοθέτηση **offline**: ο έλεγχος εκκρεμών είναι best-effort από cache — αν εκκρεμεί κίνηση άλλης συσκευής, θα εκτελεστεί σε αρχειοθετημένο λογαριασμό (υπόλοιπο/σύνολο μένουν σωστά· καμία απώλεια) | §5.13 |
+| L26 | Το gate budgets βλέπει **μόνο** ενεργά budgets (`BudgetsProvider` query `deleted=false & is_active=true`) → λογαριασμός με μόνο ανενεργά budgets μπορεί να διαγραφεί αφήνοντας αόρατα orphan budgets | §5.13 |
 
 ---
 

@@ -27,6 +27,10 @@ class AccountModel {
   final DateTime updatedAt;
   final bool deleted;
 
+  /// E26: πότε αρχειοθετήθηκε (null = ποτέ). Διακριτικό από τους legacy
+  /// `is_active=false` που δεν πρέπει να μετράνε στο σύνολο.
+  final DateTime? archivedAt;
+
   AccountModel({
     required this.uuid,
     required this.userId,
@@ -42,7 +46,13 @@ class AccountModel {
     required this.createdAt,
     required this.updatedAt,
     required this.deleted,
+    this.archivedAt,
   });
+
+  /// Μετράει στο συνολικό υπόλοιπο: ενεργός **ή** αρχειοθετημένος.
+  bool get countsInTotal => isActive || archivedAt != null;
+
+  bool get isArchived => archivedAt != null;
 
   static DateTime _parseTimestamp(dynamic value) {
     if (value == null) return DateTime.now();
@@ -69,6 +79,7 @@ class AccountModel {
       createdAt: _parseTimestamp(data['created_at']),
       updatedAt: _parseTimestamp(data['updated_at']),
       deleted: data['deleted'] as bool? ?? false,
+      archivedAt: (data['archived_at'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -87,6 +98,8 @@ class AccountModel {
       'created_at': Timestamp.fromDate(createdAt),
       'updated_at': Timestamp.fromDate(updatedAt),
       'deleted': deleted,
+      'archived_at':
+          archivedAt == null ? null : Timestamp.fromDate(archivedAt!),
     };
   }
 }
@@ -108,6 +121,19 @@ class AccountsProvider extends ChangeNotifier {
 
   // Getters
   List<AccountModel> get accounts => _visibleAccounts;
+
+  /// Όλοι οι μη διαγραμμένοι: ενεργοί + αρχειοθετημένοι + legacy ανενεργοί.
+  /// Χρησιμοποιείται για σύνολα και για εμφάνιση ονομάτων (E12/E26).
+  List<AccountModel> get allAccounts => _accounts;
+
+  /// Μόνο οι αρχειοθετημένοι (E26), νεότεροι πρώτα.
+  List<AccountModel> get archivedAccounts {
+    final list = _accounts
+        .where((a) => !a.deleted && a.archivedAt != null)
+        .toList()
+      ..sort((a, b) => b.archivedAt!.compareTo(a.archivedAt!));
+    return list;
+  }
 
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -212,9 +238,11 @@ class AccountsProvider extends ChangeNotifier {
   // LOOKUPS
   // ============================================================
 
+  /// Ψάχνει σε **όλους** τους μη διαγραμμένους (και αρχειοθετημένους) ώστε
+  /// παλιές κινήσεις/budgets να δείχνουν σωστό όνομα (E12/E16).
   AccountModel? getAccountByUuid(String uuid) {
     try {
-      return accounts.firstWhere((a) => a.uuid == uuid);
+      return _accounts.firstWhere((a) => a.uuid == uuid);
     } catch (_) {
       return null;
     }
@@ -251,6 +279,7 @@ class AccountsProvider extends ChangeNotifier {
       createdAt: old.createdAt,
       updatedAt: DateTime.now(), // local timestamp
       deleted: old.deleted,
+      archivedAt: old.archivedAt,
     );
 
     // ✅ Keep visible list in sync

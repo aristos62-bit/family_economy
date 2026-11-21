@@ -550,6 +550,135 @@ void main() {
       }
     });
   });
+
+  group('AccountDeleteGuard.decide — E26', () {
+    test('καθαρός λογαριασμός (χωρίς κινήσεις/budgets) → διαγραφή', () {
+      final decision = AccountDeleteGuard.decide(
+        activeAccountCount: 2,
+        hasAnyTransaction: false,
+        budgetsCount: 0,
+      );
+
+      expect(decision.action, AccountAction.delete);
+      expect(decision.canDelete, isTrue);
+      expect(decision.canArchive, isFalse);
+      expect(decision.isBlocked, isFalse);
+    });
+
+    test('λογαριασμός με κινήσεις → αρχειοθέτηση με κενό μήνυμα', () {
+      final decision = AccountDeleteGuard.decide(
+        activeAccountCount: 2,
+        hasAnyTransaction: true,
+        budgetsCount: 0,
+      );
+
+      expect(decision.action, AccountAction.archive);
+      expect(decision.canArchive, isTrue);
+      expect(decision.canDelete, isFalse);
+      expect(decision.message, isEmpty);
+    });
+
+    test('λογαριασμός με budgets και χωρίς κινήσεις → αρχειοθέτηση', () {
+      final decision = AccountDeleteGuard.decide(
+        activeAccountCount: 3,
+        hasAnyTransaction: false,
+        budgetsCount: 2,
+      );
+
+      expect(decision.action, AccountAction.archive);
+    });
+
+    test('τελευταίος ενεργός → φραγή (και για αρχειοθέτηση)', () {
+      final decision = AccountDeleteGuard.decide(
+        activeAccountCount: 1,
+        hasAnyTransaction: true,
+        budgetsCount: 0,
+      );
+
+      expect(decision.action, AccountAction.blockLast);
+      expect(decision.isBlocked, isTrue);
+      expect(decision.message, contains('τελευταίος'));
+    });
+
+    test('εκκρεμείς προγραμματισμένες → φραγή με πλήθος', () {
+      final decision = AccountDeleteGuard.decide(
+        activeAccountCount: 2,
+        hasAnyTransaction: true,
+        budgetsCount: 0,
+        pendingCount: 2,
+      );
+
+      expect(decision.action, AccountAction.blockPending);
+      expect(decision.message, contains('2 εκκρεμείς'));
+      expect(decision.message, contains('Προγραμματισμένες'));
+    });
+
+    test('μηδέν ενεργοί → φραγή', () {
+      final decision = AccountDeleteGuard.decide(
+        activeAccountCount: 0,
+        hasAnyTransaction: false,
+        budgetsCount: 0,
+      );
+
+      expect(decision.action, AccountAction.blockNone);
+      expect(decision.isBlocked, isTrue);
+    });
+  });
+
+  group('AccountDeletePlan — E26 μετρήσεις', () {
+    test('activeLegCount μετρά όλες τις μη διαγραμμένες κινήσεις', () {
+      final plan = AccountDeleteGuard.buildPlan(
+        accountUuid: 'A',
+        activeLegs: [
+          _leg(uuid: 'e1', accountId: 'A', amount: -10, type: 'expense'),
+          _leg(uuid: 'i1', accountId: 'A', amount: 50, type: 'income'),
+        ],
+      );
+
+      expect(plan.activeLegCount, 2);
+      expect(plan.hasAnyTransaction, isTrue);
+      expect(plan.hasPendingScheduled, isFalse);
+      expect(plan.pendingLegUuids, isEmpty);
+    });
+
+    test('pendingLegUuids κρατά μόνο scheduled && !executed', () {
+      final plan = AccountDeleteGuard.buildPlan(
+        accountUuid: 'A',
+        activeLegs: [
+          _leg(
+            uuid: 's1',
+            accountId: 'A',
+            amount: -20,
+            type: 'expense',
+            scheduled: true,
+          ),
+          _leg(
+            uuid: 'x1',
+            accountId: 'A',
+            amount: -30,
+            type: 'expense',
+            scheduled: true,
+            executed: true,
+          ),
+        ],
+      );
+
+      expect(plan.pendingLegUuids, ['s1']);
+      expect(plan.hasPendingScheduled, isTrue);
+      expect(plan.activeLegCount, 2);
+    });
+
+    test('άδειο πλάνο → καμία κίνηση', () {
+      final plan = AccountDeleteGuard.buildPlan(
+        accountUuid: 'A',
+        activeLegs: const <Map<String, dynamic>>[],
+      );
+
+      expect(plan.hasAnyTransaction, isFalse);
+      expect(plan.activeLegCount, 0);
+      expect(plan.hasPendingScheduled, isFalse);
+    });
+  });
 }
 
 /// Βοηθητικό: χτίζει map κίνησης όπως το διαβάζει το πλάνο.

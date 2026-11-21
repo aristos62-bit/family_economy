@@ -137,7 +137,17 @@ class _TransactionEditSheetState extends State<TransactionEditSheet> {
         ? const <SubcategoryModel>[]
         : categoriesProvider.getSubcategoriesForCategory(_categoryId!);
 
-    final accounts = accountsProvider.accounts;
+    // E16/E26: κρατά τον λογαριασμό της κίνησης ακόμη κι αν έχει
+    // αρχειοθετηθεί, ώστε το dropdown να μην έχει orphan `initialValue`.
+    final activeAccounts = accountsProvider.accounts;
+    final selectedAccount =
+        _accountId != null && !activeAccounts.any((a) => a.uuid == _accountId)
+        ? accountsProvider.getAccountByUuid(_accountId!)
+        : null;
+    final accounts = <AccountModel>[
+      ...activeAccounts,
+      ?selectedAccount,
+    ];
 
     return SafeArea(
       top: false,

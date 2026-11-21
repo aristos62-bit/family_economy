@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:family_economy/providers/accounts_provider.dart';
+import 'package:family_economy/core/utils/account_totals.dart';
 import 'package:family_economy/core/utils/chart_helpers.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
@@ -171,8 +172,8 @@ class _Graf4PageState extends State<Graf4Page> {
       );
     }
 
-    // Live data από provider
-    final accounts = accountsProvider.accounts;
+    // Live data από provider (E26: ενεργοί **και** αρχειοθετημένοι)
+    final accounts = AccountTotals.counted(accountsProvider.allAccounts);
 
     if (accounts.isEmpty) {
       return Semantics(
@@ -190,10 +191,7 @@ class _Graf4PageState extends State<Graf4Page> {
     }
 
     // Calculate total balance
-    final totalBalance = accounts.fold<double>(
-      0.0,
-      (sum, acc) => sum + acc.currentBalance,
-    );
+    final totalBalance = AccountTotals.sum(accountsProvider.allAccounts);
 
     // Sort by balance descending
     final sortedAccounts = List<AccountModel>.from(accounts);
