@@ -1165,8 +1165,11 @@ class _TagStatsPageState extends State<TagStatsPage> {
     final tagsP         = context.watch<TagsProvider>();
     final connectivity  = context.watch<ConnectivityService>();
 
-    // ✅ Συγχρονισμός λογαριασμών
-    final accounts = accountsP.accounts;
+    // ✅ Συγχρονισμός λογαριασμών (E28: ενεργοί + αρχειοθετημένοι, 0 νέα reads)
+    final accounts = <AccountModel>[
+      ...accountsP.accounts,
+      ...accountsP.archivedAccounts,
+    ];
     for (final a in accounts) {
       _selectedAccounts.putIfAbsent(a.uuid, () => false);
     }
@@ -1435,8 +1438,13 @@ class _TagStatsPageState extends State<TagStatsPage> {
     ];
 
     // 3. Λογαριασμοί – εμφανίζεται μόνο αν έχει επιλεγεί τύπος
-    if (_movementType != null && accountsP.accounts.isNotEmpty) {
-      widgets.add(_buildAccountsCard(accountsP.accounts));
+    // E28: ενεργοί + αρχειοθετημένοι (0 νέα reads)
+    final accountList = <AccountModel>[
+      ...accountsP.accounts,
+      ...accountsP.archivedAccounts,
+    ];
+    if (_movementType != null && accountList.isNotEmpty) {
+      widgets.add(_buildAccountsCard(accountList));
       widgets.add(const SizedBox(height: 10));
     }
 
@@ -1463,7 +1471,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
 
     // 7. Summary
     if (canGenerate) {
-      widgets.add(_buildSummaryCard(accountsP.accounts, availableTags));
+      widgets.add(_buildSummaryCard(accountList, availableTags));
       widgets.add(const SizedBox(height: 16));
     }
 
@@ -1678,12 +1686,14 @@ class _TagStatsPageState extends State<TagStatsPage> {
             const SizedBox(height: 8),
             ...accounts.map((acc) {
               final selected = _selectedAccounts[acc.uuid] ?? false;
+              final balanceText =
+                  'Υπόλοιπο: ${CurrencyFormatter.format(acc.currentBalance)}';
               return CheckboxListTile(
                 dense: true,
                 controlAffinity: ListTileControlAffinity.leading,
                 title: Text(acc.name),
                 subtitle: Text(
-                  'Υπόλοιπο: ${CurrencyFormatter.format(acc.currentBalance)}',
+                  acc.isArchived ? '$balanceText · Αρχειοθετημένος' : balanceText,
                 ),
                 value: selected,
                 onChanged: (val) => _onToggleAccount(acc.uuid, val),

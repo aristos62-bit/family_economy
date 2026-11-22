@@ -143,7 +143,7 @@ pubspec.yaml  (version: 2.2.0+6)          ← ΜΟΝΟ εδώ αλλάζει η 
 | **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.0 (build 7)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.1 (build 8)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -545,7 +545,7 @@ lib/
 - Oil: `oil_page.dart` + `oil/` (12 αρχεία) — ρυθμίσεις σε `settings/oil_tank` (`avg_cost_per_liter`, `liters_at_last_purchase`, `price_per_liter`), ιστορικό σε `oil_purchases`.
 - Εξαγωγή δεδομένων: `pdf` + `excel` + `file_picker` στις σελίδες `stats2_averages_page`, `stats3_page`, `stats4_budget_page`.
 
-### 5.13 Διαγραφή & αρχειοθέτηση λογαριασμού (E7, E11, E26)
+### 5.13 Διαγραφή & αρχειοθέτηση λογαριασμού (E7, E11, E26, E28)
 
 | Στοιχείο | Τιμή |
 |---|---|
@@ -557,6 +557,7 @@ lib/
 | Αρχειοθέτηση | `is_active=false` + `archived_at` (client `Timestamp.fromDate`)· `updated_at` = `serverTimestamp`· **1 write, 0 reads, offline-safe**· καμία κίνηση δεν αγγίζεται |
 | Σύνολο E26 | `countsInTotal = isActive || archivedAt != null` → οι legacy `is_active=false` χωρίς marker μένουν **εκτός** (0 migration)· υπολογισμός μόνο μέσω `AccountTotals` |
 | Αναγνώριση ονόματος | `getAccountByUuid` ψάχνει σε **όλους** τους μη διαγραμμένους (`_accounts`) → σωστό όνομα σε budgets/κινήσεις (E12) |
+| Αναφορές (E28) | Φίλτρο λογαριασμών σε `stats_page`/`tag_stats_page` = `accounts + archivedAccounts` (`0` νέα reads, ίδια λίστα σε sync & κάρτα) · υπότιτλος «· Αρχειοθετημένος» · legacy `is_active=false` χωρίς marker μένουν εκτός |
 | Preflight E11 | `TransactionsActionsService.previewAccountDelete` — ενεργές κινήσεις λογαριασμού (`account_id` + `deleted`), 0 επιπλέον reads για νέα ζεύγη (peer δείκτες) |
 | Μετρήσεις E26 | Το ίδιο preflight δίνει `activeLegCount` + `pendingLegUuids` (`is_scheduled && !is_executed`) — **0 επιπλέον reads** |
 | Πλάνο E11 | `AccountDeleteGuard.buildPlan` → ζεύγη (complete/pending), απλά legs, deltas ανά λογαριασμό |
@@ -823,7 +824,7 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (115 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (131 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ No issues found (~5s) |
@@ -851,6 +852,7 @@ schema_version (int), schema_updated_at (Timestamp)
 - Καμία δοκιμή σε notifications, scheduled transactions, biometrics.
 - Καμία UI/integration δοκιμή ροών (login, entry, transfers, exports).
 - Καμία δοκιμή σε oil module, tags, cleanup, onboarding.
+- Καμία δοκιμή στις αναφορές περιόδου/tags (E28 — καλύπτεται μόνο με device test).
 
 ---
 

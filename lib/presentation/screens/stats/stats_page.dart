@@ -1110,8 +1110,11 @@ class _StatsPageState extends State<StatsPage> {
           to: to,
         );
 
-        // ACCOUNTS
-        final accounts = accountsP.accounts;
+        // ACCOUNTS (E28: ενεργοί + αρχειοθετημένοι — 0 νέα reads)
+        final accounts = <AccountModel>[
+          ...accountsP.accounts,
+          ...accountsP.archivedAccounts,
+        ];
         for (final a in accounts) {
           _selectedAccounts.putIfAbsent(a.uuid, () => false);
         }
@@ -1234,7 +1237,7 @@ class _StatsPageState extends State<StatsPage> {
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 250),
                           child: _movementType != null
-                              ? _buildAccountsCard(accountsP.accounts)
+                              ? _buildAccountsCard(accounts)
                               : const SizedBox.shrink(),
                         ),
 
@@ -1492,12 +1495,14 @@ class _StatsPageState extends State<StatsPage> {
             const SizedBox(height: 8),
             ...accounts.map((acc) {
               final selected = _selectedAccounts[acc.uuid] ?? false;
+              final balanceText =
+                  'Υπόλοιπο: ${CurrencyFormatter.format(acc.currentBalance)}';
               return CheckboxListTile(
                 dense: true,
                 controlAffinity: ListTileControlAffinity.leading,
                 title: Text(acc.name),
                 subtitle: Text(
-                  'Υπόλοιπο: ${CurrencyFormatter.format(acc.currentBalance)}',
+                  acc.isArchived ? '$balanceText · Αρχειοθετημένος' : balanceText,
                 ),
                 value: selected,
                 onChanged: (val) =>
