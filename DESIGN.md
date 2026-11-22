@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 151 tests
+flutter test                       # 152 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -53,7 +53,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | JDK (CLI) | 21.0.2 (ρυθμισμένο στο `flutter config`) |
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Visual Studio | Community 2026 18.1.1 · Windows SDK 10.0.26100.0 |
-| App version | **`2.3.2+9`** (`pubspec.yaml`, επαληθεύτηκε 22/11/2026) |
+| App version | **`2.3.3+10`** (`pubspec.yaml`, επαληθεύτηκε 22/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -120,17 +120,17 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.2+9)          ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.3+10)         ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.3.2 · BUILD_NO=9   (από pubspec, STEP 0)
-         ├── APK      FamilyBudget_v2.3.2.apk
+   └── build_and_setup_final.bat  APP_VER=2.3.3 · BUILD_NO=10   (από pubspec, STEP 0)
+         ├── APK      FamilyBudget_v2.3.3.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.3.2.exe   (FileVersion 2.3.2.9)
+               └── FamilyBudgetSetup_v2.3.3.exe   (FileVersion 2.3.3.10)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -143,7 +143,7 @@ pubspec.yaml  (version: 2.3.2+9)          ← ΜΟΝΟ εδώ αλλάζει η 
 | **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.2 (build 9)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.3 (build 10)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -246,7 +246,7 @@ pubspec.yaml  (version: 2.3.2+9)          ← ΜΟΝΟ εδώ αλλάζει η 
 |---|---|
 | `flutter build bundle` | ✅ EXIT 0 |
 | `flutter analyze` | ✅ No issues found |
-| `flutter test` | ✅ 151/151 |
+| `flutter test` | ✅ 152/152 |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -263,7 +263,7 @@ pubspec.yaml  (version: 2.3.2+9)          ← ΜΟΝΟ εδώ αλλάζει η 
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 11 αρχεία · **151** `test()`/`testWidgets()` |
+| Tests | 11 αρχεία · **152** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | 5.086 αρχεία, 41,4 MB — **εκτός git** (πλέον ignored) |
 
@@ -296,7 +296,7 @@ lib/
     utils/
       account_delete_guard.dart                # Φραγή/απόφαση διαγραφής-αρχειοθέτησης λογαριασμού (E7, E26, καθαρό Dart)
       account_balance.dart                     # Κανόνας «μετράει στο υπόλοιπο;» + υπολογισμός (E20, καθαρό Dart)
-      account_totals.dart                      # Ένα σημείο αλήθειας για το συνολικό υπόλοιπο (E26)
+      account_totals.dart                      # Ένα σημείο αλήθειας για το συνολικό υπόλοιπο (E26, εξαιρέσεις E27)
       app_info.dart                            # έκδοση από package_info_plus (footer Επιλογών)
       chart_helpers.dart
       currency_formatter.dart
@@ -452,7 +452,7 @@ lib/
 
 | Provider | Ευθύνη | Ιδιαιτερότητα |
 |---|---|---|
-| `AccountsProvider` | Λίστα λογαριασμών + τοπικά deltas υπολοίπων | `updateAccountBalance` **ενεργή** (εγγραφή E20)· `applyLocalBalanceDelta` αχρησιμοποίητη |
+| `AccountsProvider` | Λίστα λογαριασμών + τοπικά deltas υπολοίπων + **εξαιρέσεις από το σύνολο** (E27) | `updateAccountBalance` **ενεργή** (εγγραφή E20)· οι εξαιρέσεις ζουν εδώ (getter/setter, prefs) ώστε Λογαριασμοί & `graf_4` να δείχνουν το ίδιο σύνολο· `applyLocalBalanceDelta` αχρησιμοποίητη |
 | `CategoriesProvider` | Categories + subcategories | `firstLoad` flag για UI readiness |
 | `TransactionsProvider` | Transactions ανά περίοδο | Cache + φίλτρα |
 | `BudgetsProvider` | Budgets + spent | **Δύο** υπολογισμοί (βλ. 5.6) |
@@ -510,7 +510,7 @@ lib/
 | Key | Χρήση |
 |---|---|
 | `theme_mode` | Επιλογή light/dark/system |
-| `excluded_accounts_{uid}` | Λογαριασμοί εκτός στατιστικών |
+| `excluded_accounts_{uid}` | Λογαριασμοί εκτός συνολικού υπολοίπου & γραφήματος (E27· πηγή: `AccountsProvider`) |
 | `chart_order_{uid}` / `chart_visibility_{uid}` | Σειρά & ορατότητα γραφημάτων |
 | `{grafN}_period_{uid}` | Επιλεγμένη περίοδος ανά γράφημα |
 | `crypto_watched_ids` | Παρακολούθηση crypto (unit converter) |
@@ -826,11 +826,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (151 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (152 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ No issues found (~5s) |
-| `flutter test` | ✅ 151/151 |
+| `flutter test` | ✅ 152/152 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 ### 9.2 Τι καλύπτεται
@@ -846,7 +846,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
 | `startup_error_view_test.dart` | 5 | Κείμενα, ενέργειες, λεπτομέρειες, `textScale 1.45` χωρίς overflow |
 | `account_delete_guard_test.dart` | 36 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) |
-| `account_totals_test.dart` | 6 | `countsInTotal`, εξαιρέσεις χρήστη, legacy `is_active=false`, αρνητικά υπόλοιπα (E26) |
+| `account_totals_test.dart` | 7 | `countsInTotal`, εξαιρέσεις χρήστη (και «όλοι εξαιρεμένοι»), legacy `is_active=false`, αρνητικά υπόλοιπα (E26/E27) |
 | `account_balance_test.dart` | 20 | Κανόνας «μετράει στο υπόλοιπο» (E20): εκκρεμείς/εκτελεσμένες/διαγραμμένες, «Άμεση» μελλοντική, ζεύγη, cents, μηνύματα |
 
 ### 9.3 Τι **δεν** καλύπτεται
@@ -942,6 +942,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | L25 | Αρχειοθέτηση **offline**: ο έλεγχος εκκρεμών είναι best-effort από cache — αν εκκρεμεί κίνηση άλλης συσκευής, θα εκτελεστεί σε αρχειοθετημένο λογαριασμό (υπόλοιπο/σύνολο μένουν σωστά· καμία απώλεια) | §5.13 |
 | L26 | Το gate budgets βλέπει **μόνο** ενεργά budgets (`BudgetsProvider` query `deleted=false & is_active=true`) → λογαριασμός με μόνο ανενεργά budgets μπορεί να διαγραφεί αφήνοντας αόρατα orphan budgets | §5.13 |
 | L27 | Επανυπολογισμός υπολοίπου (E20): παράθυρο read→write — κίνηση που γράφεται **ανάμεσα** στην ανάγνωση και την εγγραφή δεν μετριέται· χειροκίνητη ενέργεια, χωρίς transaction (θα απαιτούσε εκατοντάδες reads) | §5.4 |
+| L28 | Εξαιρέσεις λογαριασμών (E27): **τοπική** προτίμηση ανά συσκευή (δεν συγχρονίζεται)· αρχειοθετημένος + εξαιρεμένος λογαριασμός δεν έχει checkbox επανένταξης (μόνο «Επαναφορά») | §5.2, §5.8 |
 
 ---
 

@@ -5,7 +5,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // Core imports
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
@@ -50,7 +49,6 @@ class _AccountsPageState extends State<AccountsPage>
 
   // UI State
   bool _isBalanceHidden = true;
-  Set<String> _excludedAccountUuids = <String>{}; // ✅ UUID-based
 
   //============= DEBUG ===================================
   void _log(String msg) {
@@ -146,9 +144,6 @@ class _AccountsPageState extends State<AccountsPage>
     );
     _fabController.forward();
 
-    // Load preferences
-    _loadExcludedAccounts();
-
     // Accessibility announcement
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -167,43 +162,13 @@ class _AccountsPageState extends State<AccountsPage>
   // DATA LOADING
   // ============================================================
 
-  /// Φόρτωση αποκλεισμένων λογαριασμών από SharedPreferences
-  Future<void> _loadExcludedAccounts() async {
-    if (!mounted) return;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      // ignore: use_build_context_synchronously
-      final userId = context.session.userId;
-      final key = 'excluded_accounts_$userId';
-      final excluded = prefs.getStringList(key) ?? [];
-
-      if (mounted) {
-        setState(() {
-          _excludedAccountUuids = excluded.toSet();
-        });
-      }
-    } catch (e) {
-      DebugConfig.print('Error loading excluded accounts: $e');
-    }
-  }
-
-  /// Αποθήκευση αποκλεισμένων λογαριασμών
-  Future<void> _saveExcludedAccounts() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      // ignore: use_build_context_synchronously
-      final userId = context.session.userId;
-      final key = 'excluded_accounts_$userId';
-      await prefs.setStringList(key, _excludedAccountUuids.toList());
-    } catch (e) {
-      DebugConfig.print('Error saving excluded accounts: $e');
-    }
-  }
-
   /// Υπολογισμός συνολικού υπολοίπου (E26: ενεργοί **και** αρχειοθετημένοι,
-  /// μείον τις εξαιρέσεις του χρήστη).
-  double _calculateTotalBalance(List<AccountModel> accounts) {
-    return AccountTotals.sum(accounts, excluded: _excludedAccountUuids);
+  /// μείον τις εξαιρέσεις του χρήστη — E27: οι εξαιρέσεις ζουν στον provider).
+  double _calculateTotalBalance(AccountsProvider provider) {
+    return AccountTotals.sum(
+      provider.allAccounts,
+      excluded: provider.excludedAccountUuids,
+    );
   }
 
   /// Ενεργά budgets που δείχνουν στον λογαριασμό (0 reads — από τον provider).
@@ -231,23 +196,20 @@ class _AccountsPageState extends State<AccountsPage>
     );
   }
 
-  /// Toggle συμπερίληψης/αποκλεισμού λογαριασμού από το σύνολο
+  /// Toggle συμπερίληψης/αποκλεισμού λογαριασμού από το σύνολο (E27).
+  /// Η κατάσταση ζει στον `AccountsProvider` — έτσι την βλέπουν και τα
+  /// γραφήματα, με ένα rebuild μέσω `notifyListeners`.
   void _toggleAccountInTotal(String uuid, String accountName) {
-    setState(() {
-      if (_excludedAccountUuids.contains(uuid)) {
-        _excludedAccountUuids.remove(uuid);
-        AccessibilityService.announcePolite(
-          'Ο λογαριασμός $accountName συμπεριλήφθηκε στο συνολικό υπόλοιπο',
-        );
-      } else {
-        _excludedAccountUuids.add(uuid);
-        AccessibilityService.announcePolite(
-          'Ο λογαριασμός $accountName αποκλείστηκε από το συνολικό υπόλοιπο',
-        );
-      }
-    });
+    final provider = context.read<AccountsProvider>();
+    final wasExcluded = provider.isExcludedFromTotal(uuid);
 
-    _saveExcludedAccounts();
+    provider.setExcludedFromTotal(uuid, excluded: !wasExcluded);
+
+    AccessibilityService.announcePolite(
+      wasExcluded
+          ? 'Ο λογαριασμός $accountName συμπεριλήφθηκε στο συνολικό υπόλοιπο'
+          : 'Ο λογαριασμός $accountName αποκλείστηκε από το συνολικό υπόλοιπο',
+    );
   }
 
   // ============================================================
@@ -1408,6 +1370,9 @@ class _AccountsPageState extends State<AccountsPage>
 
     final userId = scaffoldContext.session.userId;
     final actions = TransactionsActionsService();
+    // E27: κρατάμε τον provider πριν από τα async gaps (καθαρισμός εξαίρεσης
+    // μετά τη διαγραφή) — αποφεύγει `use_build_context_synchronously`.
+    final accountsProvider = scaffoldContext.read<AccountsProvider>();
 
     // 1) Preflight για τον διάλογο (καμία εγγραφή).
     AccountDeletePlan plan;
@@ -1495,9 +1460,10 @@ class _AccountsPageState extends State<AccountsPage>
       await actions.applyAccountDeletePlan(userId: userId, plan: plan);
 
       // 5) Καθαρισμός τοπικής προτίμησης (αποκλεισμός από το συνολικό υπόλοιπο)
-      if (_excludedAccountUuids.remove(uuid) && mounted) {
-        await _saveExcludedAccounts();
-      }
+      await accountsProvider.setExcludedFromTotal(
+        uuid,
+        excluded: false,
+      );
 
       DebugConfig.print(
         '✅ Account deleted: $uuid (plain=${plan.plainLegUuids.length}, '
@@ -1766,7 +1732,7 @@ class _AccountsPageState extends State<AccountsPage>
     final isLoading = accountsProvider.isLoading;
     final error = accountsProvider.error;
 
-    final totalBalance = _calculateTotalBalance(accountsProvider.allAccounts);
+    final totalBalance = _calculateTotalBalance(accountsProvider);
 
     // Responsive layout
     final screenWidth = MediaQuery.of(context).size.width;
@@ -2169,7 +2135,9 @@ class _AccountsPageState extends State<AccountsPage>
   }
 
   Widget _buildAccountCard(Brightness brightness, AccountModel account) {
-    final isExcluded = _excludedAccountUuids.contains(account.uuid);
+    final isExcluded = context
+        .read<AccountsProvider>()
+        .isExcludedFromTotal(account.uuid);
 
     return Card(
       elevation: 2,

@@ -60,6 +60,18 @@ void main() {
       );
     });
 
+    test('όλοι εξαιρεμένοι → κενή λίστα και σύνολο μηδέν', () {
+      final accounts = <AccountModel>[
+        _account(uuid: 'a', balance: 1500),
+        _account(uuid: 'b', balance: 2000),
+      ];
+
+      final excluded = <String>{'a', 'b'};
+
+      expect(AccountTotals.sum(accounts, excluded: excluded), 0);
+      expect(AccountTotals.counted(accounts, excluded: excluded), isEmpty);
+    });
+
     test('αρνητικά υπόλοιπα αθροίζονται σωστά', () {
       final accounts = <AccountModel>[
         _account(uuid: 'a', balance: -200),

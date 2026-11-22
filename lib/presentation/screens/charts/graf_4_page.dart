@@ -42,6 +42,7 @@ class _Graf4PageState extends State<Graf4Page> {
   String _buildSemanticSummary(
     List<AccountModel> accounts,
     double totalBalance,
+    int excludedCount,
   ) {
     if (accounts.isEmpty) {
       return 'Δεν υπάρχουν λογαριασμοί.';
@@ -53,6 +54,12 @@ class _Graf4PageState extends State<Graf4Page> {
       'Συνολικό υπόλοιπο: ${ChartHelpers.formatMoney(totalBalance)}. '
       '${accounts.length} λογαριασμοί.',
     );
+
+    if (excludedCount > 0) {
+      buffer.writeln(
+        'Εξαιρούνται $excludedCount λογαριασμοί από το σύνολο.',
+      );
+    }
 
     for (var acc in accounts) {
       buffer.writeln(
@@ -173,16 +180,24 @@ class _Graf4PageState extends State<Graf4Page> {
     }
 
     // Live data από provider (E26: ενεργοί **και** αρχειοθετημένοι)
-    final accounts = AccountTotals.counted(accountsProvider.allAccounts);
+    // E27: οι εξαιρέσεις του χρήστη ισχύουν και εδώ (ίδια πηγή με τη σελίδα
+    // Λογαριασμών) — αλλιώς το «Σύνολο» έβγαινε διαφορετικό στις δύο οθόνες.
+    final excluded = accountsProvider.excludedAccountUuids;
+    final countable = AccountTotals.counted(accountsProvider.allAccounts);
+    final accounts = AccountTotals.counted(countable, excluded: excluded);
+    final excludedCount = countable.length - accounts.length;
 
     if (accounts.isEmpty) {
+      final message = countable.isEmpty
+          ? 'Δεν υπάρχουν λογαριασμοί'
+          : 'Όλοι οι λογαριασμοί είναι εξαιρεμένοι';
       return Semantics(
-        label: 'Δεν υπάρχουν λογαριασμοί',
+        label: message,
         excludeSemantics: true,
         child: Center(
           child: ExcludeSemantics(
             child: Text(
-              'Δεν υπάρχουν λογαριασμοί',
+              message,
               style: TypographyUI.bodyMedium(brightness),
             ),
           ),
@@ -190,8 +205,8 @@ class _Graf4PageState extends State<Graf4Page> {
       );
     }
 
-    // Calculate total balance
-    final totalBalance = AccountTotals.sum(accountsProvider.allAccounts);
+    // Calculate total balance (ίδια λίστα με τις μπάρες → ίδιο σύνολο)
+    final totalBalance = AccountTotals.sum(accounts);
 
     // Sort by balance descending
     final sortedAccounts = List<AccountModel>.from(accounts);
@@ -204,23 +219,34 @@ class _Graf4PageState extends State<Graf4Page> {
       final top = sortedAccounts.isNotEmpty ? sortedAccounts.first : null;
       final statsKey =
           '${accounts.length}|${totalBalance.toStringAsFixed(2)}|'
-          '${top?.uuid ?? ""}|${top?.currentBalance.toStringAsFixed(2) ?? ""}';
+          '${top?.uuid ?? ""}|${top?.currentBalance.toStringAsFixed(2) ?? ""}|'
+          '$excludedCount';
       if (_lastStatsKey != statsKey) {
         _lastStatsKey = statsKey;
         final totalType = totalBalance >= 0 ? "Θετικό" : "Αρνητικό";
+        final excludedText = excludedCount > 0
+            ? ' Εξαιρούνται $excludedCount λογαριασμοί.'
+            : '';
         final announcement =
             'Τα δεδομένα λογαριασμών ενημερώθηκαν. ${accounts.length} λογαριασμοί. '
-            'Συνολικό υπόλοιπο: ${ChartHelpers.formatMoney(totalBalance)} ($totalType).';
+            'Συνολικό υπόλοιπο: ${ChartHelpers.formatMoney(totalBalance)} ($totalType).'
+            '$excludedText';
         AccessibilityService.announcePolite(announcement);
       }
     });
-    return _buildContent(sortedAccounts, totalBalance, brightness);
+    return _buildContent(
+      sortedAccounts,
+      totalBalance,
+      brightness,
+      excludedCount,
+    );
   }
 
   Widget _buildContent(
     List<AccountModel> sortedAccounts,
     double totalBalance,
     Brightness brightness,
+    int excludedCount,
   ) {
     // Calculate min/max for scaling (supports both positive & negative balances)
     double maxPositive = 0.0;
@@ -239,7 +265,7 @@ class _Graf4PageState extends State<Graf4Page> {
 
     return Semantics(
       container: true,
-      label: _buildSemanticSummary(sortedAccounts, totalBalance),
+      label: _buildSemanticSummary(sortedAccounts, totalBalance, excludedCount),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final w = constraints.maxWidth;

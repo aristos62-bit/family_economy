@@ -51,6 +51,7 @@
 | 19 | 2026-11-21 | 18 | [E26: αρχειοθέτηση λογαριασμού](oldsessions/19-session-18-e26-archive-accounts.md) | `archived_at` + `countsInTotal`· διαγραφή μόνο «καθαρού»· φραγές (τελευταίος/εκκρεμείς)· E12/E16/E27· v2.3.0+7 |
 | 20 | 2026-11-22 | 19 | [E28: αρχειοθετημένοι στις αναφορές](oldsessions/20-session-19-e28-archived-in-reports.md) | Ενιαία λίστα ενεργών + αρχειοθετημένων στο φίλτρο `stats_page`/`tag_stats_page`· ετικέτα «Αρχειοθετημένος»· v2.3.1+8 |
 | 21 | 2026-11-22 | 20 | [E20: επαναϋπολογισμός υπολοίπου](oldsessions/21-session-20-e20-recalc-balance.md) | Κανόνας κατάστασης (όχι ημερομηνίας)· κοινό `account_balance.dart`· provider + υπάρχουσα `updateAccountBalance`· offline gate· 20 tests· v2.3.2+9· device tests OK (POCO X3) |
+| 22 | 2026-11-22 | 21 | [E27: ενιαίο σύνολο λογαριασμών](oldsessions/22-session-21-e27-total-exclusions.md) | Εξαιρέσεις στον `AccountsProvider` (idempotent setter, ίδιο prefs key)· `graf_4` + Λογαριασμοί με το ίδιο `AccountTotals`· κενό state «όλοι εξαιρεμένοι»· L28· 152 tests· v2.3.3+10 |
 
 ## Έλεγχος συνέπειας
 

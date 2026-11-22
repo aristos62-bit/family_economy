@@ -9,6 +9,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:family_economy/core/utils/account_balance.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 
@@ -111,6 +112,11 @@ class AccountsProvider extends ChangeNotifier {
 
   List<AccountModel> _accounts = [];
   List<AccountModel> _visibleAccounts = [];
+
+  /// E27: UUIDs που ο χρήστης εξαίρεσε από το σύνολο/γράφημα
+  /// (τοπική προτίμηση `excluded_accounts_{uid}`).
+  Set<String> _excludedAccountUuids = <String>{};
+
   bool _isLoading = true;
   String? _error;
 
@@ -118,6 +124,7 @@ class AccountsProvider extends ChangeNotifier {
 
   AccountsProvider({required this.userId}) {
     _initListener();
+    unawaited(_loadExcludedAccounts());
   }
 
   // Getters
@@ -139,6 +146,71 @@ class AccountsProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasAccounts => _visibleAccounts.isNotEmpty;
+
+  // ============================================================
+  // E27 — ΕΞΑΙΡΕΣΕΙΣ ΑΠΟ ΤΟ ΣΥΝΟΛΟ (τοπική προτίμηση)
+  // ============================================================
+
+  /// Λογαριασμοί που δεν μετράνε στο σύνολο/γράφημα.
+  /// Επιστρέφεται αντίγραφο ώστε να μην αλλοιώνεται η εσωτερική κατάσταση.
+  Set<String> get excludedAccountUuids =>
+      Set<String>.unmodifiable(_excludedAccountUuids);
+
+  bool isExcludedFromTotal(String uuid) =>
+      _excludedAccountUuids.contains(uuid);
+
+  /// Ορίζει αν ο λογαριασμός μετράει στο σύνολο (idempotent).
+  /// Ποτέ δεν πετάει: αν αποτύχει η αποθήκευση, η in-memory κατάσταση μένει.
+  Future<void> setExcludedFromTotal(
+    String uuid, {
+    required bool excluded,
+  }) async {
+    if (userId.trim().isEmpty) return;
+
+    final changed = excluded
+        ? _excludedAccountUuids.add(uuid)
+        : _excludedAccountUuids.remove(uuid);
+    if (!changed) return;
+
+    if (!_disposed) notifyListeners();
+    await _persistExcludedAccounts();
+  }
+
+  Future<void> _loadExcludedAccounts() async {
+    final uid = userId.trim();
+    if (uid.isEmpty) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved =
+          prefs.getStringList('excluded_accounts_$uid') ?? const <String>[];
+      if (_disposed) return;
+
+      final loaded = saved.toSet();
+      if (setEquals(loaded, _excludedAccountUuids)) return;
+
+      _excludedAccountUuids = loaded;
+      notifyListeners();
+      DebugConfig.print(
+        '✅ Excluded accounts loaded: ${_excludedAccountUuids.length}',
+      );
+    } catch (e) {
+      DebugConfig.print('🔴 Error loading excluded accounts: $e');
+    }
+  }
+
+  Future<void> _persistExcludedAccounts() async {
+    final uid = userId.trim();
+    if (uid.isEmpty) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final sorted = _excludedAccountUuids.toList()..sort();
+      await prefs.setStringList('excluded_accounts_$uid', sorted);
+    } catch (e) {
+      DebugConfig.print('🔴 Error saving excluded accounts: $e');
+    }
+  }
 
   // ============================================================
   // INIT
