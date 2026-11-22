@@ -43,7 +43,7 @@
 | E17 | `firestore.indexes.json` δεν είναι πλήρες σε σχέση με το deployed (π.χ. `deleted` + `date` range) | — | 🔵 OPEN | 2026-11-20 |
 | E18 | `deleteTransaction` peer path δεν ελέγχει `deleted` του peer → μη idempotent (μόνο με αλλοιωμένο δεδομένο) | — | ℹ️ INFO | 2026-11-20 |
 | E19 | Επαναφορά λογαριασμού ανασταίνει και κινήσεις που διέγραψε ο χρήστης | — | 🔵 OPEN | 2026-11-20 |
-| E20 | `_recalculateAccountBalance` περιλαμβάνει overdue pending → λάθος υπόλοιπο | — | 🔵 OPEN | 2026-11-20 |
+| E20 | Επαναϋπολογισμός υπολοίπου: λάθος άθροισμα (φίλτρο ημερομηνίας, εκκρεμείς, offline cache) | — | ✅ FIXED | 2026-11-22 |
 | E21 | `_getQueryWithCacheFallback` / `_getDocWithCacheFallback` δεν κάνουν fallback | — | ℹ️ INFO | 2026-11-20 |
 | E22 | `applyLocalBalanceDelta` + `updateAccountBalance` νεκρές· DESIGN §3.3 ελλιπές | — | ℹ️ INFO | 2026-11-20 |
 | E23 | `getScheduledTransactions` επιστρέφει 2 γραμμές ανά εκκρεμή μεταφορά | — | ℹ️ INFO | 2026-11-20 |
@@ -153,9 +153,18 @@
 - `restoreAccountWithBalance` (`account_duplicate_service.dart:112–130`) επαναφέρει **όλες** τις `deleted` κινήσεις του λογαριασμού, άρα και όσες διέγραψε ο χρήστης μεμονωμένα.
 - Με το E11 καλύπτεται **μόνο** το τμήμα των ζευγών μεταφορών (marker + έλεγχος σχήματος)· οι μεμονωμένες κινήσεις παραμένουν → χρειάζεται χωριστή σημασιολογία (π.χ. `deleted_by`).
 
-**E20 — Recalc με overdue pending (OPEN)**
-- `_recalculateAccountBalance` (`accounts_page.dart:884–945`, κλήση `:771`) = `initial_balance + Σ amounts` με `date < αύριο` → περιλαμβάνει εκκρεμείς κινήσεις που **δεν** εκτελέστηκαν (π.χ. app κλειστό 3 ημέρες).
-- Είναι **feature** («Επαναϋπολογισμός Υπολοίπου»), γι' αυτό δεν χρησιμοποιείται ούτε ως μηχανισμός ούτε ως επισκευή στο E11.
+**E20 — Επαναϋπολογισμός υπολοίπου (FIXED 22/11/2026)**
+- **Πραγματικό αίτιο (όχι «έκλεισε η εφαρμογή 3 μέρες» — το startup εκτελεί πρώτα τις ληξιπρόθεσμες):**
+  1. Φίλτρο `date < αύριο` + «Άμεση Εκτέλεση» με μελλοντική ημερομηνία → η κίνηση έχει **ήδη** αφαιρεθεί από το υπόλοιπο, αλλά ο recalc δεν τη βλέπει → το υπόλοιπο «φουσκώνει».
+  2. Εκκρεμείς που **δεν** εκτελέστηκαν (ανεπαρκές υπόλοιπο → `execution_failed`, σπασμένο ζεύγος μεταφοράς) μετριούνταν σαν να είχαν εφαρμοστεί.
+  3. Offline: `get()` με `serverAndCache` επιστρέφει κενό/μερικό cache χωρίς σφάλμα (E24) → λάθος εγγραφή.
+  4. Καμία στρογγυλοποίηση σε cents· διπλό πάτημα = 2 writes· γενικό μήνυμα σφάλματος.
+- **Λύση:** κανόνας **κατάστασης** (όχι ημερομηνίας): μετράει ό,τι έχει ήδη εφαρμοστεί — `!(is_scheduled && !is_executed)` και όχι `deleted`. Ο κανόνας ζει στο `core/utils/account_balance.dart` και **μοιράζεται** με το `account_delete_guard.dart` (μηδέν διπλότυπα). Ο υπολογισμός γίνεται σε cents.
+- **I/O:** 1 ανάγνωση λογαριασμού + 1 query **μόνο** `account_id` (τα `deleted`/`is_scheduled` ελέγχονται σε Dart — E6) + 1 εγγραφή **τελευταία** μέσω της υπάρχουσας `AccountsProvider.updateAccountBalance` (παύει να είναι νεκρή — E22). Φραγή offline με το υπάρχον `_isOfflineConfirmed`.
+- **UI:** ενημερωτικός διάλογος, scrollable, `PopScope` + loading (κανένα διπλό πάτημα), σύνοψη πριν→μετά + πλήθη εξαιρεθέντων, σωστός ενικός/πληθυντικός.
+- **Αρχεία:** `core/utils/account_balance.dart` (νέο), `core/utils/account_delete_guard.dart`, `providers/accounts_provider.dart`, `presentation/screens/accounts/accounts_page.dart`, `test/unit/core/utils/account_balance_test.dart` (20 tests).
+- **Περιορισμός:** L27 (παράθυρο read→write).
+- **Έκδοση:** `2.3.2+9` (PATCH).
 
 **E21 — Cache fallback no-op (INFO)**
 - `_getQueryWithCacheFallback` (`:836–839`) & `_getDocWithCacheFallback` (`:887–890`) καλούν **μόνο** `get()`· τα σχόλια περί fallback δεν ισχύουν. Το offline δουλεύει λόγω `persistenceEnabled` (`main.dart:65–68`).

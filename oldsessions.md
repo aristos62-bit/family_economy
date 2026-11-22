@@ -21,9 +21,9 @@
 
 | | |
 |---|---|
-| Έκδοση | **2.3.1+8** |
-| Τελευταίο κεφάλαιο | **20** — E28: αρχειοθετημένοι λογαριασμοί στις αναφορές (2026-11-22) |
-| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **131/131** |
+| Έκδοση | **2.3.2+9** |
+| Τελευταίο κεφάλαιο | **21** — E20: επαναϋπολογισμός υπολοίπου (2026-11-22) |
+| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **151/151** |
 | Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`) |
 
 ## Κεφάλαια
@@ -50,6 +50,7 @@
 | 18 | 2026-11-21 | 17 | [E11: διαγραφή λογαριασμού σε μεταφορά](oldsessions/18-session-17-e11-transfer-account-delete.md) | Ακύρωση ζεύγους + αντιστροφή υπολοίπων· συμμετρική επαναφορά· executor guard· offline φραγή· E13/E24· device tests· v2.2.0+6 |
 | 19 | 2026-11-21 | 18 | [E26: αρχειοθέτηση λογαριασμού](oldsessions/19-session-18-e26-archive-accounts.md) | `archived_at` + `countsInTotal`· διαγραφή μόνο «καθαρού»· φραγές (τελευταίος/εκκρεμείς)· E12/E16/E27· v2.3.0+7 |
 | 20 | 2026-11-22 | 19 | [E28: αρχειοθετημένοι στις αναφορές](oldsessions/20-session-19-e28-archived-in-reports.md) | Ενιαία λίστα ενεργών + αρχειοθετημένων στο φίλτρο `stats_page`/`tag_stats_page`· ετικέτα «Αρχειοθετημένος»· v2.3.1+8 |
+| 21 | 2026-11-22 | 20 | [E20: επαναϋπολογισμός υπολοίπου](oldsessions/21-session-20-e20-recalc-balance.md) | Κανόνας κατάστασης (όχι ημερομηνίας)· κοινό `account_balance.dart`· provider + υπάρχουσα `updateAccountBalance`· offline gate· 20 tests· v2.3.2+9 |
 
 ## Έλεγχος συνέπειας
 

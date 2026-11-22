@@ -4,7 +4,11 @@
 // Ρόλος: Καθαρή απόφαση για διαγραφή λογαριασμού (χωρίς Firebase).
 // - Επιτρέπει τη διαγραφή μόνο όταν μένει ≥1 ενεργός λογαριασμός.
 // - Τα μηνύματα ζουν εδώ, όπως στο Schema.failureFor (καθαρά, ελέγξιμα).
+// - E20: ο κανόνας «εκκρεμής προγραμματισμένη» μοιράζεται με το
+//   account_balance.dart (ένα σημείο αλήθειας, όχι διπλότυπα).
 // ============================================================
+
+import 'package:family_economy/core/utils/account_balance.dart';
 
 /// Αιτία φραγής της διαγραφής λογαριασμού.
 enum AccountDeleteBlock {
@@ -177,9 +181,7 @@ class AccountDeleteGuard {
   }
 
   static TransferPairState _pairStateOf(Map<String, dynamic> leg) {
-    final isScheduled = leg['is_scheduled'] as bool? ?? false;
-    final isExecuted = leg['is_executed'] as bool? ?? false;
-    return (isScheduled && !isExecuted)
+    return AccountBalanceRules.isPendingScheduled(leg)
         ? TransferPairState.pending
         : TransferPairState.complete;
   }
@@ -208,9 +210,9 @@ class AccountDeleteGuard {
       if (uuid.isEmpty) continue;
 
       activeLegCount++;
-      final isScheduled = leg['is_scheduled'] as bool? ?? false;
-      final isExecuted = leg['is_executed'] as bool? ?? false;
-      if (isScheduled && !isExecuted) pendingLegUuids.add(uuid);
+      if (AccountBalanceRules.isPendingScheduled(leg)) {
+        pendingLegUuids.add(uuid);
+      }
 
       final type = leg['transaction_type'] as String?;
       final amount = (leg['amount'] as num?)?.toDouble() ?? 0.0;

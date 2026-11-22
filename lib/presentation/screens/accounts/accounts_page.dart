@@ -765,65 +765,111 @@ class _AccountsPageState extends State<AccountsPage>
   ) {
     final brightness = Theme.of(context).brightness;
 
-    showDialog(
+    // E24: offline η ανάγνωση κινήσεων μπορεί να είναι κενή/μερική (cache).
+    if (_isOfflineConfirmed(context)) {
+      const offlineMessage =
+          'Ο επανυπολογισμός απαιτεί σύνδεση στο internet';
+      _showErrorSnack(context, offlineMessage);
+      AccessibilityService.announceError(offlineMessage);
+      return;
+    }
+
+    // Το AccountsProvider είναι κάτω από το Navigator (route-scoped), άρα δεν
+    // είναι ορατό από το context του dialog — το κρατάμε πριν το άνοιγμα.
+    final accountsProvider = context.read<AccountsProvider>();
+    var isWorking = false;
+
+    showDialog<void>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: ColorsUI.getSurface(brightness),
-        title: Text(
-          'Επαναϋπολογισμός Υπολοίπου',
-          style: TypographyUI.titleLarge(brightness),
-        ),
-        content: Text(
-          'Θέλετε να επαναϋπολογίσετε το υπόλοιπο του λογαριασμού "${account.name}"; '
-          'Αυτό θα υπολογίσει το υπόλοιπο από το αρχικό ποσό και τις συναλλαγές.',
-          style: TypographyUI.bodyMedium(brightness),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Ακύρωση',
-              style: TypographyUI.buttonBase().copyWith(
-                color: ColorsUI.getTextSecondary(brightness),
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-
-              try {
-                final newBalance = await _recalculateAccountBalance(
-                  account.uuid,
-                );
-
-                if (!context.mounted) return; // ✅ πολύ σημαντικό
-
-                _showSuccessSnack(
-                  context,
-                  'Επανυπολογισμός ολοκληρώθηκε: ${CurrencyFormatter.format(newBalance, currency: account.currency)}',
-                );
-              } catch (e) {
-                if (!mounted) return;
-
-                DebugConfig.print('❌ Recalculate error: $e');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Αποτυχία Επαναυπολογισμού'),
-                    backgroundColor: ColorsUI.getError(brightness),
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return PopScope(
+              canPop: !isWorking,
+              child: AlertDialog(
+                backgroundColor: ColorsUI.getSurface(brightness),
+                title: Text(
+                  'Επαναϋπολογισμός Υπολοίπου',
+                  style: TypographyUI.titleLarge(brightness),
+                ),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Το υπόλοιπο του λογαριασμού "${account.name}" θα '
+                        'υπολογιστεί ξανά από το αρχικό ποσό και τις κινήσεις '
+                        'που έχουν ήδη εφαρμοστεί.',
+                        style: TypographyUI.bodyMedium(brightness),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Οι εκκρεμείς προγραμματισμένες κινήσεις που δεν έχουν '
+                        'εκτελεστεί δεν μετράνε.',
+                        style: TypographyUI.bodySmall(brightness),
+                      ),
+                    ],
                   ),
-                );
-              }
-            },
+                ),
+                actions: [
+                  TextButton(
+                    onPressed:
+                        isWorking ? null : () => Navigator.pop(dialogContext),
+                    child: Text(
+                      'Ακύρωση',
+                      style: TypographyUI.buttonBase().copyWith(
+                        color: ColorsUI.getTextSecondary(brightness),
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: isWorking
+                        ? null
+                        : () async {
+                            setDialogState(() => isWorking = true);
 
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ColorsUI.getPrimary(brightness),
-              foregroundColor: ColorsUI.getOnPrimary(brightness),
-            ),
-            child: const Text('Επαναϋπολογισμός'),
-          ),
-        ],
-      ),
+                            final outcome = await accountsProvider
+                                .recalculateAccountBalance(account.uuid);
+
+                            if (!dialogContext.mounted) return;
+                            Navigator.pop(dialogContext);
+
+                            if (!mounted) return;
+
+                            final message = outcome.message(
+                              currency: account.currency,
+                            );
+
+                            if (outcome.isSuccess) {
+                              _showSuccessSnack(context, message);
+                              AccessibilityService.announceSuccess(message);
+                            } else {
+                              _showErrorSnack(context, message);
+                              AccessibilityService.announceError(message);
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ColorsUI.getPrimary(brightness),
+                      foregroundColor: ColorsUI.getOnPrimary(brightness),
+                    ),
+                    child: isWorking
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: ColorsUI.getOnPrimary(brightness),
+                            ),
+                          )
+                        : const Text('Επαναϋπολογισμός'),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -905,69 +951,6 @@ class _AccountsPageState extends State<AccountsPage>
     }
   }
 
-  /// Επαναϋπολογισμός υπολοίπου λογαριασμού
-  Future<double> _recalculateAccountBalance(String accountUuid) async {
-    try {
-      // ignore: use_build_context_synchronously
-      final userId = context.session.userId;
-
-      // 1. Get account's initial_balance
-      final accountDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('accounts')
-          .doc(accountUuid)
-          .get();
-
-      if (!accountDoc.exists) {
-        throw Exception('Account not found');
-      }
-
-      final accountData = accountDoc.data()!;
-      final initialBalance =
-          (accountData['initial_balance'] as num?)?.toDouble() ?? 0.0;
-
-      // 2. Sum all transactions for this account
-      final now = DateTime.now();
-      final startOfToday = DateTime(now.year, now.month, now.day);
-      final endOfToday = startOfToday.add(const Duration(days: 1));
-
-      final transactionsSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('transactions')
-          .where('account_id', isEqualTo: accountUuid)
-          .where('date', isLessThan: endOfToday)      // ← νέο φίλτρο
-          .where('deleted', isEqualTo: false)
-          .get();
-
-      double transactionSum = 0.0;
-      for (final doc in transactionsSnapshot.docs) {
-        final amount = (doc.data()['amount'] as num?)?.toDouble() ?? 0.0;
-        transactionSum += amount;
-      }
-
-      // 3. Calculate new balance
-      final newBalance = initialBalance + transactionSum;
-
-      // 4. Update current_balance
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('accounts')
-          .doc(accountUuid)
-          .update({
-            'current_balance': newBalance,
-            'updated_at': FieldValue.serverTimestamp(),
-          });
-
-      DebugConfig.print('✅ Balance recalculated for $accountUuid: $newBalance');
-      return newBalance;
-    } catch (e) {
-      DebugConfig.print('❌ Error recalculating balance: $e');
-      rethrow;
-    }
-  }
   // ============================================================
   // INFO BOTTOM SHEET
   // ============================================================

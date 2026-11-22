@@ -9,6 +9,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:family_economy/core/utils/account_balance.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 
 class AccountModel {
@@ -315,6 +316,94 @@ class AccountsProvider extends ChangeNotifier {
     } catch (e) {
       DebugConfig.print('🔴 Error updating account balance: $e');
       rethrow;
+    }
+  }
+
+  // ============================================================
+  // E20 — ΕΠΑΝΥΠΟΛΟΓΙΣΜΟΣ ΥΠΟΛΟΙΠΟΥ
+  // ============================================================
+
+  /// Επαναϋπολογίζει το υπόλοιπο από το αρχικό ποσό + τις κινήσεις που
+  /// έχουν **ήδη εφαρμοστεί** (κανόνας: `AccountBalanceRules`).
+  ///
+  /// I/O: 1 ανάγνωση λογαριασμού + 1 query κινήσεων (φίλτρο μόνο
+  /// `account_id` — `deleted`/`is_scheduled` ελέγχονται σε Dart, E6)
+  /// + 1 εγγραφή **τελευταία** μέσω [updateAccountBalance].
+  Future<AccountBalanceRecalcOutcome> recalculateAccountBalance(
+    String accountUuid,
+  ) async {
+    final uid = userId.trim();
+    if (uid.isEmpty) {
+      return const AccountBalanceRecalcOutcome(
+        failure: AccountBalanceRecalcFailure.missingUser,
+      );
+    }
+
+    try {
+      final accountRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('accounts')
+          .doc(accountUuid);
+
+      final accountDoc = await accountRef.get();
+
+      // Ανάγνωση με ανοχή: το AccountModel απαιτεί τα πεδία (`as num`).
+      final accountData = accountDoc.data();
+      if (!accountDoc.exists ||
+          accountData == null ||
+          accountData['deleted'] == true) {
+        return const AccountBalanceRecalcOutcome(
+          failure: AccountBalanceRecalcFailure.accountMissing,
+        );
+      }
+
+      final initialBalance =
+          (accountData['initial_balance'] as num?)?.toDouble() ?? 0.0;
+      final beforeBalance =
+          (accountData['current_balance'] as num?)?.toDouble() ?? 0.0;
+
+      final txSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('transactions')
+          .where('account_id', isEqualTo: accountUuid)
+          .get();
+
+      final result = AccountBalanceRules.compute(
+        initialBalance: initialBalance,
+        transactions: txSnapshot.docs.map((doc) => doc.data()),
+      );
+
+      final changed = AccountBalanceRules.centsOf(beforeBalance) !=
+          AccountBalanceRules.centsOf(result.newBalance);
+
+      if (changed) {
+        await updateAccountBalance(accountUuid, result.newBalance);
+      }
+
+      DebugConfig.print(
+        '♻️ Recalc $accountUuid: counted=${result.countedCount}, '
+        'pendingExcluded=${result.pendingExcludedCount}, '
+        'deletedSkipped=${result.deletedSkippedCount}, '
+        'before=$beforeBalance, after=${result.newBalance}, '
+        'changed=$changed',
+      );
+
+      return AccountBalanceRecalcOutcome(
+        failure: AccountBalanceRecalcFailure.none,
+        beforeBalance: beforeBalance,
+        afterBalance: result.newBalance,
+        countedCount: result.countedCount,
+        pendingExcludedCount: result.pendingExcludedCount,
+        pendingExcludedAmount: result.pendingExcludedAmount,
+        changed: changed,
+      );
+    } catch (e) {
+      DebugConfig.print('🔴 Recalc failed for $accountUuid: $e');
+      return const AccountBalanceRecalcOutcome(
+        failure: AccountBalanceRecalcFailure.failed,
+      );
     }
   }
 
