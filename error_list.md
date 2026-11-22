@@ -165,6 +165,7 @@
 - **Αρχεία:** `core/utils/account_balance.dart` (νέο), `core/utils/account_delete_guard.dart`, `providers/accounts_provider.dart`, `presentation/screens/accounts/accounts_page.dart`, `test/unit/core/utils/account_balance_test.dart` (20 tests).
 - **Περιορισμός:** L27 (παράθυρο read→write).
 - **Έκδοση:** `2.3.2+9` (PATCH).
+- **✅ Device test 22/11/2026 (POCO X3):** 6/6 σενάρια — (α) άμεση έξοδος 300,00 € με **μελλοντική** ημερομηνία → recalc «ήδη σωστό (11.700,00 €)» (με τον παλιό κανόνα θα γύριζε σε 12.000)· (β) **εκκρεμής** προγραμματισμένη 500,00 € → εξαιρείται· (γ) **offline** → «Ο επανυπολογισμός απαιτεί σύνδεση στο internet», καμία εγγραφή· (δ) χαλασμένο υπόλοιπο 99.999,00 € → «99.999,00 € → 11.700,00 € (39 κινήσεις). Εξαιρέθηκαν 1 εκκρεμής (επίδραση -500,00 €)», REST `current_balance=11700`· (ε) text scale 1.45 χωρίς overflow· (στ) διπλό πάτημα → ένα μήνυμα. Στοιχεία: `device test/README.md` § E20, screenshots `e20_*`.
 
 **E21 — Cache fallback no-op (INFO)**
 - `_getQueryWithCacheFallback` (`:836–839`) & `_getDocWithCacheFallback` (`:887–890`) καλούν **μόνο** `get()`· τα σχόλια περί fallback δεν ισχύουν. Το offline δουλεύει λόγω `persistenceEnabled` (`main.dart:65–68`).
