@@ -39,3 +39,13 @@
 - Όλες οι μετρήσεις (screenW, textScale, bubbleMaxWidth) είναι ίδιες σε κάθε build
 - Το πρόβλημα βρίσκεται **αλλού** (ListView reconciliation, parent constraints, ή MediaQuery propagation)
 - Το bug παραμένει **UNRESOLVED**
+
+---
+
+### 🚫 Κλείσιμο (2026-11-23)
+
+Έλεγχος κώδικα: τα `MessageBubble` / `ChatMessagesList` **δεν υπάρχουν πλέον** στο `lib/`
+(ούτε αρχείο `*chat*`/`*message*` πέρα από το `message_service.dart`, που είναι μόνο snackbar helper
+και καλείται μία φορά από το `main.dart`). Το git history δεν βοηθά (rewrite 19/11, κεφάλαιο 14).
+Δεν υπάρχει διαδρομή χρήστη που να αναπαράγει το layout bug → το **E10** έκλεισε ως
+**WON'T FIX (feature removed)** στο `error_list.md`.

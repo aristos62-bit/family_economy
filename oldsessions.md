@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | Έκδοση | **2.3.3+10** |
-| Τελευταίο κεφάλαιο | **23** — συγχρονισμός τεκμηρίωσης (2026-11-23) |
+| Τελευταίο κεφάλαιο | **24** — E10: έλεγχος & κλείσιμο ως μη εφαρμόσιμο (2026-11-23) |
 | Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **152/152** |
 | Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`) |
 
@@ -53,14 +53,15 @@
 | 21 | 2026-11-22 | 20 | [E20: επαναϋπολογισμός υπολοίπου](oldsessions/21-session-20-e20-recalc-balance.md) | Κανόνας κατάστασης (όχι ημερομηνίας)· κοινό `account_balance.dart`· provider + υπάρχουσα `updateAccountBalance`· offline gate· 20 tests· v2.3.2+9· device tests OK (POCO X3) |
 | 22 | 2026-11-22 | 21 | [E27: ενιαίο σύνολο λογαριασμών](oldsessions/22-session-21-e27-total-exclusions.md) | Εξαιρέσεις στον `AccountsProvider` (idempotent setter, ίδιο prefs key)· `graf_4` + Λογαριασμοί με το ίδιο `AccountTotals`· κενό state «όλοι εξαιρεμένοι»· L28· 152 tests· v2.3.3+10· 6/6 device tests OK (POCO X3) |
 | 23 | 2026-11-23 | 22 | [Συγχρονισμός τεκμηρίωσης](oldsessions/23-session-22-docs-sync.md) | Έλεγχος 4 docs μετά το E27· AGENTS χωρίς πλήθος tests· κατάσταση 2.3.3+10 / 152 tests· error_list E11/E13/E24 → FIXED + E14/E15/E17 «εκτός σειράς»· DESIGN αναλλοίωτο |
+| 24 | 2026-11-23 | 22b | [E10: κλείσιμο ως μη εφαρμόσιμο](oldsessions/24-session-22b-e10-closed.md) | `MessageBubble`/`ChatMessagesList` δεν υπάρχουν στο `lib/` (μόνο `MessageService` snackbars)· E10 → 🚫 WON'T FIX· σειρά εκκρεμοτήτων: E5, E19 |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **23** (01–23) |
+| Κεφάλαια στον φάκελο | **24** (01–24) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1034** |
+| Σύνολο γραμμών κεφαλαίων | **1071** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 
