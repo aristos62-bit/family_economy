@@ -17,7 +17,6 @@ import 'package:family_economy/core/utils/account_delete_guard.dart';
 import 'package:family_economy/core/utils/account_totals.dart';
 // Providers
 import 'package:family_economy/providers/accounts_provider.dart';
-import 'package:family_economy/providers/budgets_provider.dart';
 import 'package:family_economy/services/account_duplicate_service.dart';
 import 'package:family_economy/providers/categories_provider.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
@@ -168,18 +167,6 @@ class _AccountsPageState extends State<AccountsPage>
       provider.allAccounts,
       excluded: provider.excludedAccountUuids,
     );
-  }
-
-  /// Ενεργά budgets που δείχνουν στον λογαριασμό (0 reads — από τον provider).
-  /// Το query του `BudgetsProvider` φιλτράρει `deleted=false & is_active=true`,
-  /// άρα ανενεργά budgets δεν φαίνονται εδώ (τεκμηριωμένος περιορισμός).
-  int _activeBudgetsFor(String accountUuid) {
-    try {
-      final budgets = context.read<BudgetsProvider>().budgets;
-      return budgets.where((b) => b.accountId == accountUuid).length;
-    } catch (_) {
-      return 0;
-    }
   }
 
   // ============================================================
@@ -1383,19 +1370,21 @@ class _AccountsPageState extends State<AccountsPage>
     } catch (error) {
       DebugConfig.print('Delete account preflight error: $error');
       if (!scaffoldContext.mounted) return;
-      _showErrorSnack(scaffoldContext, 'Σφάλμα Ανάγνωσης Κινήσεων');
+      _showErrorSnack(
+        scaffoldContext,
+        'Σφάλμα ανάγνωσης δεδομένων λογαριασμού',
+      );
       AccessibilityService.announceError(
-        'Σφάλμα ανάγνωσης κινήσεων λογαριασμού',
+        'Σφάλμα ανάγνωσης δεδομένων λογαριασμού',
       );
       return;
     }
     if (!scaffoldContext.mounted) return;
 
-    // 1β) E26: διαγραφή μόνο «καθαρού» λογαριασμού· αλλιώς προσφορά αρχειοθέτησης.
-    final budgetsCount = _activeBudgetsFor(uuid);
+    // 1β) E26/L26: διαγραφή μόνο «καθαρού» λογαριασμού· αλλιώς αρχειοθέτηση.
+    final budgetsCount = plan.budgetsCount;
     final actionDecision = AccountDeleteGuard.decide(
-      activeAccountCount:
-          scaffoldContext.read<AccountsProvider>().accounts.length,
+      activeAccountCount: accountsProvider.accounts.length,
       hasAnyTransaction: plan.hasAnyTransaction,
       budgetsCount: budgetsCount,
       pendingCount: plan.pendingLegUuids.length,
@@ -1407,12 +1396,24 @@ class _AccountsPageState extends State<AccountsPage>
       return;
     }
 
+    // L26: αν η απόφαση είναι διαγραφή αλλά τα budgets δεν διαβάστηκαν,
+    // δεν προχωράμε (fail-closed **μόνο** για τη διαγραφή).
+    if (plan.budgetsUnknown && actionDecision.action == AccountAction.delete) {
+      await _showArchiveBlockedDialog(
+        scaffoldContext,
+        'Σφάλμα ανάγνωσης δεδομένων λογαριασμού. Δεν άλλαξε τίποτα. '
+        'Δοκιμάστε ξανά.',
+        title: 'Διαγραφή μη διαθέσιμη',
+      );
+      return;
+    }
+
     if (actionDecision.action == AccountAction.archive) {
       if (!allowArchiveFallback) {
         // Αρχειοθετημένος με ιστορικό → μένει αρχειοθετημένος.
         await _showArchiveBlockedDialog(
           scaffoldContext,
-          'Ο λογαριασμός έχει ιστορικό (${plan.activeLegCount} κινήσεις) και '
+          'Ο λογαριασμός έχει ιστορικό (${_historySummary(plan)}) και '
           'δεν μπορεί να διαγραφεί. Παραμένει αρχειοθετημένος.',
         );
         return;
@@ -1422,7 +1423,8 @@ class _AccountsPageState extends State<AccountsPage>
         scaffoldContext,
         account,
         transactionsCount: plan.activeLegCount,
-        budgetsCount: budgetsCount,
+        budgetsCount: plan.budgetsCount,
+        inactiveBudgetsCount: plan.inactiveBudgetsCount,
         intro:
             'Ο λογαριασμός "${account.name}" έχει ιστορικό, οπότε δεν '
             'διαγράφεται. Μπορείτε να τον αρχειοθετήσετε:',
@@ -1455,6 +1457,35 @@ class _AccountsPageState extends State<AccountsPage>
         accountUuid: uuid,
       );
       if (!scaffoldContext.mounted) return;
+
+      // 3β) L26/E50: επαναξιολόγηση με τα **φρέσκα** πλήθη. Αν προέκυψαν
+      // κινήσεις/budgets ή αν τα budgets δεν διαβάστηκαν → καμία εγγραφή.
+      final freshDecision = AccountDeleteGuard.decide(
+        activeAccountCount: accountsProvider.accounts.length,
+        hasAnyTransaction: plan.hasAnyTransaction,
+        budgetsCount: plan.budgetsCount,
+        pendingCount: plan.pendingLegUuids.length,
+        targetIsVisible: account.isActive,
+      );
+      if (freshDecision.action != AccountAction.delete ||
+          plan.budgetsUnknown) {
+        DebugConfig.print(
+          '⚠️ Delete drift: action=${freshDecision.action.name}, '
+          'legs=${plan.activeLegCount}, budgets=${plan.budgetsCount}, '
+          'budgetsUnknown=${plan.budgetsUnknown}',
+        );
+        if (!scaffoldContext.mounted) return;
+        await _showArchiveBlockedDialog(
+          scaffoldContext,
+          plan.budgetsUnknown
+              ? 'Σφάλμα ανάγνωσης δεδομένων λογαριασμού. Δεν άλλαξε τίποτα. '
+                  'Δοκιμάστε ξανά.'
+              : 'Τα δεδομένα άλλαξαν (βρέθηκαν κινήσεις ή προϋπολογισμοί). '
+                  'Δεν έγινε καμία αλλαγή. Δοκιμάστε ξανά.',
+          title: 'Διαγραφή μη διαθέσιμη',
+        );
+        return;
+      }
 
       // 4) Εφαρμογή: κινήσεις/ζεύγη → deltas → λογαριασμός τελευταίος.
       await actions.applyAccountDeletePlan(userId: userId, plan: plan);
@@ -1515,9 +1546,12 @@ class _AccountsPageState extends State<AccountsPage>
       } catch (error) {
         DebugConfig.print('Archive account preview error: $error');
         if (!scaffoldContext.mounted) return;
-        _showErrorSnack(scaffoldContext, 'Σφάλμα Ανάγνωσης Κινήσεων');
+        _showErrorSnack(
+          scaffoldContext,
+          'Σφάλμα ανάγνωσης δεδομένων λογαριασμού',
+        );
         AccessibilityService.announceError(
-          'Σφάλμα ανάγνωσης κινήσεων λογαριασμού',
+          'Σφάλμα ανάγνωσης δεδομένων λογαριασμού',
         );
         return;
       }
@@ -1545,7 +1579,8 @@ class _AccountsPageState extends State<AccountsPage>
         scaffoldContext,
         account,
         transactionsCount: current.activeLegCount,
-        budgetsCount: _activeBudgetsFor(account.uuid),
+        budgetsCount: current.budgetsCount,
+        inactiveBudgetsCount: current.inactiveBudgetsCount,
       );
       if (!confirmed) return;
       if (!scaffoldContext.mounted) return;
@@ -1593,10 +1628,23 @@ class _AccountsPageState extends State<AccountsPage>
     }
   }
 
+  /// Σύνοψη ιστορικού για μηνύματα φραγής (L26: budgets χωρίς κινήσεις).
+  String _historySummary(AccountDeletePlan plan) {
+    final transactions = plan.activeLegCount == 1
+        ? '1 κίνηση'
+        : '${plan.activeLegCount} κινήσεις';
+    if (plan.budgetsUnknown) return transactions;
+    final budgets = plan.budgetsCount == 1
+        ? '1 προϋπολογισμός'
+        : '${plan.budgetsCount} προϋπολογισμοί';
+    return '$transactions, $budgets';
+  }
+
   Future<void> _showArchiveBlockedDialog(
     BuildContext context,
-    String message,
-  ) async {
+    String message, {
+    String title = 'Αρχειοθέτηση μη διαθέσιμη',
+  }) async {
     final brightness = Theme.of(context).brightness;
 
     await showDialog<void>(
@@ -1604,7 +1652,7 @@ class _AccountsPageState extends State<AccountsPage>
       builder: (dialogContext) => AlertDialog(
         backgroundColor: ColorsUI.getSurface(brightness),
         title: Text(
-          'Αρχειοθέτηση μη διαθέσιμη',
+          title,
           style: TypographyUI.titleLarge(brightness),
         ),
         content: Text(message, style: TypographyUI.bodyMedium(brightness)),
@@ -1630,6 +1678,7 @@ class _AccountsPageState extends State<AccountsPage>
     AccountModel account, {
     required int transactionsCount,
     required int budgetsCount,
+    int inactiveBudgetsCount = 0,
     String? intro,
   }) async {
     final brightness = Theme.of(context).brightness;
@@ -1641,6 +1690,14 @@ class _AccountsPageState extends State<AccountsPage>
     final transactionsText = transactionsCount == 1
         ? 'Η 1 κίνηση'
         : 'Οι $transactionsCount κινήσεις';
+    final inactiveText = inactiveBudgetsCount == 0
+        ? ''
+        : ' ($inactiveBudgetsCount '
+            '${inactiveBudgetsCount == 1 ? "ανενεργός" : "ανενεργοί"})';
+    final budgetsText = budgetsCount == 1
+        ? '1 προϋπολογισμός συνεχίζει να τον χρησιμοποιεί$inactiveText.'
+        : '$budgetsCount προϋπολογισμοί συνεχίζουν να τον '
+            'χρησιμοποιούν$inactiveText.';
 
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -1671,8 +1728,7 @@ class _AccountsPageState extends State<AccountsPage>
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  '• $budgetsCount ενεργά budgets συνεχίζουν να τον '
-                  'χρησιμοποιούν.',
+                  '• $budgetsText',
                   style: TypographyUI.bodySmall(brightness),
                 ),
               ),

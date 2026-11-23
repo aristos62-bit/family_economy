@@ -714,6 +714,51 @@ void main() {
       expect(plan.activeLegCount, 0);
       expect(plan.hasPendingScheduled, isFalse);
     });
+
+    // L26 — τα budgets περνούν από το preflight στο πλάνο.
+    test('προεπιλογή: 0 budgets, 0 ανενεργά, γνωστά', () {
+      final plan = AccountDeleteGuard.buildPlan(
+        accountUuid: 'A',
+        activeLegs: const <Map<String, dynamic>>[],
+      );
+
+      expect(plan.budgetsCount, 0);
+      expect(plan.inactiveBudgetsCount, 0);
+      expect(plan.budgetsUnknown, isFalse);
+    });
+
+    test('το πλάνο κουβαλά τα πλήθη budgets', () {
+      final plan = AccountDeleteGuard.buildPlan(
+        accountUuid: 'A',
+        activeLegs: const <Map<String, dynamic>>[],
+        budgetsCount: 3,
+        inactiveBudgetsCount: 1,
+        budgetsUnknown: true,
+      );
+
+      expect(plan.budgetsCount, 3);
+      expect(plan.inactiveBudgetsCount, 1);
+      expect(plan.budgetsUnknown, isTrue);
+    });
+
+    test('budgets μόνο (χωρίς κινήσεις) → το gate αρχειοθετεί', () {
+      final plan = AccountDeleteGuard.buildPlan(
+        accountUuid: 'A',
+        activeLegs: const <Map<String, dynamic>>[],
+        budgetsCount: 1,
+        inactiveBudgetsCount: 1,
+      );
+      final decision = AccountDeleteGuard.decide(
+        activeAccountCount: 2,
+        hasAnyTransaction: plan.hasAnyTransaction,
+        budgetsCount: plan.budgetsCount,
+        pendingCount: plan.pendingLegUuids.length,
+        targetIsVisible: true,
+      );
+
+      expect(plan.hasAnyTransaction, isFalse);
+      expect(decision.action, AccountAction.archive);
+    });
   });
 }
 

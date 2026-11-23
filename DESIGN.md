@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 222 tests
+flutter test                       # 238 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -53,7 +53,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | JDK (CLI) | 21.0.2 (ρυθμισμένο στο `flutter config`) |
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Visual Studio | Community 2026 18.1.1 · Windows SDK 10.0.26100.0 |
-| App version | **`2.3.5+12`** (`pubspec.yaml`, επαληθεύτηκε 23/11/2026) |
+| App version | **`2.3.6+13`** (`pubspec.yaml`, επαληθεύτηκε 23/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -120,7 +120,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.5+12)         ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.6+13)         ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
@@ -246,7 +246,7 @@ pubspec.yaml  (version: 2.3.5+12)         ← ΜΟΝΟ εδώ αλλάζει η 
 |---|---|
 | `flutter build bundle` | ✅ EXIT 0 |
 | `flutter analyze` | ✅ No issues found |
-| `flutter test` | ✅ 222/222 |
+| `flutter test` | ✅ 238/238 |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -263,7 +263,7 @@ pubspec.yaml  (version: 2.3.5+12)         ← ΜΟΝΟ εδώ αλλάζει η 
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 14 αρχεία · **222** `test()`/`testWidgets()` |
+| Tests | 15 αρχεία · **238** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | 5.086 αρχεία, 41,4 MB — **εκτός git** (πλέον ignored) |
 
@@ -566,6 +566,7 @@ lib/
 | Αναφορές (E28) | Φίλτρο λογαριασμών σε `stats_page`/`tag_stats_page` = `accounts + archivedAccounts` (`0` νέα reads, ίδια λίστα σε sync & κάρτα) · υπότιτλος «· Αρχειοθετημένος» · legacy `is_active=false` χωρίς marker μένουν εκτός |
 | Preflight E11 | `TransactionsActionsService.previewAccountDelete` — ενεργές κινήσεις λογαριασμού (`account_id` + `deleted`), 0 επιπλέον reads για νέα ζεύγη (peer δείκτες) |
 | Μετρήσεις E26 | Το ίδιο preflight δίνει `activeLegCount` + `pendingLegUuids` (`is_scheduled && !is_executed`) — **0 επιπλέον reads** |
+| Gate budgets (L26) | Το preflight διαβάζει **1 query** `budgets` (`account_id == uuid`, χωρίς index) και μετρά **όλα** τα μη διαγραμμένα (`deleted != true`, raw maps) → `budgetsCount` / `inactiveBudgetsCount` / `budgetsUnknown`. Αποτυχία ανάγνωσης **δεν** ρίχνει το preflight: φράσσει μόνο τη διαγραφή (η αρχειοθέτηση μένει offline-safe) |
 | Πλάνο E11 | `AccountDeleteGuard.buildPlan` → ζεύγη (complete/pending), απλά legs, deltas ανά λογαριασμό |
 | Σημασιολογία | Ολοκληρωμένο ζεύγος → **2 legs** + αντιστροφή **και των δύο** υπολοίπων· εκκρεμές (`is_scheduled && !is_executed`) → 2 legs, 0 deltas· μερικό/άγνωστο → μόνο το ενεργό leg, 0 deltas, **χωρίς** marker |
 | Marker | `annulled_by_account_deleted: <uuid>` σε **κάθε** ακυρωμένο leg· καθαρισμός με `FieldValue.delete()` στην επαναφορά |
@@ -865,11 +866,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (222 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (238 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ No issues found (~5s) |
-| `flutter test` | ✅ 222/222 |
+| `flutter test` | ✅ 238/238 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 ### 9.2 Τι καλύπτεται
@@ -999,10 +1000,10 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L20 | `schema_version` χωρίς field validation στους rules (γράφεται μόνο από την εφαρμογή, στον δικό της λογαριασμό) | §7.2 |
 | L21 | Φραγή διαγραφής **μόνο τοπικά**: δύο συσκευές μπορούν να διαγράψουν ταυτόχρονα τους δύο τελευταίους λογαριασμούς → 0 ενεργοί (καλύπτεται από κενή κατάσταση + CTA, χωρίς server-side guard) | §5.13 |
 | L22 | Offline διαγραφή λογαριασμού με **ατελή cache** θα άφηνε ορφανές κινήσεις (και peer leg) → η διαγραφή **μπλοκάρεται** offline (E24) | §5.13 |
-| L23 | Ημιτελή/legacy ζεύγη (χωρίς peer δείκτες, χωρίς ενεργό peer) → κρύβονται **μόνο** ως προς τον λογαριασμό, χωρίς marker → δεν επανέρχονται αυτόματα· χρειάζεται χωριστή επισκευή δεδομένων | §5.13 |
+| L23 | Αμυντικό κενό: αν το peer δεν ταυτοποιηθεί (αποτυχία ανάγνωσης group / leg χωρίς `transfer_group_id` / αλλοιωμένο group με >1 ενεργά legs ή άκυρο σχήμα), το σκέλος κρύβεται **μόνο** ως προς τον λογαριασμό, χωρίς marker → δεν επανέρχεται. Καμία κανονική ενέργεια χρήστη δεν το παράγει (E11 καλύπτει την κανονική περίπτωση — session 17, device tests #4/#7). Αντιμετώπιση: fail-closed + read-only έλεγχος | §5.13 |
 | L24 | *(λύθηκε 23/11/2026 — E19)* Η επαναφορά λογαριασμού επαναφέρει **μόνο** ολοκληρωμένα ζεύγη μεταφορών με marker· οι κινήσεις που διέγραψε ο χρήστης μένουν κρυφές | §5.13 |
 | L25 | Αρχειοθέτηση **offline**: ο έλεγχος εκκρεμών είναι best-effort από cache — αν εκκρεμεί κίνηση άλλης συσκευής, θα εκτελεστεί σε αρχειοθετημένο λογαριασμό (υπόλοιπο/σύνολο μένουν σωστά· καμία απώλεια) | §5.13 |
-| L26 | Το gate budgets βλέπει **μόνο** ενεργά budgets (`BudgetsProvider` query `deleted=false & is_active=true`) → λογαριασμός με μόνο ανενεργά budgets μπορεί να διαγραφεί αφήνοντας αόρατα orphan budgets | §5.13 |
+| L26 | **✅ Διορθώθηκε `2.3.6+13`** — το gate budgets μετρά πλέον **όλα** τα μη διαγραμμένα budgets (όχι μόνο `is_active=true`) μέσω server query + `AccountBudgetUsage`· φρέσκος έλεγχος πριν τη γραφή με επαναξιολόγηση (E50) | §5.13 |
 | L27 | Επανυπολογισμός υπολοίπου (E20): παράθυρο read→write — κίνηση που γράφεται **ανάμεσα** στην ανάγνωση και την εγγραφή δεν μετριέται· χειροκίνητη ενέργεια, χωρίς transaction (θα απαιτούσε εκατοντάδες reads) | §5.4 |
 | L28 | Εξαιρέσεις λογαριασμών (E27): **τοπική** προτίμηση ανά συσκευή (δεν συγχρονίζεται)· αρχειοθετημένος + εξαιρεμένος λογαριασμός δεν έχει checkbox επανένταξης (μόνο «Επαναφορά») | §5.2, §5.8 |
 | L29 | Επαναφορά λογαριασμού (E19): ίδιο παράθυρο read→write με L27 — μετριάζεται με **επανέλεγχο** πριν τη γραφή (ματαίωση σε drift), όχι με transaction | §5.13 |

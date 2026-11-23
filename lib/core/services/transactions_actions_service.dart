@@ -19,6 +19,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:family_economy/core/utils/account_budget_usage.dart';
 import 'package:family_economy/core/utils/account_delete_guard.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 
@@ -918,10 +919,40 @@ class TransactionsActionsService {
       }
     }
 
+    // L26: το gate χρειάζεται **όλα** τα μη διαγραμμένα budgets του
+    // λογαριασμού (ο provider βλέπει μόνο `deleted=false & is_active=true`).
+    // Ξεχωριστό try/catch: αποτυχία ανάγνωσης **δεν** ρίχνει το preflight —
+    // η αρχειοθέτηση μένει offline-safe· η διαγραφή φράσσει στο UI.
+    var budgetUsage = AccountBudgetUsage.none;
+    var budgetsUnknown = false;
+    try {
+      final budgetsSnap = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('budgets')
+          .where('account_id', isEqualTo: accountUuid)
+          .get();
+      budgetUsage = AccountBudgetUsage.count(
+        budgetsSnap.docs.map((doc) => doc.data()),
+        accountUuid,
+      );
+    } catch (e) {
+      budgetsUnknown = true;
+      DebugConfig.print('⚠️ previewAccountDelete budgets: $e');
+    }
+
+    DebugConfig.print(
+      '🗂️ Budget gate $accountUuid: total=${budgetUsage.total}, '
+      'inactive=${budgetUsage.inactive}, unknown=$budgetsUnknown',
+    );
+
     return AccountDeleteGuard.buildPlan(
       accountUuid: accountUuid,
       activeLegs: activeLegs,
       peerLegsByGroup: peerLegsByGroup,
+      budgetsCount: budgetUsage.total,
+      inactiveBudgetsCount: budgetUsage.inactive,
+      budgetsUnknown: budgetsUnknown,
     );
   }
 

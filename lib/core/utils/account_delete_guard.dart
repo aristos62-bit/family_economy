@@ -108,7 +108,8 @@ class AccountDeleteGuard {
   ///
   /// [activeAccountCount] : `AccountsProvider.accounts.length` (ενεργοί).
   /// [hasAnyTransaction] : υπάρχει έστω μία μη διαγραμμένη κίνηση.
-  /// [budgetsCount] : ενεργά budgets που δείχνουν στον λογαριασμό.
+  /// [budgetsCount] : **όλοι** οι μη διαγραμμένοι προϋπολογισμοί που
+  ///   δείχνουν στον λογαριασμό (ενεργοί + ανενεργοί + legacy — L26).
   /// [pendingCount] : εκκρεμείς προγραμματισμένες κινήσεις του λογαριασμού.
   /// [targetIsVisible] : ο υπό διαγραφή λογαριασμός μετριέται ήδη στους
   ///   ενεργούς (E32). Για αρχειοθετημένο στόχο προσθέτουμε 1, ώστε η φραγή
@@ -203,6 +204,9 @@ class AccountDeleteGuard {
     required List<Map<String, dynamic>> activeLegs,
     Map<String, List<Map<String, dynamic>>> peerLegsByGroup =
         const <String, List<Map<String, dynamic>>>{},
+    int budgetsCount = 0,
+    int inactiveBudgetsCount = 0,
+    bool budgetsUnknown = false,
   }) {
     final pairs = <TransferAnnulmentPair>[];
     final plain = <String>[];
@@ -311,6 +315,9 @@ class AccountDeleteGuard {
       unknownPairs: unknown,
       activeLegCount: activeLegCount,
       pendingLegUuids: List<String>.unmodifiable(pendingLegUuids),
+      budgetsCount: budgetsCount,
+      inactiveBudgetsCount: inactiveBudgetsCount,
+      budgetsUnknown: budgetsUnknown,
     );
   }
 
@@ -471,6 +478,9 @@ class AccountDeletePlan {
     required this.unknownPairs,
     required this.activeLegCount,
     required this.pendingLegUuids,
+    this.budgetsCount = 0,
+    this.inactiveBudgetsCount = 0,
+    this.budgetsUnknown = false,
   });
 
   final String accountUuid;
@@ -485,6 +495,16 @@ class AccountDeletePlan {
 
   /// Legs με `is_scheduled && !is_executed` (εκκρεμείς).
   final List<String> pendingLegUuids;
+
+  /// Όλοι οι μη διαγραμμένοι προϋπολογισμοί του λογαριασμού (L26).
+  final int budgetsCount;
+
+  /// Όσοι από τους [budgetsCount] είναι ανενεργοί (`is_active == false`).
+  final int inactiveBudgetsCount;
+
+  /// Η ανάγνωση των budgets απέτυχε (offline χωρίς cache κ.λπ.).
+  /// Η διαγραφή φράσσει· η αρχειοθέτηση προχωρά (L26).
+  final bool budgetsUnknown;
 
   /// Υπάρχει έστω μία κίνηση → δεν επιτρέπεται πραγματική διαγραφή.
   bool get hasAnyTransaction => activeLegCount > 0;
