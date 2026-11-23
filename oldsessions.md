@@ -22,9 +22,9 @@
 | | |
 |---|---|
 | Έκδοση | **2.3.5+12** |
-| Τελευταίο κεφάλαιο | **26** — E34: καθαρισμός βάσης (2026-11-23) |
-| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **219/219** |
-| Επόμενη εκκρεμότητα | **E17** — indexes vs deployed + rules audit (`error_list.md`) |
+| Τελευταίο κεφάλαιο | **27** — E17: indexes repo ↔ deployed (2026-11-23) |
+| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **222/222** |
+| Επόμενη εκκρεμότητα | **L26** — orphan budgets + διορθώσεις τεκμηρίωσης (`error_list.md`) |
 
 ## Κεφάλαια
 
@@ -56,14 +56,15 @@
 | 24 | 2026-11-23 | 22b | [E10: κλείσιμο ως μη εφαρμόσιμο](oldsessions/24-session-22b-e10-closed.md) | `MessageBubble`/`ChatMessagesList` δεν υπάρχουν στο `lib/` (μόνο `MessageService` snackbars)· E10 → 🚫 WON'T FIX· σειρά εκκρεμοτήτων: E5, E19 |
 | 25 | 2026-11-23 | 22c | [E19/E14: επαναφορά λογαριασμού](oldsessions/25-session-22c-e19-restore-account.md) | Καθαρός κανόνας + service I/O· μόνο marked ζεύγη· απόλυτο υπόλοιπο (cents)· 4 reads + επανέλεγχος· 6 φάσεις· offline gate· E29–E33· 178 tests· device tests OK (POCO X3)· v2.3.4+11 |
 | 26 | 2026-11-23 | 23 | [E34: καθαρισμός βάσης](oldsessions/26-session-23-e34-cleanup.md) | Νέο batch ανά chunk (E34)· nested subcategories + cascade· soft-deleted (E39)· φρέσκια preview· offline gate· 3-κατάστατο αποτέλεσμα· E37–E49· 219 tests· v2.3.5+12 |
+| 27 | 2026-11-23 | 24 | [E17: indexes repo ↔ deployed](oldsessions/27-session-24-e17-indexes.md) | Mirror 7/7 (D1–D7, legacy D3/D7)· guard test 3 tests· deploy no-op (7 READY, ίδιο ruleset)· DESIGN/error_list· 222 tests· κανένα version bump |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **26** (01–26) |
+| Κεφάλαια στον φάκελο | **27** (01–27) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1208** |
+| Σύνολο γραμμών κεφαλαίων | **1261** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

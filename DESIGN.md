@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 152 tests
+flutter test                       # 222 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -53,7 +53,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | JDK (CLI) | 21.0.2 (ρυθμισμένο στο `flutter config`) |
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Visual Studio | Community 2026 18.1.1 · Windows SDK 10.0.26100.0 |
-| App version | **`2.3.4+11`** (`pubspec.yaml`, επαληθεύτηκε 23/11/2026) |
+| App version | **`2.3.5+12`** (`pubspec.yaml`, επαληθεύτηκε 23/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -120,7 +120,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.4+11)         ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.5+12)         ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
@@ -246,7 +246,7 @@ pubspec.yaml  (version: 2.3.4+11)         ← ΜΟΝΟ εδώ αλλάζει η 
 |---|---|
 | `flutter build bundle` | ✅ EXIT 0 |
 | `flutter analyze` | ✅ No issues found |
-| `flutter test` | ✅ 152/152 |
+| `flutter test` | ✅ 222/222 |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -254,7 +254,7 @@ pubspec.yaml  (version: 2.3.4+11)         ← ΜΟΝΟ εδώ αλλάζει η 
 
 ## 3. Δομή repo & `lib/`
 
-### 3.1 Μετρήσεις (22/11/2026)
+### 3.1 Μετρήσεις (22/11/2026· tests 23/11/2026)
 
 | Στοιχείο | Πλήθος |
 |---|---|
@@ -263,7 +263,7 @@ pubspec.yaml  (version: 2.3.4+11)         ← ΜΟΝΟ εδώ αλλάζει η 
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 11 αρχεία · **152** `test()`/`testWidgets()` |
+| Tests | 14 αρχεία · **222** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | 5.086 αρχεία, 41,4 MB — **εκτός git** (πλέον ignored) |
 
@@ -718,13 +718,20 @@ schema_version (int), schema_updated_at (Timestamp)
 
 ### 6.3 Indexes (`firestore.indexes.json`)
 
-| Collection | Πεδία |
-|---|---|
-| transactions | `account_id ASC`, `deleted ASC`, `date DESC`, `__name__ DESC` — density `SPARSE_ALL` |
-| transactions | `user_id ASC`, `is_scheduled ASC`, `is_executed ASC`, `deleted ASC`, `scheduled_for_date ASC` |
-| transactions | `is_scheduled ASC`, `is_executed ASC`, `deleted ASC`, `scheduled_for_date ASC` |
+| # | Πεδία | Χρήση (query) | Κατάσταση |
+|---|---|---|---|
+| D1 | `account_id ASC`, `deleted ASC`, `date ASC`, `__name__ ASC` | Budgets spent **ανά λογαριασμό** (`budgets_provider.dart:192-204`) | ✅ ενεργό |
+| D2 | `account_id ASC`, `deleted ASC`, `date DESC`, `__name__ DESC` | Κινήσεις λογαριασμού (`transactions_show_page.dart:123-149`) | ✅ ενεργό |
+| D3 | `category_id ASC`, `deleted ASC`, `date ASC`, `__name__ ASC` | — κανένα τρέχον query (equality-only → index merging) | ⚠️ legacy |
+| D4 | `deleted ASC`, `date ASC`, `__name__ ASC` | Περίοδος: `TransactionsProvider.loadPeriod` + budgets spent (`transactions_provider.dart:199-204`, `budgets_provider.dart:192-204`) | ✅ ενεργό |
+| D5 | `deleted ASC`, `date DESC`, `__name__ DESC` | Γράφημα 6 (`graf_6_page.dart:44-52`) | ✅ ενεργό |
+| D6 | `is_scheduled ASC`, `is_executed ASC`, `deleted ASC`, `scheduled_for_date ASC`, `__name__ ASC` | Προγραμματισμένες + executor (`scheduled_transactions_service.dart:359-367, 752-760`) | ✅ ενεργό |
+| D7 | `user_id ASC`, `is_scheduled ASC`, `is_executed ASC`, `deleted ASC`, `scheduled_for_date ASC`, `__name__ ASC` | — κανένα query δεν φιλτράρει `user_id` | ⚠️ legacy |
 
-Σύνολο: **3** composite indexes, `fieldOverrides: []`.
+Σύνολο: **7** composite indexes (**5 ενεργά + 2 legacy**), `fieldOverrides: []`, όλα `COLLECTION` / `SPARSE_ALL`.
+
+> ⚠️ **Deploy:** το CLI διαγράφει indexes που λείπουν από το αρχείο. Ποτέ `--force` και ποτέ «Yes» σε prompt διαγραφής. Το αρχείο πρέπει να είναι **καθρέφτης** του deployed.
+> ✅ **Guard:** `test/unit/core/data/firestore_indexes_test.dart` απαιτεί τα 5 ενεργά signatures (D1, D2, D4, D5, D6).
 
 ### 6.4 Δομικά χαρακτηριστικά
 
@@ -858,11 +865,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (219 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (222 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ No issues found (~5s) |
-| `flutter test` | ✅ 219/219 |
+| `flutter test` | ✅ 222/222 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 ### 9.2 Τι καλύπτεται
@@ -882,6 +889,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `account_totals_test.dart` | 7 | `countsInTotal`, εξαιρέσεις χρήστη (και «όλοι εξαιρεμένοι»), legacy `is_active=false`, αρνητικά υπόλοιπα (E26/E27) |
 | `account_balance_test.dart` | 20 | Κανόνας «μετράει στο υπόλοιπο» (E20): εκκρεμείς/εκτελεσμένες/διαγραμμένες, «Άμεση» μελλοντική, ζεύγη, cents, μηνύματα |
 | `database_cleanup_policy_test.dart` | 41 | Κανόνας καθαρισμού (E34): chunks ≤499, όρια ημερών, parser ημερομηνιών, κριτήρια υπενθυμίσεων/budgets, soft-deleted (E39), aged docs, μηνύματα |
+| `firestore_indexes_test.dart` | 3 | Guard (E17): δομή JSON, 5 απαιτούμενα composite signatures, κανένα διπλότυπο |
 
 ### 9.3 Τι **δεν** καλύπτεται
 
@@ -903,7 +911,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `pubspec.yaml` / `pubspec.lock` | Dependencies (constraints / resolved) |
 | `analysis_options.yaml` | Lints + εξαιρέσεις native φακέλων |
 | `firebase.json`, `.firebaserc` | Firebase CLI config · default project `family-economy-d1b4d` |
-| `firestore.rules`, `firestore.indexes.json` | Κανόνες + 3 indexes (deploy μέσω CLI) |
+| `firestore.rules`, `firestore.indexes.json` | Κανόνες + 7 indexes (5 ενεργά + 2 legacy· deploy μέσω CLI) |
 | `fam_eco_new.iss` | Inno Setup installer (σχετικές διαδρομές, έκδοση από `/D`) |
 | `build_and_setup_final.bat` | Build + packaging script (version από pubspec, logs σε `build_logs/`) |
 | `import-data.js` + `package.json` + `package-lock.json` | Node.js import script (`firebase-admin`) |
@@ -944,6 +952,25 @@ schema_version (int), schema_updated_at (Timestamp)
 5. `node_modules/` είναι πλέον ignored (5.086 αρχεία εκτός git).
 6. `InstallerOutput/` είναι **ignored** (38,6 MB setup exe — δεν ανεβαίνει ποτέ).
 
+### 10.5 Επαλήθευση indexes & rules (read-only)
+
+```powershell
+# 1) Repo ↔ deployed (no-op αν είναι ίδια· ΠΟΤΕ --force)
+firebase deploy --only firestore:indexes --project family-economy-d1b4d --non-interactive
+
+# 2) Deployed indexes (Admin API)
+$tok = gcloud auth print-access-token
+Invoke-RestMethod -Uri "https://firestore.googleapis.com/v1/projects/family-economy-d1b4d/databases/(default)/collectionGroups/-/indexes" `
+  -Headers @{ Authorization = "Bearer $tok"; "x-goog-user-project" = "family-economy-d1b4d" }
+
+# 3) Ενεργό ruleset
+Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-economy-d1b4d/releases" `
+  -Headers @{ Authorization = "Bearer $tok"; "x-goog-user-project" = "family-economy-d1b4d" }
+```
+
+> Το `gcloud` default project μπορεί να είναι άλλο (π.χ. `nearme-eu`) → πάντα `--project` και header `x-goog-user-project`.
+> Αναμενόμενο (23/11/2026): **7 indexes `READY`**, **0 creations/deletions**, ruleset `76aa78a0-4172-40f0-95bd-752ca2caf7e5`.
+
 ---
 
 ## 11. Γνωστοί τεχνικοί περιορισμοί
@@ -955,7 +982,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | L3 | 5 συλλογές υπάρχουν στους κανόνες αλλά δεν χρησιμοποιούνται | §6.1 |
 | L4 | Κανόνες χωρίς validation πεδίων/ορίων | §7.2 |
 | L5 | Cascade διαγραφή **μόνο** για τα ζεύγη μεταφορών κατά τη διαγραφή λογαριασμού (E11)· καμία άλλη cascade δεδομένων χρήστη | §5.13 |
-| L6 | Νεκρός κώδικας (`biometric_gate`, `recurring_notifications_service`) | §3.3 |
+| L6 | Νεκρός κώδικας (`biometric_gate`, `recurring_notifications_service`)· η διαδρομή `users/{uid}/recurring_notifications` **δεν έχει rule** → αν ενεργοποιηθεί, `permission-denied` | §3.3 |
 | L7 | 3 πακέτα με 0 χρήση + 77 outdated | §1.3 |
 | L8 | iOS/macOS χωρίς `Podfile` → builds ανεπιβεβαίωτα | §2.3 |
 | L9 | Καμία CI (analyze/test/build χειροκίνητα) | §2.6 |

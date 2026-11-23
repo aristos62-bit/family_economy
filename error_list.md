@@ -9,12 +9,11 @@
 
 | # | Ενέργεια | ID |
 |---|---|---|
-| 1 | Έλεγχος indexes: `firestore.indexes.json` vs deployed + audit rules | E17 |
-| 2 | `L26` (orphan budgets) + διορθώσεις τεκμηρίωσης | L26 |
-| 3 | `ErrorApp` «Επανεκκίνηση» → `Null check operator` | L18 |
-| 4 | Απόφαση: ντετερμινιστικά IDs στο onboarding για ασφάλεια σε offline multi-device | E5 |
-| 5 | `MessageService` ανενεργό + νεκρές μέθοδοι υπολοίπου + `L6` | E15/E22/L6 |
-| 6 | Επισκευή ημιτελών/legacy ζευγών μεταφορών | L23 |
+| 1 | `L26` (orphan budgets) + διορθώσεις τεκμηρίωσης | L26 |
+| 2 | `ErrorApp` «Επανεκκίνηση» → `Null check operator` | L18 |
+| 3 | Απόφαση: ντετερμινιστικά IDs στο onboarding για ασφάλεια σε offline multi-device | E5 |
+| 4 | `MessageService` ανενεργό + νεκρές μέθοδοι υπολοίπου + `L6` | E15/E22/L6 |
+| 5 | Επισκευή ημιτελών/legacy ζευγών μεταφορών | L23 |
 
 > Τα E6 και E8 είναι κλειστά (σκόπιμη συμπεριφορά / εγγενής περιορισμός) — δεν περιμένουν ενέργεια.
 > Τα **E11**, **E13**, **E24** διορθώθηκαν μαζί (έκδοση `2.2.0+6`, 21/11/2026)· τα **E18/E21/E22/E23/E25** είναι ℹ️ INFO.
@@ -23,9 +22,10 @@
 > Το **E27** διορθώθηκε με **μία πηγή αλήθειας για τις εξαιρέσεις** (`AccountsProvider`) — γράφημα και Λογαριασμοί δείχνουν το ίδιο σύνολο (έκδοση `2.3.3+10`, 22/11/2026).
 > Τα **E14, E19, E29–E33** διορθώθηκαν μαζί με την **επαναφορά λογαριασμού** (έκδοση `2.3.4+11`, 23/11/2026).
 > Τα **E34, E37–E47** διορθώθηκαν με τον **καθαρισμό βάσης** (έκδοση `2.3.5+12`, 23/11/2026)· τα **E48/E49** είναι ℹ️ INFO.
-> **Εκτός σειράς (τεχνικό χρέος, χωρίς ορισμένη προτεραιότητα):** **E15**, **E17** — 🔵 OPEN.
+> Το **E17** διορθώθηκε με **mirror των 7 indexes** + guard test (23/11/2026)· καμία αλλαγή cloud.
+> **Εκτός σειράς (τεχνικό χρέος, χωρίς ορισμένη προτεραιότητα):** **E15** — 🔵 OPEN.
 > Το **E10** έκλεισε ως **μη εφαρμόσιμο** (η λειτουργία `MessageBubble`/`ChatMessagesList` αφαιρέθηκε από την εφαρμογή — 23/11/2026).
-> **Εκκρεμεί εξωτερικός έλεγχος (δεν μπλοκάρει):** (α) deployed rules = repo rules, (β) ύπαρξη ήδη σπασμένων ζευγών στα δεδομένα (θα χρειαστεί χωριστή επισκευή — L23).
+> **Εκκρεμεί εξωτερικός έλεγχος (δεν μπλοκάρει):** (α) ✅ deployed rules = repo rules (23/11/2026 — semantic diff 57=57), (β) ύπαρξη ήδη σπασμένων ζευγών στα δεδομένα (θα χρειαστεί χωριστή επισκευή — L23).
 
 ## Ευρήματα
 
@@ -47,7 +47,7 @@
 | E14 | Επαναφορά μετά τον cleanup 30 ημερών: επιστρέφει ο λογαριασμός χωρίς ιστορικό | — | ✅ FIXED | 2026-11-23 |
 | E15 | `MessageService` υπάρχει αλλά πρακτικά ανενεργό (μόνο `main.dart`) | — | 🔵 OPEN | 2026-11-20 |
 | E16 | `transaction_edit_sheet` με λογαριασμό που διαγράφηκε → orphan επιλογή στο dropdown | — | ✅ FIXED | 2026-11-21 |
-| E17 | `firestore.indexes.json` δεν είναι πλήρες σε σχέση με το deployed (π.χ. `deleted` + `date` range) | — | 🔵 OPEN | 2026-11-20 |
+| E17 | `firestore.indexes.json` δεν είναι πλήρες σε σχέση με το deployed (π.χ. `deleted` + `date` range) | — | ✅ FIXED | 2026-11-23 |
 | E18 | `deleteTransaction` peer path δεν ελέγχει `deleted` του peer → μη idempotent (μόνο με αλλοιωμένο δεδομένο) | — | ℹ️ INFO | 2026-11-20 |
 | E19 | Επαναφορά λογαριασμού ανασταίνει και κινήσεις που διέγραψε ο χρήστης | — | ✅ FIXED | 2026-11-23 |
 | E20 | Επαναϋπολογισμός υπολοίπου: λάθος άθροισμα (φίλτρο ημερομηνίας, εκκρεμείς, offline cache) | — | ✅ FIXED | 2026-11-22 |
@@ -142,7 +142,7 @@
 - **Κανόνες:** ολοκληρωμένο ζεύγος → κρύψιμο 2 legs + 2 deltas· εκκρεμές → κρύψιμο 2 legs, 0 deltas· μερικό → κρύψιμο μόνο του ενεργού, 0 deltas, **χωρίς** marker. Ένα ζεύγος = **ένα** batch· deltas **ανά chunk** (σωστό retry)· λογαριασμός τελευταίος· μετράμε **writes** (όχι docs).
 - **Επαναφορά:** τα marked legs εξαιρούνται από τη γενική επαναφορά· ζεύγος επανέρχεται μόνο αν 2 legs, **και τα δύο** με marker, έγκυρο σχήμα και ενεργό peer· deltas μόνο για ολοκληρωμένα· chunking ≤499 (κλείνει και **E13**).
 - **Αρχεία:** `account_delete_guard.dart` (pure πλάνο), `transactions_actions_service.dart` (+2 μέθοδοι I/O), `accounts_page.dart` (preflight + φραγή offline E24), `account_duplicate_service.dart` (restore), `scheduled_transactions_service.dart` (integrity guard). **0 νέα αρχεία κώδικα.**
-- **Indexes/rules:** καμία αλλαγή· όλες οι νέες αναγνώσεις είναι equality-only (το E17 δεν μπλοκάρει).
+- **Indexes/rules:** καμία αλλαγή· όλες οι νέες αναγνώσεις είναι equality-only (το E17 δεν το μπλόκαρε).
 - **Έκδοση:** `2.2.0+6` (νέο προαιρετικό πεδίο → MINOR, `DESIGN.md` §1.5.3).
 - **✅ Διορθώθηκε 21/11/2026 (`2.2.0+6`):** `account_delete_guard.dart` (πλάνο + chunks + restore units), `transactions_actions_service.dart` (`previewAccountDelete` / `applyAccountDeletePlan`), `accounts_page.dart` (preflight + διάλογος με επίπτωση + φραγή offline E24), `scheduled_transactions_service.dart` (peer πεδία + `_isTransferPairIntact`), `account_duplicate_service.dart` (συμμετρική επαναφορά + chunking E13). Tests: `account_delete_guard_test.dart` 8→26. `flutter analyze` καθαρό, `flutter test` 115/115.
 - **✅ Device test 21/11/2026 (POCO X3, `demo@yahoo.com`):** ολοκληρωμένο ζεύγος 200 → ακύρωση + επιστροφή (A 1.000→800, B 700 μετά την επαναφορά)· εκκρεμές ζεύγος 50 → 0 deltas· offline φραγή. Λεπτομέρειες: `device test/README.md` § E11.
@@ -172,9 +172,12 @@
 - Σχετίζεται με E11 (μεταφορές) αλλά αφορά οποιαδήποτε κίνηση.
 - **✅ Διορθώθηκε 21/11/2026 (`2.3.0+7`):** το dropdown προσθέτει τον **επιλεγμένο** λογαριασμό ακόμη κι αν είναι αρχειοθετημένος/ανενεργός (ίδιο fix στο `input_budget_page`) → τέλος το assertion `items == value`.
 
-**E17 — Indexes file vs deployed (OPEN)**
-- Το `firestore.indexes.json` έχει 3 indexes· το `transactions_provider.dart:202–204` (`date` range + `deleted ==`) απαιτεί composite index που **δεν** υπάρχει στο αρχείο.
-- Άρα το αρχείο δεν είναι αξιόπιστος κατάλογος· κάθε νέο query πρέπει να ελέγχεται και στο console.
+**E17 — Indexes file vs deployed (FIXED 23/11/2026)**
+- Το `firestore.indexes.json` είχε **3** indexes, ενώ το deployed είχε **7**· έλειπαν `account_id+deleted+date ASC`, `category_id+deleted+date ASC`, `deleted+date ASC`, `deleted+date DESC`.
+- Κίνδυνος: deploy θα πρότεινε διαγραφή των 4 → σιωπηλές αποτυχίες (budgets 0,00 €, graf_6 κενό, Κινήσεις λογαριασμού από cache, executor `[]`).
+- **✅ Διορθώθηκε 23/11/2026:** mirror **7/7** (CLI matcher: 7/7 MATCH, 0 deletions/creations)· guard `firestore_indexes_test.dart` (3 tests)· deploy no-op (7 READY, ίδια `createTime`, ίδιο ruleset `76aa78a0…`).
+- Legacy D3 (`category_id`) / D7 (`user_id`) διατηρήθηκαν σκόπιμα (κανένα τρέχον query· ρίσκο σε παλιούς clients) — βλ. `DESIGN.md` §6.3.
+- Rules: deployed = repo (57=57 semantic) → κλείνει το (α).
 
 **E18 — Peer path μη idempotent (INFO)**
 - `deleteTransaction` peer path (`transactions_actions_service.dart:367–406`) αντιστρέφει πάντα τα 2 υπόλοιπα χωρίς να ελέγχει `deleted` του peer· το group path (`:482–490`) φιλτράρει.
