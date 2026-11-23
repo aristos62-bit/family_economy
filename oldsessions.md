@@ -21,8 +21,8 @@
 
 | | |
 |---|---|
-| Έκδοση | **2.3.6+13** |
-| Τελευταίο κεφάλαιο | **29** — L26: gate budgets στη διαγραφή λογαριασμού (2026-11-23) |
+| Έκδοση | **2.3.7+14** |
+| Τελευταίο κεφάλαιο | **30** — E22/E54: νεκρός κώδικας + κείμενο διαλόγου (2026-11-23) |
 | Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **238/238** |
 | Επόμενη εκκρεμότητα | **L18** — `ErrorApp` «Επανεκκίνηση» → `Null check operator` (`error_list.md`) |
 
@@ -59,14 +59,15 @@
 | 27 | 2026-11-23 | 24 | [E17: indexes repo ↔ deployed](oldsessions/27-session-24-e17-indexes.md) | Mirror 7/7 (D1–D7, legacy D3/D7)· guard test 3 tests· deploy no-op (7 READY, ίδιο ruleset)· DESIGN/error_list· 222 tests· κανένα version bump |
 | 28 | 2026-11-23 | 25 | [L23: αναδιατύπωση](oldsessions/28-session-25-l23-reclassified.md) | Απόδειξη ότι καμία κανονική ενέργεια χρήστη δεν αφήνει ένα σκέλος (E11: session 17, device tests #4/#7)· L23 = αμυντικό κενό (αποτυχία ανάγνωσης group / χωρίς group id / αλλοιωμένο group)· μόνο docs, κανένα version bump |
 | 29 | 2026-11-23 | 26 | [L26: gate budgets στη διαγραφή](oldsessions/29-session-26-l26-budget-gate.md) | Μέτρηση **όλων** των μη διαγραμμένων budgets (server query + `AccountBudgetUsage`, raw maps)· `budgetsUnknown` φράσσει μόνο τη διαγραφή· επαναξιολόγηση μετά το φρέσκο preflight (E50)· E51–E54· 238 tests· v2.3.6+13 |
+| 30 | 2026-11-23 | 27 | [E22/E54: καθαρισμός & κείμενο](oldsessions/30-session-27-e22-e54.md) | Αφαίρεση νεκρής `applyLocalBalanceDelta` (η `updateAccountBalance` μένει ενεργή, E20)· διάλογος αρχειοθέτησης «Καμία κίνηση· το υπόλοιπο … διατηρείται» για 0 κινήσεις· 238 tests· v2.3.7+14 |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **29** (01–29) |
+| Κεφάλαια στον φάκελο | **30** (01–30) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1383** |
+| Σύνολο γραμμών κεφαλαίων | **1419** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

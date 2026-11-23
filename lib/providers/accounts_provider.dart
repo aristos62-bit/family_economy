@@ -322,49 +322,6 @@ class AccountsProvider extends ChangeNotifier {
   }
 
   // ============================================================
-  // OFFLINE-FIRST LOCAL UPDATE
-  // ============================================================
-
-  /// ✅ Optimistic local balance update (works offline too)
-  void applyLocalBalanceDelta({
-    required String accountUuid,
-    required double delta,
-  }) {
-    if (_disposed) return;
-
-    final index = _accounts.indexWhere((a) => a.uuid == accountUuid);
-    if (index == -1) return;
-
-    final old = _accounts[index];
-
-    _accounts[index] = AccountModel(
-      uuid: old.uuid,
-      userId: old.userId,
-      name: old.name,
-      initialBalance: old.initialBalance,
-      currentBalance: old.currentBalance + delta,
-      currency: old.currency,
-      accountType: old.accountType,
-      iconIndex: old.iconIndex,
-      color: old.color,
-      isActive: old.isActive,
-      displayOrder: old.displayOrder,
-      createdAt: old.createdAt,
-      updatedAt: DateTime.now(), // local timestamp
-      deleted: old.deleted,
-      archivedAt: old.archivedAt,
-    );
-
-    // ✅ Keep visible list in sync
-    _visibleAccounts = _accounts.where((a) => !a.deleted && a.isActive).toList()
-          ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
-
-    DebugConfig.print('↗️ Local balance delta applied: $delta to account $accountUuid. New balance=${_accounts[index].currentBalance}');
-
-    notifyListeners();
-  }
-
-  // ============================================================
   // FIRESTORE UPDATE
   // ============================================================
 

@@ -1687,9 +1687,12 @@ class _AccountsPageState extends State<AccountsPage>
       account.currentBalance,
       currency: account.currency,
     );
-    final transactionsText = transactionsCount == 1
-        ? 'Η 1 κίνηση'
-        : 'Οι $transactionsCount κινήσεις';
+    final transactionsText = transactionsCount == 0
+        ? 'Καμία κίνηση· το υπόλοιπο $balanceText διατηρείται'
+        : transactionsCount == 1
+            ? 'Η 1 κίνηση και το υπόλοιπο $balanceText διατηρούνται'
+            : 'Οι $transactionsCount κινήσεις και το υπόλοιπο $balanceText '
+                'διατηρούνται';
     final inactiveText = inactiveBudgetsCount == 0
         ? ''
         : ' ($inactiveBudgetsCount '
@@ -1718,8 +1721,7 @@ class _AccountsPageState extends State<AccountsPage>
             const SizedBox(height: 12),
             Text(
               '• Κρύβεται από τις λίστες επιλογής.\n'
-              '• $transactionsText και το υπόλοιπο $balanceText '
-              'διατηρούνται.\n'
+              '• $transactionsText.\n'
               '• Συνεχίζει να μετράει στο συνολικό υπόλοιπο.\n'
               '• Μπορείτε να τον επαναφέρετε όποτε θέλετε.',
               style: TypographyUI.bodySmall(brightness),

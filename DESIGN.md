@@ -53,7 +53,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | JDK (CLI) | 21.0.2 (ρυθμισμένο στο `flutter config`) |
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Visual Studio | Community 2026 18.1.1 · Windows SDK 10.0.26100.0 |
-| App version | **`2.3.6+13`** (`pubspec.yaml`, επαληθεύτηκε 23/11/2026) |
+| App version | **`2.3.7+14`** (`pubspec.yaml`, επαληθεύτηκε 23/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -120,7 +120,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.6+13)         ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
@@ -456,7 +456,7 @@ lib/
 
 | Provider | Ευθύνη | Ιδιαιτερότητα |
 |---|---|---|
-| `AccountsProvider` | Λίστα λογαριασμών + τοπικά deltas υπολοίπων + **εξαιρέσεις από το σύνολο** (E27) | `updateAccountBalance` **ενεργή** (εγγραφή E20)· οι εξαιρέσεις ζουν εδώ (getter/setter, prefs) ώστε Λογαριασμοί & `graf_4` να δείχνουν το ίδιο σύνολο· `applyLocalBalanceDelta` αχρησιμοποίητη |
+| `AccountsProvider` | Λίστα λογαριασμών + **εξαιρέσεις από το σύνολο** (E27) | `updateAccountBalance` **ενεργή** (εγγραφή E20)· οι εξαιρέσεις ζουν εδώ (getter/setter, prefs) ώστε Λογαριασμοί & `graf_4` να δείχνουν το ίδιο σύνολο· η νεκρή `applyLocalBalanceDelta` **αφαιρέθηκε** (E22) |
 | `CategoriesProvider` | Categories + subcategories | `firstLoad` flag για UI readiness |
 | `TransactionsProvider` | Transactions ανά περίοδο | Cache + φίλτρα |
 | `BudgetsProvider` | Budgets + spent | **Δύο** υπολογισμοί (βλ. 5.6) |
