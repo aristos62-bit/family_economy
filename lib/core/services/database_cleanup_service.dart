@@ -1,19 +1,36 @@
 // ============================================================
 // FILE: database_cleanup_service.dart
 // Path: lib/core/services/database_cleanup_service.dart
-// Ρόλος: Καθαρισμός παλιών/αχρήστων δεδομένων από Firestore
-// ✅ Safe cleanup με preview mode
-// ✅ Offline-safe (no hanging)
-// ✅ Detailed reporting
+// Ρόλος: Καθαρισμός παλιών/αχρήστων δεδομένων από Firestore.
+// ✅ Νέο batch ανά chunk (E34 — ποτέ επανάχρηση μετά το commit)
+// ✅ Μόνο single-field equality reads + client-side φίλτρο ηλικίας (0 indexes)
+// ✅ Nested υποκατηγορίες (categories/{id}/subcategories) + cascade
+// ✅ Συνέχεια μετά από μερική αποτυχία (3-κατάστατο αποτέλεσμα)
+// ✅ Όλα τα μηνύματα/κανόνες στο database_cleanup_policy.dart
 // ============================================================
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'package:family_economy/core/utils/database_cleanup_policy.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 
 // ─────────────────────────────────────────────
 // Cleanup Report Model
 // ─────────────────────────────────────────────
 class CleanupReport {
+  const CleanupReport({
+    required this.notificationsDeleted,
+    required this.budgetsDeleted,
+    required this.transactionsDeleted,
+    required this.categoriesDeleted,
+    required this.subcategoriesDeleted,
+    required this.oilTankDeleted,
+    required this.duration,
+    required this.timestamp,
+    required this.outcome,
+    this.failures = const <String>[],
+  });
+
   final int notificationsDeleted;
   final int budgetsDeleted;
   final int transactionsDeleted;
@@ -22,42 +39,49 @@ class CleanupReport {
   final int oilTankDeleted;
   final Duration duration;
   final DateTime timestamp;
-  final bool success;
-  final String? error;
+  final CleanupOutcome outcome;
 
-  CleanupReport({
-    required this.notificationsDeleted,
-    required this.budgetsDeleted,
-    required this.transactionsDeleted,
-    required this.categoriesDeleted,
-    required this.subcategoriesDeleted,
-    this.oilTankDeleted = 0,
-    required this.duration,
-    required this.timestamp,
-    this.success = true,
-    this.error,
-  });
+  /// Ονόματα εργασιών που απέτυχαν (για το μερικό αποτέλεσμα).
+  final List<String> failures;
 
   int get totalDeleted =>
       notificationsDeleted +
-          budgetsDeleted +
-          transactionsDeleted +
-          categoriesDeleted +
-          subcategoriesDeleted +
-          oilTankDeleted;
+      budgetsDeleted +
+      transactionsDeleted +
+      categoriesDeleted +
+      subcategoriesDeleted +
+      oilTankDeleted;
 
   bool get hasDeleted => totalDeleted > 0;
+
+  bool get success => outcome == CleanupOutcome.complete;
+
+  bool get isPartial => outcome == CleanupOutcome.partial;
 }
 
 // ─────────────────────────────────────────────
 // Cleanup Options
 // ─────────────────────────────────────────────
 class CleanupOptions {
+  const CleanupOptions({
+    this.cleanNotifications = true,
+    this.cleanBudgets = true,
+    this.cleanTransactions = true,
+    this.cleanCategories = false,
+    this.cleanOilTank = false,
+    this.notificationsDaysOld = 90,
+    this.budgetsDaysOld = 365,
+    this.transactionsDaysOld = 30,
+    this.categoriesDaysOld = 180,
+  });
+
   final bool cleanNotifications;
   final bool cleanBudgets;
   final bool cleanTransactions;
+
+  /// Κατηγορίες **και** οι υποκατηγορίες τους (μία εργασία).
   final bool cleanCategories;
-  final bool cleanSubcategories;
+
   final bool cleanOilTank;
 
   final int notificationsDaysOld;
@@ -65,24 +89,27 @@ class CleanupOptions {
   final int transactionsDaysOld;
   final int categoriesDaysOld;
 
-  const CleanupOptions({
-    this.cleanNotifications = true,
-    this.cleanBudgets = true,
-    this.cleanTransactions = true,
-    this.cleanCategories = false,
-    this.cleanSubcategories = false,
-    this.cleanOilTank = false,
-    this.notificationsDaysOld = 90,
-    this.budgetsDaysOld = 365,
-    this.transactionsDaysOld = 30,
-    this.categoriesDaysOld = 180,
-  });
+  bool get hasSelection =>
+      cleanNotifications ||
+      cleanBudgets ||
+      cleanTransactions ||
+      cleanCategories ||
+      cleanOilTank;
 }
 
 // ─────────────────────────────────────────────
 // Preview Report (πόσα θα διαγραφούν)
 // ─────────────────────────────────────────────
 class CleanupPreview {
+  const CleanupPreview({
+    required this.notificationsCount,
+    required this.budgetsCount,
+    required this.transactionsCount,
+    required this.categoriesCount,
+    required this.subcategoriesCount,
+    required this.oilTankCount,
+  });
+
   final int notificationsCount;
   final int budgetsCount;
   final int transactionsCount;
@@ -90,61 +117,80 @@ class CleanupPreview {
   final int subcategoriesCount;
   final int oilTankCount;
 
-  CleanupPreview({
-    required this.notificationsCount,
-    required this.budgetsCount,
-    required this.transactionsCount,
-    required this.categoriesCount,
-    required this.subcategoriesCount,
-    this.oilTankCount = 0,
-  });
-
   int get totalCount =>
       notificationsCount +
-          budgetsCount +
-          transactionsCount +
-          categoriesCount +
-          subcategoriesCount +
-          oilTankCount;
+      budgetsCount +
+      transactionsCount +
+      categoriesCount +
+      subcategoriesCount +
+      oilTankCount;
+
+  bool get isEmpty => totalCount == 0;
 }
 
 // ═════════════════════════════════════════════
 // DATABASE CLEANUP SERVICE
 // ═════════════════════════════════════════════
 class DatabaseCleanupService {
-  final String userId;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  DatabaseCleanupService({
+    required this.userId,
+    FirebaseFirestore? firestore,
+  }) : _db = firestore ?? FirebaseFirestore.instance;
 
-  DatabaseCleanupService({required this.userId});
+  final String userId;
+  final FirebaseFirestore _db;
+
+  static const GetOptions _server = GetOptions(source: Source.server);
+
+  CollectionReference<Map<String, dynamic>> _col(String name) =>
+      _db.collection('users').doc(userId).collection(name);
 
   // ══════════════════════════════════════════════
   // PREVIEW MODE
   // ══════════════════════════════════════════════
   Future<CleanupPreview> previewCleanup(CleanupOptions options) async {
+    final now = DateTime.now();
     DebugConfig.print('🔍 Preview cleanup for user: $userId');
 
-    try {
-      final results = await Future.wait([
-        if (options.cleanNotifications) _countOldNotifications(options.notificationsDaysOld) else Future.value(0),
-        if (options.cleanBudgets) _countOldBudgets(options.budgetsDaysOld) else Future.value(0),
-        if (options.cleanTransactions) _countOldTransactions(options.transactionsDaysOld) else Future.value(0),
-        if (options.cleanCategories) _countOldCategories(options.categoriesDaysOld) else Future.value(0),
-        if (options.cleanSubcategories) _countOldSubcategories(options.categoriesDaysOld) else Future.value(0),
-        if (options.cleanOilTank) _countOilTankData() else Future.value(0),
-      ]);
+    var notifications = 0;
+    var budgets = 0;
+    var transactions = 0;
+    var categories = 0;
+    var subcategories = 0;
+    var oilTank = 0;
 
-      return CleanupPreview(
-        notificationsCount: results.isNotEmpty ? results[0] : 0,
-        budgetsCount: results.length > 1 ? results[1] : 0,
-        transactionsCount: results.length > 2 ? results[2] : 0,
-        categoriesCount: results.length > 3 ? results[3] : 0,
-        subcategoriesCount: results.length > 4 ? results[4] : 0,
-        oilTankCount: results.length > 5 ? results[5] : 0,
-      );
-    } catch (e) {
-      DebugConfig.print('🔴 Preview error: $e');
-      rethrow;
+    if (options.cleanNotifications) {
+      notifications =
+          (await _oldNotificationRefs(now, options.notificationsDaysOld))
+              .length;
     }
+    if (options.cleanBudgets) {
+      budgets = (await _oldBudgetRefs(now, options.budgetsDaysOld)).length;
+    }
+    if (options.cleanTransactions) {
+      transactions =
+          (await _oldTransactionRefs(now, options.transactionsDaysOld)).length;
+    }
+    if (options.cleanCategories) {
+      final plan = await _collectCategoryDeletions(
+        now,
+        options.categoriesDaysOld,
+      );
+      categories = plan.categories;
+      subcategories = plan.subcategories;
+    }
+    if (options.cleanOilTank) {
+      oilTank = await _countOilTankData();
+    }
+
+    return CleanupPreview(
+      notificationsCount: notifications,
+      budgetsCount: budgets,
+      transactionsCount: transactions,
+      categoriesCount: categories,
+      subcategoriesCount: subcategories,
+      oilTankCount: oilTank,
+    );
   }
 
   // ══════════════════════════════════════════════
@@ -152,490 +198,315 @@ class DatabaseCleanupService {
   // ══════════════════════════════════════════════
   Future<CleanupReport> performCleanup(CleanupOptions options) async {
     final startTime = DateTime.now();
+    final now = DateTime.now();
     DebugConfig.print('🗑️ Starting cleanup for user: $userId');
 
-    int notifDeleted = 0;
-    int budgetsDeleted = 0;
-    int transactionsDeleted = 0;
-    int categoriesDeleted = 0;
-    int subcategoriesDeleted = 0;
-    int oilTankDeleted = 0;
+    var notifications = 0;
+    var budgets = 0;
+    var transactions = 0;
+    var categories = 0;
+    var subcategories = 0;
+    var oilTank = 0;
+    final failures = <String>[];
 
-    try {
-      // 1. Clean Notifications
-      if (options.cleanNotifications) {
-        notifDeleted = await _cleanOldNotifications(options.notificationsDaysOld);
-        DebugConfig.print('✅ Notifications cleaned: $notifDeleted');
-      }
-
-      // 2. Clean Budgets
-      if (options.cleanBudgets) {
-        budgetsDeleted = await _cleanOldBudgets(options.budgetsDaysOld);
-        DebugConfig.print('✅ Budgets cleaned: $budgetsDeleted');
-      }
-
-      // 3. Clean Transactions
-      if (options.cleanTransactions) {
-        transactionsDeleted = await _cleanOldTransactions(options.transactionsDaysOld);
-        DebugConfig.print('✅ Transactions cleaned: $transactionsDeleted');
-      }
-
-      // 4. Clean Categories (επικίνδυνο)
-      if (options.cleanCategories) {
-        categoriesDeleted = await _cleanOldCategories(options.categoriesDaysOld);
-        DebugConfig.print('✅ Categories cleaned: $categoriesDeleted');
-      }
-
-      // 5. Clean Subcategories
-      if (options.cleanSubcategories) {
-        subcategoriesDeleted = await _cleanOldSubcategories(options.categoriesDaysOld);
-        DebugConfig.print('✅ Subcategories cleaned: $subcategoriesDeleted');
-      }
-
-      // 6. Clean Oil Tank (πλήρης επαναφορά)
-      if (options.cleanOilTank) {
-        oilTankDeleted = await _cleanOilTankData();
-        DebugConfig.print('✅ Oil tank cleaned: $oilTankDeleted');
-      }
-
-      final duration = DateTime.now().difference(startTime);
-
+    if (!options.hasSelection) {
       return CleanupReport(
-        notificationsDeleted: notifDeleted,
-        budgetsDeleted: budgetsDeleted,
-        transactionsDeleted: transactionsDeleted,
-        categoriesDeleted: categoriesDeleted,
-        subcategoriesDeleted: subcategoriesDeleted,
-        oilTankDeleted: oilTankDeleted,
-        duration: duration,
+        notificationsDeleted: 0,
+        budgetsDeleted: 0,
+        transactionsDeleted: 0,
+        categoriesDeleted: 0,
+        subcategoriesDeleted: 0,
+        oilTankDeleted: 0,
+        duration: DateTime.now().difference(startTime),
         timestamp: DateTime.now(),
-        success: true,
-      );
-    } catch (e) {
-      DebugConfig.print('🔴 Cleanup error: $e');
-      final duration = DateTime.now().difference(startTime);
-
-      return CleanupReport(
-        notificationsDeleted: notifDeleted,
-        budgetsDeleted: budgetsDeleted,
-        transactionsDeleted: transactionsDeleted,
-        categoriesDeleted: categoriesDeleted,
-        subcategoriesDeleted: subcategoriesDeleted,
-        oilTankDeleted: oilTankDeleted,
-        duration: duration,
-        timestamp: DateTime.now(),
-        success: false,
-        error: e.toString(),
+        outcome: CleanupOutcome.cancelled,
       );
     }
+
+    Future<void> run(
+      String label,
+      Future<_TaskResult> Function() task,
+      void Function(int) assign,
+    ) async {
+      try {
+        final result = await task();
+        assign(result.committed);
+        if (result.error != null) {
+          failures.add(label);
+          DebugConfig.print('🔴 $label cleanup failed: ${result.error}');
+        } else {
+          DebugConfig.print('✅ $label cleaned: ${result.committed}');
+        }
+      } catch (error) {
+        failures.add(label);
+        DebugConfig.print('🔴 $label cleanup failed: $error');
+      }
+    }
+
+    if (options.cleanNotifications) {
+      await run(
+        'Υπενθυμίσεις',
+        () async => _deleteRefs(
+          await _oldNotificationRefs(now, options.notificationsDaysOld),
+        ),
+        (v) => notifications = v,
+      );
+    }
+
+    if (options.cleanBudgets) {
+      await run(
+        'Προϋπολογισμοί',
+        () async => _deleteRefs(
+          await _oldBudgetRefs(now, options.budgetsDaysOld),
+        ),
+        (v) => budgets = v,
+      );
+    }
+
+    if (options.cleanTransactions) {
+      await run(
+        'Συναλλαγές',
+        () async => _deleteRefs(
+          await _oldTransactionRefs(now, options.transactionsDaysOld),
+        ),
+        (v) => transactions = v,
+      );
+    }
+
+    if (options.cleanCategories) {
+      await run(
+        'Κατηγορίες',
+        () async {
+          final plan = await _collectCategoryDeletions(
+            now,
+            options.categoriesDaysOld,
+          );
+          final result = await _deleteRefs(plan.refs);
+
+          // Μετράμε μόνο ό,τι έχει πραγματικά committed.
+          final applied = plan.kinds.take(result.committed);
+          categories = applied.where((kind) => kind == _WriteKind.category).length;
+          subcategories = applied
+              .where((kind) => kind == _WriteKind.subcategory)
+              .length;
+          return result;
+        },
+        (_) {},
+      );
+    }
+
+    if (options.cleanOilTank) {
+      await run(
+        'Δεξαμενή Πετρελαίου',
+        _cleanOilTank,
+        (v) => oilTank = v,
+      );
+    }
+
+    return CleanupReport(
+      notificationsDeleted: notifications,
+      budgetsDeleted: budgets,
+      transactionsDeleted: transactions,
+      categoriesDeleted: categories,
+      subcategoriesDeleted: subcategories,
+      oilTankDeleted: oilTank,
+      duration: DateTime.now().difference(startTime),
+      timestamp: DateTime.now(),
+      outcome: failures.isEmpty
+          ? CleanupOutcome.complete
+          : CleanupOutcome.partial,
+      failures: List<String>.unmodifiable(failures),
+    );
   }
 
   // ══════════════════════════════════════════════
-  // OIL TANK CLEANUP (πλήρης επαναφορά)
+  // CHUNKED DELETE (E34)
   // ══════════════════════════════════════════════
+  /// Διαγράφει σε chunks ≤499 με **νέο** batch ανά chunk.
+  /// Δεν πετάει: επιστρέφει ό,τι έχει ήδη committed + το σφάλμα.
+  Future<_TaskResult> _deleteRefs(
+    List<DocumentReference<Map<String, dynamic>>> refs,
+  ) async {
+    var deleted = 0;
+    for (final chunk in CleanupPolicy.chunk(refs)) {
+      try {
+        final batch = _db.batch();
+        for (final ref in chunk) {
+          batch.delete(ref);
+        }
+        await batch.commit();
+        deleted += chunk.length;
+      } catch (error) {
+        return _TaskResult(committed: deleted, error: error);
+      }
+    }
+    return _TaskResult(committed: deleted);
+  }
+
+  // ══════════════════════════════════════════════
+  // NOTIFICATIONS
+  // ══════════════════════════════════════════════
+  Future<List<DocumentReference<Map<String, dynamic>>>> _oldNotificationRefs(
+    DateTime now,
+    int daysOld,
+  ) async {
+    // Χωρίς where: πιάνει και legacy docs χωρίς πεδίο `deleted`.
+    final snapshot = await _col('notifications').get(_server);
+    final refs = <DocumentReference<Map<String, dynamic>>>[];
+    for (final doc in snapshot.docs) {
+      if (CleanupPolicy.shouldDeleteNotification(doc.data(), now, daysOld)) {
+        refs.add(doc.reference);
+      }
+    }
+    return refs;
+  }
+
+  // ══════════════════════════════════════════════
+  // BUDGETS
+  // ══════════════════════════════════════════════
+  Future<List<DocumentReference<Map<String, dynamic>>>> _oldBudgetRefs(
+    DateTime now,
+    int daysOld,
+  ) async {
+    final snapshot = await _col('budgets').get(_server);
+    final refs = <DocumentReference<Map<String, dynamic>>>[];
+    for (final doc in snapshot.docs) {
+      if (CleanupPolicy.shouldDeleteBudget(doc.data(), now, daysOld)) {
+        refs.add(doc.reference);
+      }
+    }
+    return refs;
+  }
+
+  // ══════════════════════════════════════════════
+  // TRANSACTIONS
+  // ══════════════════════════════════════════════
+  Future<List<DocumentReference<Map<String, dynamic>>>> _oldTransactionRefs(
+    DateTime now,
+    int daysOld,
+  ) async {
+    final cutoffDate = CleanupPolicy.cutoff(now, daysOld);
+    final snapshot = await _col(
+      'transactions',
+    ).where('deleted', isEqualTo: true).get(_server);
+
+    final refs = <DocumentReference<Map<String, dynamic>>>[];
+    for (final doc in snapshot.docs) {
+      if (CleanupPolicy.shouldDeleteAged(doc.data(), cutoffDate)) {
+        refs.add(doc.reference);
+      }
+    }
+    return refs;
+  }
+
+  // ══════════════════════════════════════════════
+  // CATEGORIES + SUBCATEGORIES (nested, με cascade)
+  // ══════════════════════════════════════════════
+  Future<_CategoryDeletions> _collectCategoryDeletions(
+    DateTime now,
+    int daysOld,
+  ) async {
+    final cutoffDate = CleanupPolicy.cutoff(now, daysOld);
+    final categoriesSnap = await _col('categories').get(_server);
+
+    final refs = <DocumentReference<Map<String, dynamic>>>[];
+    final kinds = <_WriteKind>[];
+    var categories = 0;
+    var subcategories = 0;
+
+    for (final category in categoriesSnap.docs) {
+      final data = category.data();
+      final categoryIsOldDeleted =
+          data['deleted'] == true &&
+          CleanupPolicy.shouldDeleteAged(data, cutoffDate);
+
+      final subsSnap = await category.reference
+          .collection('subcategories')
+          .get(_server);
+
+      for (final sub in subsSnap.docs) {
+        final subData = sub.data();
+        final deleteSub =
+            categoryIsOldDeleted ||
+            (subData['deleted'] == true &&
+                CleanupPolicy.shouldDeleteAged(subData, cutoffDate));
+        if (deleteSub) {
+          // Οι υποκατηγορίες μπαίνουν **πριν** την κατηγορία.
+          refs.add(sub.reference);
+          kinds.add(_WriteKind.subcategory);
+          subcategories++;
+        }
+      }
+
+      if (categoryIsOldDeleted) {
+        refs.add(category.reference);
+        kinds.add(_WriteKind.category);
+        categories++;
+      }
+    }
+
+    return _CategoryDeletions(
+      refs: refs,
+      kinds: kinds,
+      categories: categories,
+      subcategories: subcategories,
+    );
+  }
+
+  // ══════════════════════════════════════════════
+  // OIL TANK (πλήρης επαναφορά)
+  // ══════════════════════════════════════════════
+  DocumentReference<Map<String, dynamic>> get _oilTankRef =>
+      _col('settings').doc('oil_tank');
 
   Future<int> _countOilTankData() async {
-    try {
-      // Μετράμε όλες τις αγορές πετρελαίου
-      final purchasesSnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('oil_purchases')
-          .get(const GetOptions(source: Source.server));
-      final purchasesCount = purchasesSnapshot.docs.length;
-
-      // Αν υπάρχει έγγραφο ρυθμίσεων, το μετράμε ως 1
-      final settingsDoc = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('settings')
-          .doc('oil_tank')
-          .get(const GetOptions(source: Source.server));
-      final settingsCount = settingsDoc.exists ? 1 : 0;
-
-      return purchasesCount + settingsCount;
-    } catch (e) {
-      DebugConfig.print('🔴 Count oil tank error: $e');
-      return 0;
-    }
+    final purchases = await _col('oil_purchases').get(_server);
+    final settings = await _oilTankRef.get(_server);
+    return purchases.docs.length + (settings.exists ? 1 : 0);
   }
 
-  Future<int> _cleanOilTankData() async {
-    int deleted = 0;
-    final batch = _firestore.batch();
+  Future<_TaskResult> _cleanOilTank() async {
+    final purchases = await _col('oil_purchases').get(_server);
+    final settings = await _oilTankRef.get(_server);
 
-    try {
-      // 1. Διαγραφή όλων των αγορών
-      final purchasesSnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('oil_purchases')
-          .get(const GetOptions(source: Source.server));
-      for (final doc in purchasesSnapshot.docs) {
-        batch.delete(doc.reference);
-        deleted++;
-        if (deleted % 500 == 0) {
-          await batch.commit();
-        }
-      }
+    final first = await _deleteRefs(
+      purchases.docs.map((doc) => doc.reference).toList(growable: false),
+    );
+    if (first.error != null || !settings.exists) return first;
 
-      // 2. Διαγραφή του εγγράφου ρυθμίσεων (oil_tank)
-      final settingsRef = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('settings')
-          .doc('oil_tank');
-      batch.delete(settingsRef);
-      deleted++;
-
-      await batch.commit();
-      return deleted;
-    } catch (e) {
-      DebugConfig.print('🔴 Clean oil tank error: $e');
-      return deleted;
-    }
+    // Ξεχωριστό (νέο) batch — όχι επανάχρηση του προηγούμενου.
+    final second = await _deleteRefs(
+      <DocumentReference<Map<String, dynamic>>>[_oilTankRef],
+    );
+    return _TaskResult(
+      committed: first.committed + second.committed,
+      error: second.error,
+    );
   }
+}
 
-  // ══════════════════════════════════════════════
-  // NOTIFICATIONS CLEANUP
-  // ══════════════════════════════════════════════
+/// Αποτέλεσμα εργασίας: ό,τι committed + τυχόν σφάλμα (χωρίς exception).
+class _TaskResult {
+  const _TaskResult({required this.committed, this.error});
 
-  Future<int> _countOldNotifications(int daysOld) async {
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
+  final int committed;
+  final Object? error;
+}
 
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('notifications')
-          .where('deleted', isEqualTo: false)
-          .get(const GetOptions(source: Source.server));
+enum _WriteKind { category, subcategory }
 
-      int count = 0;
-      for (final doc in snapshot.docs) {
-        if (_shouldDeleteNotification(doc.data(), cutoffDate)) {
-          count++;
-        }
-      }
+class _CategoryDeletions {
+  const _CategoryDeletions({
+    required this.refs,
+    required this.kinds,
+    required this.categories,
+    required this.subcategories,
+  });
 
-      return count;
-    } catch (e) {
-      DebugConfig.print('🔴 Count notifications error: $e');
-      return 0;
-    }
-  }
+  final List<DocumentReference<Map<String, dynamic>>> refs;
 
-  Future<int> _cleanOldNotifications(int daysOld) async {
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
-
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('notifications')
-          .where('deleted', isEqualTo: false)
-          .get(const GetOptions(source: Source.server));
-
-      int deleted = 0;
-      final batch = _firestore.batch();
-
-      for (final doc in snapshot.docs) {
-        if (_shouldDeleteNotification(doc.data(), cutoffDate)) {
-          batch.delete(doc.reference);
-          deleted++;
-          if (deleted % 500 == 0) {
-            await batch.commit();
-          }
-        }
-      }
-
-      if (deleted % 500 != 0) {
-        await batch.commit();
-      }
-
-      return deleted;
-    } catch (e) {
-      DebugConfig.print('🔴 Clean notifications error: $e');
-      return 0;
-    }
-  }
-
-  bool _shouldDeleteNotification(Map<String, dynamic> data, DateTime cutoffDate) {
-    final deliveredAt = _parseTimestamp(data['delivered_at']);
-    final readAt = _parseTimestamp(data['read_at']);
-    final dismissedAt = _parseTimestamp(data['dismissed_at']);
-    final scheduledFor = _parseTimestamp(data['scheduled_for']);
-    final recurringEndAt = _parseTimestamp(data['recurring_end_at']);
-    final isRecurring = data['is_recurring'] as bool? ?? false;
-
-    // 1. Delivered + Read + Old
-    if (deliveredAt != null && readAt != null && readAt.isBefore(cutoffDate)) return true;
-    // 2. Dismissed + Old
-    if (dismissedAt != null && dismissedAt.isBefore(cutoffDate)) return true;
-    // 3. Delivered + Old
-    if (deliveredAt != null && deliveredAt.isBefore(cutoffDate)) return true;
-    // 4. Expired recurring
-    if (isRecurring && recurringEndAt != null && recurringEndAt.isBefore(DateTime.now())) return true;
-    // 5. Scheduled in past, never delivered
-    if (!isRecurring && scheduledFor != null && scheduledFor.isBefore(cutoffDate) && deliveredAt == null) return true;
-    return false;
-  }
-
-  // ══════════════════════════════════════════════
-  // BUDGETS CLEANUP
-  // ══════════════════════════════════════════════
-
-  Future<int> _countOldBudgets(int daysOld) async {
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
-
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('budgets')
-          .where('deleted', isEqualTo: false)
-          .get(const GetOptions(source: Source.server));
-
-      int count = 0;
-      for (final doc in snapshot.docs) {
-        if (_shouldDeleteBudget(doc.data(), cutoffDate)) count++;
-      }
-      return count;
-    } catch (e) {
-      DebugConfig.print('🔴 Count budgets error: $e');
-      return 0;
-    }
-  }
-
-  Future<int> _cleanOldBudgets(int daysOld) async {
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
-
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('budgets')
-          .where('deleted', isEqualTo: false)
-          .get(const GetOptions(source: Source.server));
-
-      int deleted = 0;
-      final batch = _firestore.batch();
-
-      for (final doc in snapshot.docs) {
-        if (_shouldDeleteBudget(doc.data(), cutoffDate)) {
-          batch.delete(doc.reference);
-          deleted++;
-          if (deleted % 500 == 0) await batch.commit();
-        }
-      }
-      if (deleted % 500 != 0) await batch.commit();
-      return deleted;
-    } catch (e) {
-      DebugConfig.print('🔴 Clean budgets error: $e');
-      return 0;
-    }
-  }
-
-  bool _shouldDeleteBudget(Map<String, dynamic> data, DateTime cutoffDate) {
-    final endDate = _parseDate(data['end_date']);
-    final isActive = data['is_active'] as bool? ?? true;
-    if (endDate != null && endDate.isBefore(cutoffDate)) return true;
-    if (!isActive && endDate != null && endDate.isBefore(DateTime.now())) return true;
-    return false;
-  }
-
-  // ══════════════════════════════════════════════
-  // TRANSACTIONS CLEANUP
-  // ══════════════════════════════════════════════
-
-  Future<int> _countOldTransactions(int daysOld) async {
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('transactions')
-          .where('deleted', isEqualTo: true)
-          .get(const GetOptions(source: Source.server));
-
-      int count = 0;
-      for (final doc in snapshot.docs) {
-        final updatedAt = _parseTimestamp(doc.data()['updated_at']);
-        if (updatedAt != null && updatedAt.isBefore(cutoffDate)) count++;
-      }
-      return count;
-    } catch (e) {
-      DebugConfig.print('🔴 Count transactions error: $e');
-      return 0;
-    }
-  }
-
-  Future<int> _cleanOldTransactions(int daysOld) async {
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('transactions')
-          .where('deleted', isEqualTo: true)
-          .get(const GetOptions(source: Source.server));
-
-      int deleted = 0;
-      final batch = _firestore.batch();
-
-      for (final doc in snapshot.docs) {
-        final updatedAt = _parseTimestamp(doc.data()['updated_at']);
-        if (updatedAt != null && updatedAt.isBefore(cutoffDate)) {
-          batch.delete(doc.reference);
-          deleted++;
-          if (deleted % 500 == 0) await batch.commit();
-        }
-      }
-      if (deleted % 500 != 0) await batch.commit();
-      return deleted;
-    } catch (e) {
-      DebugConfig.print('🔴 Clean transactions error: $e');
-      return 0;
-    }
-  }
-
-  // ══════════════════════════════════════════════
-  // CATEGORIES CLEANUP (ΕΠΙΚΙΝΔΥΝΟ!)
-  // ══════════════════════════════════════════════
-
-  Future<int> _countOldCategories(int daysOld) async {
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('categories')
-          .where('deleted', isEqualTo: true)
-          .get(const GetOptions(source: Source.server));
-
-      int count = 0;
-      for (final doc in snapshot.docs) {
-        final updatedAt = _parseTimestamp(doc.data()['updated_at']);
-        if (updatedAt != null && updatedAt.isBefore(cutoffDate)) count++;
-      }
-      return count;
-    } catch (e) {
-      DebugConfig.print('🔴 Count categories error: $e');
-      return 0;
-    }
-  }
-
-  Future<int> _cleanOldCategories(int daysOld) async {
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('categories')
-          .where('deleted', isEqualTo: true)
-          .get(const GetOptions(source: Source.server));
-
-      int deleted = 0;
-      final batch = _firestore.batch();
-
-      for (final doc in snapshot.docs) {
-        final updatedAt = _parseTimestamp(doc.data()['updated_at']);
-        if (updatedAt != null && updatedAt.isBefore(cutoffDate)) {
-          batch.delete(doc.reference);
-          deleted++;
-          if (deleted % 500 == 0) await batch.commit();
-        }
-      }
-      if (deleted % 500 != 0) await batch.commit();
-      return deleted;
-    } catch (e) {
-      DebugConfig.print('🔴 Clean categories error: $e');
-      return 0;
-    }
-  }
-
-  // ══════════════════════════════════════════════
-  // SUBCATEGORIES CLEANUP
-  // ══════════════════════════════════════════════
-
-  Future<int> _countOldSubcategories(int daysOld) async {
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('subcategories')
-          .where('deleted', isEqualTo: true)
-          .get(const GetOptions(source: Source.server));
-
-      int count = 0;
-      for (final doc in snapshot.docs) {
-        final updatedAt = _parseTimestamp(doc.data()['updated_at']);
-        if (updatedAt != null && updatedAt.isBefore(cutoffDate)) count++;
-      }
-      return count;
-    } catch (e) {
-      DebugConfig.print('🔴 Count subcategories error: $e');
-      return 0;
-    }
-  }
-
-  Future<int> _cleanOldSubcategories(int daysOld) async {
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('subcategories')
-          .where('deleted', isEqualTo: true)
-          .get(const GetOptions(source: Source.server));
-
-      int deleted = 0;
-      final batch = _firestore.batch();
-
-      for (final doc in snapshot.docs) {
-        final updatedAt = _parseTimestamp(doc.data()['updated_at']);
-        if (updatedAt != null && updatedAt.isBefore(cutoffDate)) {
-          batch.delete(doc.reference);
-          deleted++;
-          if (deleted % 500 == 0) await batch.commit();
-        }
-      }
-      if (deleted % 500 != 0) await batch.commit();
-      return deleted;
-    } catch (e) {
-      DebugConfig.print('🔴 Clean subcategories error: $e');
-      return 0;
-    }
-  }
-
-  // ══════════════════════════════════════════════
-  // HELPERS
-  // ══════════════════════════════════════════════
-
-  DateTime? _parseTimestamp(dynamic value) {
-    if (value == null) return null;
-    if (value is Timestamp) return value.toDate();
-    if (value is String) {
-      try {
-        return DateTime.parse(value);
-      } catch (_) {
-        return null;
-      }
-    }
-    return null;
-  }
-
-  DateTime? _parseDate(dynamic value) {
-    if (value == null) return null;
-    if (value is Timestamp) return value.toDate();
-    if (value is String) {
-      try {
-        return DateTime.parse(value);
-      } catch (_) {
-        return null;
-      }
-    }
-    return null;
-  }
+  /// Παράλληλη λίστα με [refs] — τι είναι κάθε write.
+  final List<_WriteKind> kinds;
+  final int categories;
+  final int subcategories;
 }

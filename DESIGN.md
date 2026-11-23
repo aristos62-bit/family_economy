@@ -284,7 +284,7 @@ lib/
       biometric_auth_service.dart              # LocalAuth API
       biometric_settings_service.dart          # Mode ανά χρήστη: always / on_demand
       connectivity_service.dart                # Online/offline, 2s debounce, onSyncComplete
-      database_cleanup_service.dart            # Καθαρισμός παλιών / soft-deleted
+      database_cleanup_service.dart            # Καθαρισμός παλιών / soft-deleted (chunked, E34)
       message_service.dart                     # SnackBar sync + μηνύματα
       account_restore_service.dart             # I/O επαναφοράς διαγραμμένου λογαριασμού (E19/E14/E29-E31)
       transactions_actions_service.dart        # CRUD transactions + ενημέρωση υπολοίπων (batch)
@@ -299,6 +299,7 @@ lib/
       account_balance.dart                     # Κανόνας «μετράει στο υπόλοιπο;» + υπολογισμός (E20, καθαρό Dart)
       account_restore_policy.dart              # Πλάνο επαναφοράς λογαριασμού: skip reasons, απόλυτο υπόλοιπο, chunks (E19/E14, καθαρό Dart)
       account_totals.dart                      # Ένα σημείο αλήθειας για το συνολικό υπόλοιπο (E26, εξαιρέσεις E27)
+      database_cleanup_policy.dart             # Κανόνας καθαρισμού: ηλικία, soft-deleted, chunks, μηνύματα (E34, καθαρό Dart)
       app_info.dart                            # έκδοση από package_info_plus (footer Επιλογών)
       chart_helpers.dart
       currency_formatter.dart
@@ -587,6 +588,24 @@ lib/
 >
 > **E19 — όπου «επαναφορά», ο κανόνας ζει σε καθαρό Dart** (`account_restore_policy.dart`, 0 I/O, 23 unit tests). Ο διάλογος (`account_duplicate_service.dart`) παίρνει **μόνο** `ConnectivityService` από το δικό του context (root provider)· `userId`/νόμισμα/όνομα περνούν ως παράμετροι (ο `AccountsProvider` δημιουργείται **μέσα** στο `MaterialPageRoute` του `app_start.dart`).
 
+### 5.14 Καθαρισμός βάσης (E34)
+
+| Στοιχείο | Τιμή |
+|---|---|
+| Κανόνας | `core/utils/database_cleanup_policy.dart` — καθαρό Dart, **0 I/O**, 40 unit tests |
+| I/O | `core/services/database_cleanup_service.dart` (`users/{uid}/...`, `Source.server`) |
+| Εργασίες | Υπενθυμίσεις · Προϋπολογισμοί · Συναλλαγές · **Κατηγορίες & Υποκατηγορίες (μία)** · Δεξαμενή Πετρελαίου |
+| Chunking | **Νέο** `WriteBatch` ανά chunk ≤**499** — ποτέ επανάχρηση μετά το `commit()` (E34) |
+| Reads | Μόνο single-field equality (`transactions.deleted`, `categories` unfiltered) + **client-side** φίλτρο ηλικίας → **0 νέα indexes** |
+| Υποκατηγορίες | **Nested** `categories/{id}/subcategories` (όχι top-level, όχι `collectionGroup`)· cascade πριν τη διαγραφή κατηγορίας |
+| Soft-deleted | Υπενθυμίσεις/προϋπολογισμοί με `deleted:true` διαγράφονται με ηλικία `updated_at` (fallback `created_at`) — E39 |
+| Κριτήρια | Υπενθυμίσεις: διαβασμένη/απορριφθείσα/παραδοθείσα/ληγμένη recurring/προγραμματισμένη στο παρελθόν · Budgets: `end_date` πριν το όριο ή ανενεργό με ληγμένη λήξη · Συναλλαγές/κατηγορίες: `updated_at` < όριο (χωρίς `updated_at` → **δεν** διαγράφονται) |
+| Ροή UI | offline gate (`isConfirmedOffline`) → **πάντα φρέσκια** προεπισκόπηση → επιβεβαίωση με τα φρέσκα πλήθη → εκτέλεση · `PopScope` + κλείδωμα επιλογών κατά την εκτέλεση |
+| Αποτέλεσμα | **3 καταστάσεις**: `complete` / `partial` (συνέχεια στις υπόλοιπες εργασίες + λίστα αποτυχιών) / `cancelled` |
+| Oil | `oil_purchases` (chunked) + `settings/oil_tank` (ξεχωριστό batch)· το `oil_page` ξαναδημιουργεί defaults |
+| Επίπτωση | Hard delete κατηγορίας: οι κινήσεις δείχνουν ήδη «Χωρίς κατηγορία»· μόνο `ScheduledTransactionsService.getCategoryName` → «Άγνωστη Κατηγορία/Υποκατηγορία» (L32) |
+| Έκδοση | `2.3.5+12` (PATCH — μόνο διόρθωση συμπεριφοράς) |
+
 ---
 
 ## 6. Firestore μοντέλο
@@ -839,11 +858,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (178 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (218 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ No issues found (~5s) |
-| `flutter test` | ✅ 178/178 |
+| `flutter test` | ✅ 218/218 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 ### 9.2 Τι καλύπτεται
@@ -862,13 +881,15 @@ schema_version (int), schema_updated_at (Timestamp)
 | `account_restore_policy_test.dart` | 23 | Κανόνας επαναφοράς (E19/E14): μόνο marked ζεύγη, κρυφές κινήσεις χρήστη, εκκρεμή, missing/deleted peers, απόλυτο υπόλοιπο σε cents, chunks ≤499, fingerprint, μηνύματα |
 | `account_totals_test.dart` | 7 | `countsInTotal`, εξαιρέσεις χρήστη (και «όλοι εξαιρεμένοι»), legacy `is_active=false`, αρνητικά υπόλοιπα (E26/E27) |
 | `account_balance_test.dart` | 20 | Κανόνας «μετράει στο υπόλοιπο» (E20): εκκρεμείς/εκτελεσμένες/διαγραμμένες, «Άμεση» μελλοντική, ζεύγη, cents, μηνύματα |
+| `database_cleanup_policy_test.dart` | 40 | Κανόνας καθαρισμού (E34): chunks ≤499, όρια ημερών, parser ημερομηνιών, κριτήρια υπενθυμίσεων/budgets, soft-deleted (E39), aged docs, μηνύματα |
 
 ### 9.3 Τι **δεν** καλύπτεται
 
 - Καμία δοκιμή σε providers με Firestore (κανένα mock/fake).
 - Καμία δοκιμή σε notifications, scheduled transactions, biometrics.
 - Καμία UI/integration δοκιμή ροών (login, entry, transfers, exports).
-- Καμία δοκιμή σε oil module, tags, cleanup, onboarding.
+- Καμία δοκιμή σε oil module, tags, onboarding.
+- Καμία δοκιμή στο **I/O** του cleanup (καλύπτεται μόνο ο καθαρός κανόνας + device test).
 - Καμία δοκιμή στις αναφορές περιόδου/tags (E28 — καλύπτεται μόνο με device test).
 
 ---
@@ -959,6 +980,8 @@ schema_version (int), schema_updated_at (Timestamp)
 | L28 | Εξαιρέσεις λογαριασμών (E27): **τοπική** προτίμηση ανά συσκευή (δεν συγχρονίζεται)· αρχειοθετημένος + εξαιρεμένος λογαριασμός δεν έχει checkbox επανένταξης (μόνο «Επαναφορά») | §5.2, §5.8 |
 | L29 | Επαναφορά λογαριασμού (E19): ίδιο παράθυρο read→write με L27 — μετριάζεται με **επανέλεγχο** πριν τη γραφή (ματαίωση σε drift), όχι με transaction | §5.13 |
 | L30 | Επαναφορά: τα legs παίρνουν νέο `updated_at` → νέο παράθυρο 30 ημερών για τον cleanup (η αρχική `date` μένει) — βλ. E14/E34 | §5.13 |
+| L31 | Καθαρισμός (E34): αν χαθεί η σύνδεση **μέσα** στην εκτέλεση, με persistence ON τα writes μπαίνουν σε **ουρά** — η αναφορά μπορεί να δείξει μερικό αποτέλεσμα ενώ οι διαγραφές εφαρμόζονται αργότερα | §5.14 |
+| L32 | Καθαρισμός (E34): hard delete κατηγορίας → μόνο το `ScheduledTransactionsService.getCategoryName/getSubcategoryName` δείχνει «Άγνωστη Κατηγορία/Υποκατηγορία» (οι κινήσεις δείχνουν ήδη «Χωρίς κατηγορία») | §5.14 |
 
 ---
 

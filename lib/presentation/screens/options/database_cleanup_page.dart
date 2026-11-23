@@ -1,19 +1,23 @@
 // ============================================================
 // FILE: database_cleanup_page.dart
 // Path: lib/presentation/screens/options/database_cleanup_page.dart
-// Ρόλος: UI για καθαρισμό βάσης δεδομένων
-// ✅ Preview mode
-// ✅ Confirmation dialogs
-// ✅ Progress indicators
-// ✅ Detailed reporting
-// ✅ Accessibility support
+// Ρόλος: UI για καθαρισμό βάσης δεδομένων.
+// ✅ Πάντα φρέσκια προεπισκόπηση πριν την επιβεβαίωση (E42)
+// ✅ Offline φραγή (E43) + PopScope/κλείδωμα κατά την εκτέλεση (E45)
+// ✅ 3-κατάστατο αποτέλεσμα: πλήρες / μερικό / ακυρωμένο
+// ✅ Scrollable διάλογοι (resize / text scale 0.85–1.45)
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
-import 'package:family_economy/core/session/session_scope.dart';
+import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/services/database_cleanup_service.dart';
+import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
+import 'package:family_economy/core/utils/database_cleanup_policy.dart';
+import 'package:family_economy/core/widgets/offline_banner.dart';
 
 class DatabaseCleanupPage extends StatefulWidget {
   const DatabaseCleanupPage({super.key});
@@ -28,7 +32,6 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
   bool _cleanBudgets = true;
   bool _cleanTransactions = true;
   bool _cleanCategories = false; // Επικίνδυνο - disabled by default
-  bool _cleanSubcategories = false;
   bool _cleanOilTank = false;
 
   int _notificationsDays = 90;
@@ -36,7 +39,7 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
   int _transactionsDays = 30;
   int _categoriesDays = 180;
 
-  bool _isLoading = false;
+  bool _isRunning = false;
   CleanupPreview? _preview;
 
   // ── Init ──────────────────────────────────
@@ -56,35 +59,44 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
   Widget build(BuildContext context) {
     final bg = context.cPrimary;
     final fg = context.cOnPrimary;
-    return Scaffold(
-      backgroundColor: context.cBg,
-      appBar: AppBar(
-        backgroundColor: bg,
-        foregroundColor: fg,
-        elevation: 0,
-        iconTheme: IconThemeData(color: fg),
-        actionsIconTheme: IconThemeData(color: fg),
-        title: Text('Συντήρηση Βάσης', style: context.titleLg.withColor(fg)),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildWarningCard(),
-              const SizedBox(height: 24),
-              _buildOptionsCard(),
-              const SizedBox(height: 24),
-              if (!_isLoading) ...[
-                _buildPreviewButton(),
-                const SizedBox(height: 12),
-                _buildCleanupButton(),
-              ] else
-                _buildLoadingIndicator(),
-              const SizedBox(height: 24),
-              if (_preview != null) _buildPreviewResults(),
-            ],
+
+    return PopScope(
+      canPop: !_isRunning,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _showInfo(CleanupPolicy.runningMessage);
+      },
+      child: Scaffold(
+        backgroundColor: context.cBg,
+        appBar: AppBar(
+          backgroundColor: bg,
+          foregroundColor: fg,
+          elevation: 0,
+          iconTheme: IconThemeData(color: fg),
+          actionsIconTheme: IconThemeData(color: fg),
+          title: Text('Συντήρηση Βάσης', style: context.titleLg.withColor(fg)),
+          actions: const [OfflineAppBarChip()],
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildWarningCard(),
+                const SizedBox(height: 24),
+                _buildOptionsCard(),
+                const SizedBox(height: 24),
+                if (!_isRunning) ...[
+                  _buildPreviewButton(),
+                  const SizedBox(height: 12),
+                  _buildCleanupButton(),
+                ] else
+                  _buildLoadingIndicator(),
+                const SizedBox(height: 24),
+                if (_preview != null && !_isRunning) _buildPreviewResults(),
+              ],
+            ),
           ),
         ),
       ),
@@ -124,7 +136,9 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Η διαγραφή δεδομένων είναι μόνιμη και δεν μπορεί να αναιρεθεί. Χρησιμοποιήστε την προεπισκόπηση πριν συνεχίσετε.',
+                    'Η διαγραφή δεδομένων είναι μόνιμη και δεν μπορεί να '
+                    'αναιρεθεί. Χρησιμοποιήστε την προεπισκόπηση πριν '
+                    'συνεχίσετε.',
                     style: TextStyle(color: context.cText2, fontSize: 13),
                   ),
                 ],
@@ -159,7 +173,7 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
             // Notifications
             _buildCheckboxTile(
               title: 'Υπενθυμίσεις',
-              subtitle: 'Παλιές, διαβασμένες, ή ληγμένες',
+              subtitle: 'Παλιές, διαβασμένες, ληγμένες ή διαγραμμένες',
               value: _cleanNotifications,
               onChanged: (v) => setState(() => _cleanNotifications = v!),
               days: _notificationsDays,
@@ -172,7 +186,7 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
             // Budgets
             _buildCheckboxTile(
               title: 'Προϋπολογισμοί',
-              subtitle: 'Ληγμένοι προϋπολογισμοί',
+              subtitle: 'Ληγμένοι ή διαγραμμένοι προϋπολογισμοί',
               value: _cleanBudgets,
               onChanged: (v) => setState(() => _cleanBudgets = v!),
               days: _budgetsDays,
@@ -194,25 +208,14 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
 
             const Divider(height: 32),
 
-            // Categories (dangerous)
+            // Categories + subcategories (μία εργασία)
             _buildCheckboxTile(
-              title: 'Κατηγορίες',
-              subtitle: 'Διαγραμμένες κατηγορίες (επικίνδυνο)',
+              title: 'Κατηγορίες & Υποκατηγορίες',
+              subtitle:
+                  'Διαγραμμένες κατηγορίες μαζί με τις υποκατηγορίες τους '
+                  '(επικίνδυνο)',
               value: _cleanCategories,
               onChanged: (v) => setState(() => _cleanCategories = v!),
-              days: _categoriesDays,
-              onDaysChanged: (v) => setState(() => _categoriesDays = v.toInt()),
-              dangerous: true,
-            ),
-
-            const Divider(height: 32),
-
-            // Subcategories (dangerous)
-            _buildCheckboxTile(
-              title: 'Υποκατηγορίες',
-              subtitle: 'Διαγραμμένες υποκατηγορίες (επικίνδυνο)',
-              value: _cleanSubcategories,
-              onChanged: (v) => setState(() => _cleanSubcategories = v!),
               days: _categoriesDays,
               onDaysChanged: (v) => setState(() => _categoriesDays = v.toInt()),
               dangerous: true,
@@ -243,35 +246,33 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
     ValueChanged<double>? onDaysChanged,
     bool dangerous = false,
   }) {
+    final enabled = !_isRunning;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Semantics(
           label: '$title: ${value ? "ενεργό" : "ανενεργό"}',
+          enabled: enabled,
           child: CheckboxListTile(
-            title: Row(
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: dangerous ? Colors.red : context.cText,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (dangerous) ...[
-                  const SizedBox(width: 8),
-                  ExcludeSemantics(
-                    child: Icon(Icons.warning, color: Colors.red, size: 16),
-                  ),
-                ],
-              ],
+            title: Text(
+              title,
+              style: TextStyle(
+                color: dangerous ? Colors.red : context.cText,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             subtitle: Text(
               subtitle,
               style: TextStyle(color: context.cText2, fontSize: 12),
             ),
+            secondary: dangerous
+                ? const ExcludeSemantics(
+                    child: Icon(Icons.warning, color: Colors.red, size: 16),
+                  )
+                : null,
             value: value,
-            onChanged: onChanged,
+            onChanged: enabled ? onChanged : null,
             activeColor: dangerous ? Colors.red : context.cPrimary,
             contentPadding: EdgeInsets.zero,
           ),
@@ -293,11 +294,13 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
                 ),
                 Slider(
                   value: days.toDouble(),
-                  min: 7,
-                  max: 365,
-                  divisions: 51,
+                  min: CleanupPolicy.minDays.toDouble(),
+                  max: CleanupPolicy.maxDays.toDouble(),
+                  divisions:
+                      (CleanupPolicy.maxDays - CleanupPolicy.minDays) ~/
+                      CleanupPolicy.dayStep,
                   label: '$days ημέρες',
-                  onChanged: onDaysChanged,
+                  onChanged: enabled ? onDaysChanged : null,
                   activeColor: dangerous ? Colors.red : context.cPrimary,
                 ),
               ],
@@ -330,13 +333,7 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
   }
 
   Widget _buildCleanupButton() {
-    final hasSelection =
-        _cleanNotifications ||
-            _cleanBudgets ||
-            _cleanTransactions ||
-            _cleanCategories ||
-            _cleanSubcategories ||
-            _cleanOilTank;
+    final hasSelection = _options().hasSelection;
 
     return Semantics(
       button: true,
@@ -385,7 +382,8 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
   }
 
   Widget _buildPreviewResults() {
-    if (_preview == null) return const SizedBox.shrink();
+    final preview = _preview;
+    if (preview == null) return const SizedBox.shrink();
 
     return Card(
       color: context.cPrimary.withValues(alpha: 0.1),
@@ -404,54 +402,56 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
                   child: Icon(Icons.info_outline, color: context.cPrimary),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'Προεπισκόπηση',
-                  style: TextStyle(
-                    color: context.cText,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'Προεπισκόπηση',
+                    style: TextStyle(
+                      color: context.cText,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            if (_preview!.notificationsCount > 0)
+            if (preview.notificationsCount > 0)
               _buildPreviewItem(
                 'Υπενθυμίσεις',
-                _preview!.notificationsCount,
+                preview.notificationsCount,
                 Icons.notifications,
               ),
-            if (_preview!.budgetsCount > 0)
+            if (preview.budgetsCount > 0)
               _buildPreviewItem(
                 'Προϋπολογισμοί',
-                _preview!.budgetsCount,
+                preview.budgetsCount,
                 Icons.account_balance_wallet,
               ),
-            if (_preview!.transactionsCount > 0)
+            if (preview.transactionsCount > 0)
               _buildPreviewItem(
                 'Συναλλαγές',
-                _preview!.transactionsCount,
+                preview.transactionsCount,
                 Icons.receipt_long,
               ),
-            if (_preview!.categoriesCount > 0)
+            if (preview.categoriesCount > 0)
               _buildPreviewItem(
                 'Κατηγορίες',
-                _preview!.categoriesCount,
+                preview.categoriesCount,
                 Icons.category,
                 dangerous: true,
               ),
-            if (_preview!.subcategoriesCount > 0)
+            if (preview.subcategoriesCount > 0)
               _buildPreviewItem(
                 'Υποκατηγορίες',
-                _preview!.subcategoriesCount,
+                preview.subcategoriesCount,
                 Icons.subdirectory_arrow_right,
                 dangerous: true,
               ),
-            if (_preview!.oilTankCount > 0)
+            if (preview.oilTankCount > 0)
               _buildPreviewItem(
                 'Δεξαμενή Πετρελαίου',
-                _preview!.oilTankCount,
+                preview.oilTankCount,
                 Icons.local_gas_station,
                 dangerous: true,
               ),
@@ -459,7 +459,7 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
             const Divider(height: 24),
 
             Text(
-              'Σύνολο: ${_preview!.totalCount} εγγραφές',
+              'Σύνολο: ${preview.totalCount} εγγραφές',
               style: TextStyle(
                 color: context.cText,
                 fontSize: 16,
@@ -473,11 +473,11 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
   }
 
   Widget _buildPreviewItem(
-      String label,
-      int count,
-      IconData icon, {
-        bool dangerous = false,
-      }) {
+    String label,
+    int count,
+    IconData icon, {
+    bool dangerous = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -524,86 +524,112 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
   // HANDLERS
   // ══════════════════════════════════════════════
 
+  CleanupOptions _options() => CleanupOptions(
+    cleanNotifications: _cleanNotifications,
+    cleanBudgets: _cleanBudgets,
+    cleanTransactions: _cleanTransactions,
+    cleanCategories: _cleanCategories,
+    cleanOilTank: _cleanOilTank,
+    notificationsDaysOld: _notificationsDays,
+    budgetsDaysOld: _budgetsDays,
+    transactionsDaysOld: _transactionsDays,
+    categoriesDaysOld: _categoriesDays,
+  );
+
+  DatabaseCleanupService _service() =>
+      DatabaseCleanupService(userId: context.session.userId);
+
+  bool _ensureOnline() {
+    final connectivity = Provider.of<ConnectivityService>(
+      context,
+      listen: false,
+    );
+    if (connectivity.isConfirmedOffline) {
+      _showError(CleanupPolicy.offlineMessage);
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _handlePreview() async {
+    if (_isRunning) return;
+    if (!_ensureOnline()) return;
+
     setState(() {
-      _isLoading = true;
+      _isRunning = true;
       _preview = null;
     });
 
     try {
-      final userId = context.session.userId;
-      final service = DatabaseCleanupService(userId: userId);
-
-      final options = CleanupOptions(
-        cleanNotifications: _cleanNotifications,
-        cleanBudgets: _cleanBudgets,
-        cleanTransactions: _cleanTransactions,
-        cleanCategories: _cleanCategories,
-        cleanSubcategories: _cleanSubcategories,
-        cleanOilTank: _cleanOilTank,
-        notificationsDaysOld: _notificationsDays,
-        budgetsDaysOld: _budgetsDays,
-        transactionsDaysOld: _transactionsDays,
-        categoriesDaysOld: _categoriesDays,
-      );
-
-      final preview = await service.previewCleanup(options);
-
+      final preview = await _service().previewCleanup(_options());
       if (!mounted) return;
 
       setState(() {
         _preview = preview;
-        _isLoading = false;
+        _isRunning = false;
       });
 
       AccessibilityService.announcePolite(
-        'Θα διαγραφούν ${preview.totalCount} εγγραφές',
+        preview.isEmpty
+            ? CleanupPolicy.nothingToDeleteMessage
+            : 'Θα διαγραφούν ${preview.totalCount} εγγραφές',
       );
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() => _isRunning = false);
       _showError('Σφάλμα προεπισκόπησης: $e');
     }
   }
 
   Future<void> _handleCleanup() async {
-    // Confirmation dialog
-    final confirmed = await _showConfirmationDialog();
-    if (!confirmed) return;
+    if (_isRunning) return;
+    if (!_ensureOnline()) return;
 
-    setState(() => _isLoading = true);
-    if (!mounted) return;
+    // Πάντα φρέσκια προεπισκόπηση — ποτέ παλιά νούμερα στον διάλογο.
+    setState(() {
+      _isRunning = true;
+      _preview = null;
+    });
+
+    final CleanupPreview fresh;
     try {
-      final userId = context.session.userId;
-      final service = DatabaseCleanupService(userId: userId);
-
-      final options = CleanupOptions(
-        cleanNotifications: _cleanNotifications,
-        cleanBudgets: _cleanBudgets,
-        cleanTransactions: _cleanTransactions,
-        cleanCategories: _cleanCategories,
-        cleanSubcategories: _cleanSubcategories,
-        cleanOilTank: _cleanOilTank,
-        notificationsDaysOld: _notificationsDays,
-        budgetsDaysOld: _budgetsDays,
-        transactionsDaysOld: _transactionsDays,
-        categoriesDaysOld: _categoriesDays,
-      );
-
-      final report = await service.performCleanup(options);
-
-      if (!mounted) return;
-
-      setState(() => _isLoading = false);
-
-      if (report.success) {
-        _showSuccessDialog(report);
-      } else {
-        _showError('Σφάλμα: ${report.error}');
-      }
+      fresh = await _service().previewCleanup(_options());
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() => _isRunning = false);
+      _showError('Σφάλμα προεπισκόπησης: $e');
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _preview = fresh;
+      _isRunning = false;
+    });
+
+    if (fresh.isEmpty) {
+      _showInfo(CleanupPolicy.nothingToDeleteMessage);
+      return;
+    }
+
+    final confirmed = await _showConfirmationDialog(fresh);
+    if (!confirmed || !mounted) return;
+
+    setState(() => _isRunning = true);
+
+    try {
+      final report = await _service().performCleanup(_options());
+      if (!mounted) return;
+
+      setState(() {
+        _isRunning = false;
+        _preview = null;
+      });
+
+      _showResultDialog(report);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isRunning = false);
       _showError('Σφάλμα καθαρισμού: $e');
     }
   }
@@ -612,40 +638,70 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
   // DIALOGS
   // ══════════════════════════════════════════════
 
-  Future<bool> _showConfirmationDialog() async {
+  Future<bool> _showConfirmationDialog(CleanupPreview preview) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
+        scrollable: true,
         title: const Text('Επιβεβαίωση Καθαρισμού'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Είστε σίγουροι ότι θέλετε να διαγράψετε τα επιλεγμένα δεδομένα;',
+              'Είστε σίγουροι ότι θέλετε να διαγράψετε τα επιλεγμένα '
+              'δεδομένα;',
             ),
             const SizedBox(height: 16),
-            if (_preview != null) ...[
-              const Text(
-                'Θα διαγραφούν:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text('• Υπενθυμίσεις: ${_preview!.notificationsCount}'),
-              Text('• Προϋπολογισμοί: ${_preview!.budgetsCount}'),
-              Text('• Συναλλαγές: ${_preview!.transactionsCount}'),
-              if (_preview!.categoriesCount > 0)
-                Text('• Κατηγορίες: ${_preview!.categoriesCount}'),
-              if (_preview!.subcategoriesCount > 0)
-                Text('• Υποκατηγορίες: ${_preview!.subcategoriesCount}'),
-              if (_preview!.oilTankCount > 0)
-                Text('• Δεξαμενή Πετρελαίου: ${_preview!.oilTankCount}'),
-              const SizedBox(height: 8),
+            const Text(
+              'Θα διαγραφούν:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            if (preview.notificationsCount > 0)
               Text(
-                'Σύνολο: ${_preview!.totalCount} εγγραφές',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                CleanupPolicy.countLine(
+                  'Υπενθυμίσεις',
+                  preview.notificationsCount,
+                ),
               ),
-            ],
+            if (preview.budgetsCount > 0)
+              Text(
+                CleanupPolicy.countLine(
+                  'Προϋπολογισμοί',
+                  preview.budgetsCount,
+                ),
+              ),
+            if (preview.transactionsCount > 0)
+              Text(
+                CleanupPolicy.countLine(
+                  'Συναλλαγές',
+                  preview.transactionsCount,
+                ),
+              ),
+            if (preview.categoriesCount > 0)
+              Text(
+                CleanupPolicy.countLine('Κατηγορίες', preview.categoriesCount),
+              ),
+            if (preview.subcategoriesCount > 0)
+              Text(
+                CleanupPolicy.countLine(
+                  'Υποκατηγορίες',
+                  preview.subcategoriesCount,
+                ),
+              ),
+            if (preview.oilTankCount > 0)
+              Text(
+                CleanupPolicy.countLine(
+                  'Δεξαμενή Πετρελαίου',
+                  preview.oilTankCount,
+                ),
+              ),
+            const SizedBox(height: 8),
+            Text(
+              'Σύνολο: ${preview.totalCount} εγγραφές',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             const Text(
               'Αυτή η ενέργεια δεν μπορεί να αναιρεθεί!',
@@ -655,11 +711,11 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Άκυρο'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
@@ -673,17 +729,65 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
     return result ?? false;
   }
 
-  void _showSuccessDialog(CleanupReport report) {
-    showDialog(
+  void _showResultDialog(CleanupReport report) {
+    final isPartial = report.isPartial;
+    final color = isPartial ? Colors.orange : Colors.green;
+    final icon = isPartial ? Icons.warning_amber_rounded : Icons.check_circle;
+
+    final lines = <Widget>[
+      if (report.notificationsDeleted > 0)
+        Text(
+          CleanupPolicy.countLine(
+            'Υπενθυμίσεις',
+            report.notificationsDeleted,
+          ),
+        ),
+      if (report.budgetsDeleted > 0)
+        Text(
+          CleanupPolicy.countLine(
+            'Προϋπολογισμοί',
+            report.budgetsDeleted,
+          ),
+        ),
+      if (report.transactionsDeleted > 0)
+        Text(
+          CleanupPolicy.countLine(
+            'Συναλλαγές',
+            report.transactionsDeleted,
+          ),
+        ),
+      if (report.categoriesDeleted > 0)
+        Text(
+          CleanupPolicy.countLine(
+            'Κατηγορίες',
+            report.categoriesDeleted,
+          ),
+        ),
+      if (report.subcategoriesDeleted > 0)
+        Text(
+          CleanupPolicy.countLine(
+            'Υποκατηγορίες',
+            report.subcategoriesDeleted,
+          ),
+        ),
+      if (report.oilTankDeleted > 0)
+        Text(
+          CleanupPolicy.countLine(
+            'Δεξαμενή Πετρελαίου',
+            report.oilTankDeleted,
+          ),
+        ),
+    ];
+
+    showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
+        scrollable: true,
         title: Row(
           children: [
-            ExcludeSemantics(
-              child: Icon(Icons.check_circle, color: Colors.green, size: 32),
-            ),
+            ExcludeSemantics(child: Icon(icon, color: color, size: 32)),
             const SizedBox(width: 12),
-            const Text('Επιτυχής Καθαρισμός'),
+            Expanded(child: Text(CleanupPolicy.titleOf(report.outcome))),
           ],
         ),
         content: Column(
@@ -691,26 +795,33 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Διαγράφηκαν ${report.totalDeleted} εγγραφές σε ${report.duration.inSeconds} δευτερόλεπτα.',
+              report.outcome == CleanupOutcome.cancelled
+                  ? CleanupPolicy.nothingToDeleteMessage
+                  : report.hasDeleted
+                  ? 'Διαγράφηκαν ${report.totalDeleted} εγγραφές σε '
+                        '${_durationText(report.duration)}.'
+                  : CleanupPolicy.partialNothingDeleted,
             ),
-            const SizedBox(height: 16),
-            if (report.notificationsDeleted > 0)
-              Text('• Υπενθυμίσεις: ${report.notificationsDeleted}'),
-            if (report.budgetsDeleted > 0)
-              Text('• Προϋπολογισμοί: ${report.budgetsDeleted}'),
-            if (report.transactionsDeleted > 0)
-              Text('• Συναλλαγές: ${report.transactionsDeleted}'),
-            if (report.categoriesDeleted > 0)
-              Text('• Κατηγορίες: ${report.categoriesDeleted}'),
-            if (report.subcategoriesDeleted > 0)
-              Text('• Υποκατηγορίες: ${report.subcategoriesDeleted}'),
-            if (report.oilTankDeleted > 0)
-              Text('• Δεξαμενή Πετρελαίου: ${report.oilTankDeleted}'),
+            if (lines.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              ...lines,
+            ],
+            if (isPartial) ...[
+              const SizedBox(height: 16),
+              const Text(
+                CleanupPolicy.partialIntro,
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...report.failures.map((label) => Text('• $label')),
+              const SizedBox(height: 8),
+              const Text(CleanupPolicy.partialNote),
+            ],
           ],
         ),
         actions: [
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Εντάξει'),
           ),
         ],
@@ -718,8 +829,17 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
     );
 
     AccessibilityService.announcePolite(
-      'Καθαρισμός ολοκληρώθηκε. Διαγράφηκαν ${report.totalDeleted} εγγραφές.',
+      report.hasDeleted
+          ? 'Καθαρισμός ολοκληρώθηκε. Διαγράφηκαν '
+                '${report.totalDeleted} εγγραφές.'
+          : CleanupPolicy.partialNothingDeleted,
     );
+  }
+
+  String _durationText(Duration duration) {
+    final seconds = duration.inSeconds;
+    if (seconds < 1) return 'λιγότερο από 1 δευτερόλεπτο';
+    return seconds == 1 ? '1 δευτερόλεπτο' : '$seconds δευτερόλεπτα';
   }
 
   void _showError(String message) {
@@ -736,6 +856,24 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
         ),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
+  void _showInfo(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const ExcludeSemantics(
+              child: Icon(Icons.info_outline, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: context.cPrimary,
+        duration: const Duration(seconds: 4),
       ),
     );
   }
