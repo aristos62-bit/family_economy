@@ -28,6 +28,10 @@ class ConnectivityService extends ChangeNotifier {
   bool get isOffline => !_isOnline;
   bool get isInitialized => _isInitialized;
 
+  /// Offline **επιβεβαιωμένο** (μετά την αρχική ανάγνωση) — E24/E19.
+  /// Μία πηγή αλήθειας για τις φραγές που απαιτούν σύνδεση.
+  bool get isConfirmedOffline => _isInitialized && !_isOnline;
+
   ConnectivityService() {
     _initConnectivity();
     _subscription =

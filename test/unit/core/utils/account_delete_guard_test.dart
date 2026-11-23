@@ -626,6 +626,29 @@ void main() {
       expect(decision.message, contains('Ακυρώστε την πρώτα'));
     });
 
+    test('αρχειοθετημένος στόχος + 1 ενεργός → επιτρέπεται (E32)', () {
+      final decision = AccountDeleteGuard.decide(
+        activeAccountCount: 1,
+        hasAnyTransaction: false,
+        budgetsCount: 0,
+        targetIsVisible: false,
+      );
+
+      expect(decision.action, AccountAction.delete);
+      expect(decision.isBlocked, isFalse);
+    });
+
+    test('ορατός στόχος παραμένει «τελευταίος» (E32)', () {
+      final decision = AccountDeleteGuard.decide(
+        activeAccountCount: 1,
+        hasAnyTransaction: false,
+        budgetsCount: 0,
+        targetIsVisible: true,
+      );
+
+      expect(decision.action, AccountAction.blockLast);
+    });
+
     test('μηδέν ενεργοί → φραγή', () {
       final decision = AccountDeleteGuard.decide(
         activeAccountCount: 0,

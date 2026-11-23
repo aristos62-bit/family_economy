@@ -110,11 +110,15 @@ class AccountDeleteGuard {
   /// [hasAnyTransaction] : υπάρχει έστω μία μη διαγραμμένη κίνηση.
   /// [budgetsCount] : ενεργά budgets που δείχνουν στον λογαριασμό.
   /// [pendingCount] : εκκρεμείς προγραμματισμένες κινήσεις του λογαριασμού.
+  /// [targetIsVisible] : ο υπό διαγραφή λογαριασμός μετριέται ήδη στους
+  ///   ενεργούς (E32). Για αρχειοθετημένο στόχο προσθέτουμε 1, ώστε η φραγή
+  ///   «τελευταίος ενεργός» να αφορά τους λογαριασμούς που **μένουν**.
   static AccountActionDecision decide({
     required int activeAccountCount,
     required bool hasAnyTransaction,
     required int budgetsCount,
     int pendingCount = 0,
+    bool targetIsVisible = true,
   }) {
     if (activeAccountCount <= 0) {
       return const AccountActionDecision(
@@ -123,7 +127,10 @@ class AccountDeleteGuard {
       );
     }
 
-    if (activeAccountCount == 1) {
+    final effectiveCount =
+        activeAccountCount + (targetIsVisible ? 0 : 1);
+
+    if (effectiveCount == 1) {
       return const AccountActionDecision(
         action: AccountAction.blockLast,
         message:

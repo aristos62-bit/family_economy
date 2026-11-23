@@ -21,10 +21,10 @@
 
 | | |
 |---|---|
-| Έκδοση | **2.3.3+10** |
-| Τελευταίο κεφάλαιο | **24** — E10: έλεγχος & κλείσιμο ως μη εφαρμόσιμο (2026-11-23) |
-| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **152/152** |
-| Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`) |
+| Έκδοση | **2.3.4+11** |
+| Τελευταίο κεφάλαιο | **25** — E19/E14: επαναφορά διαγραμμένου λογαριασμού (2026-11-23) |
+| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **178/178** |
+| Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`)· μετά **E34** |
 
 ## Κεφάλαια
 
@@ -54,14 +54,15 @@
 | 22 | 2026-11-22 | 21 | [E27: ενιαίο σύνολο λογαριασμών](oldsessions/22-session-21-e27-total-exclusions.md) | Εξαιρέσεις στον `AccountsProvider` (idempotent setter, ίδιο prefs key)· `graf_4` + Λογαριασμοί με το ίδιο `AccountTotals`· κενό state «όλοι εξαιρεμένοι»· L28· 152 tests· v2.3.3+10· 6/6 device tests OK (POCO X3) |
 | 23 | 2026-11-23 | 22 | [Συγχρονισμός τεκμηρίωσης](oldsessions/23-session-22-docs-sync.md) | Έλεγχος 4 docs μετά το E27· AGENTS χωρίς πλήθος tests· κατάσταση 2.3.3+10 / 152 tests· error_list E11/E13/E24 → FIXED + E14/E15/E17 «εκτός σειράς»· DESIGN αναλλοίωτο |
 | 24 | 2026-11-23 | 22b | [E10: κλείσιμο ως μη εφαρμόσιμο](oldsessions/24-session-22b-e10-closed.md) | `MessageBubble`/`ChatMessagesList` δεν υπάρχουν στο `lib/` (μόνο `MessageService` snackbars)· E10 → 🚫 WON'T FIX· σειρά εκκρεμοτήτων: E5, E19 |
+| 25 | 2026-11-23 | 22c | [E19/E14: επαναφορά λογαριασμού](oldsessions/25-session-22c-e19-restore-account.md) | Καθαρός κανόνας + service I/O· μόνο marked ζεύγη· απόλυτο υπόλοιπο (cents)· 4 reads + επανέλεγχος· 6 φάσεις· offline gate· E29–E33· 178 tests· device tests OK (POCO X3)· v2.3.4+11 |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **24** (01–24) |
+| Κεφάλαια στον φάκελο | **25** (01–25) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1071** |
+| Σύνολο γραμμών κεφαλαίων | **1154** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

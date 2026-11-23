@@ -53,7 +53,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | JDK (CLI) | 21.0.2 (ρυθμισμένο στο `flutter config`) |
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Visual Studio | Community 2026 18.1.1 · Windows SDK 10.0.26100.0 |
-| App version | **`2.3.3+10`** (`pubspec.yaml`, επαληθεύτηκε 22/11/2026) |
+| App version | **`2.3.4+11`** (`pubspec.yaml`, επαληθεύτηκε 23/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -120,7 +120,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.3+10)         ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.4+11)         ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
@@ -286,6 +286,7 @@ lib/
       connectivity_service.dart                # Online/offline, 2s debounce, onSyncComplete
       database_cleanup_service.dart            # Καθαρισμός παλιών / soft-deleted
       message_service.dart                     # SnackBar sync + μηνύματα
+      account_restore_service.dart             # I/O επαναφοράς διαγραμμένου λογαριασμού (E19/E14/E29-E31)
       transactions_actions_service.dart        # CRUD transactions + ενημέρωση υπολοίπων (batch)
     session/
       session.dart                             # userId, defaultCurrency
@@ -296,6 +297,7 @@ lib/
     utils/
       account_delete_guard.dart                # Φραγή/απόφαση διαγραφής-αρχειοθέτησης λογαριασμού (E7, E26, καθαρό Dart)
       account_balance.dart                     # Κανόνας «μετράει στο υπόλοιπο;» + υπολογισμός (E20, καθαρό Dart)
+      account_restore_policy.dart              # Πλάνο επαναφοράς λογαριασμού: skip reasons, απόλυτο υπόλοιπο, chunks (E19/E14, καθαρό Dart)
       account_totals.dart                      # Ένα σημείο αλήθειας για το συνολικό υπόλοιπο (E26, εξαιρέσεις E27)
       app_info.dart                            # έκδοση από package_info_plus (footer Επιλογών)
       chart_helpers.dart
@@ -477,7 +479,8 @@ lib/
 | `services/scheduled_transactions_service.dart` | 3 |
 | `providers/accounts_provider.dart` | 3 |
 | `presentation/screens/accounts/accounts_page.dart` | 3 |
-| `services/account_duplicate_service.dart` | 1 |
+| `core/services/account_restore_service.dart` | 3 (peer delta / απόλυτο υπόλοιπο / μηδενισμός — E19) |
+| `services/account_duplicate_service.dart` | 0 (μεταφέρθηκε στο `account_restore_service`) |
 | `services/onboarding_service.dart` | 1 |
 
 > Άρα το υπόλοιπο **δεν** ενημερώνεται αποκλειστικά από ένα σημείο (όπως ίσχυε σε παλιότερη περιγραφή).
@@ -566,13 +569,23 @@ lib/
 | Σημασιολογία | Ολοκληρωμένο ζεύγος → **2 legs** + αντιστροφή **και των δύο** υπολοίπων· εκκρεμές (`is_scheduled && !is_executed`) → 2 legs, 0 deltas· μερικό/άγνωστο → μόνο το ενεργό leg, 0 deltas, **χωρίς** marker |
 | Marker | `annulled_by_account_deleted: <uuid>` σε **κάθε** ακυρωμένο leg· καθαρισμός με `FieldValue.delete()` στην επαναφορά |
 | Εγγραφή | `≤499` writes: **ένα** batch· `>499`: απλά legs → ζεύγη (ποτέ split, deltas **ανά chunk**) → λογαριασμός **τελευταίος** |
-| Offline E24 | Φραγή όταν `ConnectivityService.isInitialized && isOffline` (ατελής cache → ορφανές κινήσεις) |
+| Offline E24 | Φραγή όταν `ConnectivityService.isConfirmedOffline` (`isInitialized && isOffline`) — ατελής cache → ορφανές κινήσεις |
 | Executor guard | `_isTransferPairIntact` πριν την εκτέλεση: 2 ενεργά legs, έγκυρο σχήμα, χωρίς marker, σωστοί peer δείκτες → αλλιώς skip + log (**όχι** `execution_failed`, γιατί ο διάλογος `home_page` είναι blocking) |
-| Επαναφορά | `restoreAccountWithBalance` → `buildRestoreUnits`: ζεύγος επανέρχεται μόνο με 2 legs, **και τα δύο** marked για αυτόν τον λογαριασμό, έγκυρο σχήμα, **ενεργούς** και τους δύο λογαριασμούς· deltas μόνο για ολοκληρωμένα· chunks ≤499 (E13) |
+| Επαναφορά (E19/E14) | `core/services/account_restore_service.dart` (I/O) + `core/utils/account_restore_policy.dart` (κανόνας). `buildRestoreUnits`: ζεύγος επανέρχεται μόνο με 2 legs, **και τα δύο** marked για αυτόν τον λογαριασμό, έγκυρο σχήμα, **υπαρκτούς** λογαριασμούς (και διαγραμμένο peer επιτρέπεται) |
+| Κανόνας E19 | Επιστρέφει **μόνο** ό,τι ακύρωσε η διαγραφή· κίνηση χωρίς marker ή **εκκρεμές** ζεύγος μένει κρυφή (με αιτία) |
+| Υπόλοιπο επαναφοράς | **Απόλυτο**: `initial_balance + κινήσεις που μετράνε` μέσω `AccountBalanceRules` (cents) — **όχι** εμπιστοσύνη στο `current_balance` (E14) |
+| Ροή E19 | offline gate (0 reads) → 4 reads (`Source.server`: account, own tx, marked legs, όλοι οι λογαριασμοί) → πλάνο/προεπισκόπηση → **επανέλεγχος** (ματαίωση σε drift) → chunks → **τελευταίο ατομικό batch** ενεργοποίησης |
+| Deltas peers | **Ανά chunk**, μόνο το αντίστροφο του delta της διαγραφής· ο ίδιος ο λογαριασμός **δεν** παίρνει delta (έχει απόλυτο υπόλοιπο) |
+| Ενεργοποίηση | Τελευταίο batch: `deleted:false`, `is_active:true`, `archived_at: FieldValue.delete()`, `current_balance: Y` (E29) |
+| Marker cleanup | `annulled_by_account_deleted: FieldValue.delete()` σε κάθε επαναφερόμενο leg (E30) |
+| «Χωρίς Υπόλοιπο» | Κρύβει **όλα** τα ορατά legs (chunks) → καθαρίζει **όλους** τους markers (χωρίς `updated_at`) → `initial_balance/current_balance = 0` + ενεργοποίηση |
+| Ανεκτική ανάγνωση | `DeletedAccountInfo` χωρίς `AccountModel.fromFirestore` (E31)· `CreateAccountOutcome {proceed, closeDialog, keepDialog}` (E33) |
 | Μηνύματα | success/error **μετά** το commit (όχι success-first) |
 | Κενή κατάσταση | `transaction_entry_page.dart` — μήνυμα + CTA προς καρτέλα «Λογαριασμοί» (`home_page._onTabTap(2)`) |
 
 > Ο κανόνας E7 **δεν** αγγίζει υπόλοιπα· το E11 αντιστρέφει **μόνο** τα deltas των ζευγών μεταφορών που ακυρώνει. Η αρχειοθέτηση (E26) δεν αγγίζει καμία κίνηση και δεν χρειάζεται preflight για εγγραφή· τα budget docs που δείχνουν σε αρχειοθετημένο λογαριασμό συνεχίζουν να δουλεύουν και δείχνουν σωστό όνομα (E12).
+>
+> **E19 — όπου «επαναφορά», ο κανόνας ζει σε καθαρό Dart** (`account_restore_policy.dart`, 0 I/O, 23 unit tests). Ο διάλογος (`account_duplicate_service.dart`) παίρνει **μόνο** `ConnectivityService` από το δικό του context (root provider)· `userId`/νόμισμα/όνομα περνούν ως παράμετροι (ο `AccountsProvider` δημιουργείται **μέσα** στο `MaterialPageRoute` του `app_start.dart`).
 
 ---
 
@@ -826,11 +839,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (152 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (178 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
-| Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
+| Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ No issues found (~5s) |
-| `flutter test` | ✅ 152/152 |
+| `flutter test` | ✅ 178/178 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 ### 9.2 Τι καλύπτεται
@@ -845,7 +858,8 @@ schema_version (int), schema_updated_at (Timestamp)
 | `widget_test.dart` | 1 | `ErrorApp` εμφανίζει μήνυμα σφάλματος |
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
 | `startup_error_view_test.dart` | 5 | Κείμενα, ενέργειες, λεπτομέρειες, `textScale 1.45` χωρίς overflow |
-| `account_delete_guard_test.dart` | 36 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) |
+| `account_delete_guard_test.dart` | 38 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) + `targetIsVisible` αρχειοθετημένου στόχου (E32) |
+| `account_restore_policy_test.dart` | 23 | Κανόνας επαναφοράς (E19/E14): μόνο marked ζεύγη, κρυφές κινήσεις χρήστη, εκκρεμή, missing/deleted peers, απόλυτο υπόλοιπο σε cents, chunks ≤499, fingerprint, μηνύματα |
 | `account_totals_test.dart` | 7 | `countsInTotal`, εξαιρέσεις χρήστη (και «όλοι εξαιρεμένοι»), legacy `is_active=false`, αρνητικά υπόλοιπα (E26/E27) |
 | `account_balance_test.dart` | 20 | Κανόνας «μετράει στο υπόλοιπο» (E20): εκκρεμείς/εκτελεσμένες/διαγραμμένες, «Άμεση» μελλοντική, ζεύγη, cents, μηνύματα |
 
@@ -938,11 +952,13 @@ schema_version (int), schema_updated_at (Timestamp)
 | L21 | Φραγή διαγραφής **μόνο τοπικά**: δύο συσκευές μπορούν να διαγράψουν ταυτόχρονα τους δύο τελευταίους λογαριασμούς → 0 ενεργοί (καλύπτεται από κενή κατάσταση + CTA, χωρίς server-side guard) | §5.13 |
 | L22 | Offline διαγραφή λογαριασμού με **ατελή cache** θα άφηνε ορφανές κινήσεις (και peer leg) → η διαγραφή **μπλοκάρεται** offline (E24) | §5.13 |
 | L23 | Ημιτελή/legacy ζεύγη (χωρίς peer δείκτες, χωρίς ενεργό peer) → κρύβονται **μόνο** ως προς τον λογαριασμό, χωρίς marker → δεν επανέρχονται αυτόματα· χρειάζεται χωριστή επισκευή δεδομένων | §5.13 |
-| L24 | Η επαναφορά λογαριασμού «με υπόλοιπο» επαναφέρει **και** μεμονωμένες κινήσεις που διέγραψε ο χρήστης (E19)· τα ζεύγη μεταφορών πλέον ελέγχονται με marker/σχήμα | §5.13 |
+| L24 | *(λύθηκε 23/11/2026 — E19)* Η επαναφορά λογαριασμού επαναφέρει **μόνο** ολοκληρωμένα ζεύγη μεταφορών με marker· οι κινήσεις που διέγραψε ο χρήστης μένουν κρυφές | §5.13 |
 | L25 | Αρχειοθέτηση **offline**: ο έλεγχος εκκρεμών είναι best-effort από cache — αν εκκρεμεί κίνηση άλλης συσκευής, θα εκτελεστεί σε αρχειοθετημένο λογαριασμό (υπόλοιπο/σύνολο μένουν σωστά· καμία απώλεια) | §5.13 |
 | L26 | Το gate budgets βλέπει **μόνο** ενεργά budgets (`BudgetsProvider` query `deleted=false & is_active=true`) → λογαριασμός με μόνο ανενεργά budgets μπορεί να διαγραφεί αφήνοντας αόρατα orphan budgets | §5.13 |
 | L27 | Επανυπολογισμός υπολοίπου (E20): παράθυρο read→write — κίνηση που γράφεται **ανάμεσα** στην ανάγνωση και την εγγραφή δεν μετριέται· χειροκίνητη ενέργεια, χωρίς transaction (θα απαιτούσε εκατοντάδες reads) | §5.4 |
 | L28 | Εξαιρέσεις λογαριασμών (E27): **τοπική** προτίμηση ανά συσκευή (δεν συγχρονίζεται)· αρχειοθετημένος + εξαιρεμένος λογαριασμός δεν έχει checkbox επανένταξης (μόνο «Επαναφορά») | §5.2, §5.8 |
+| L29 | Επαναφορά λογαριασμού (E19): ίδιο παράθυρο read→write με L27 — μετριάζεται με **επανέλεγχο** πριν τη γραφή (ματαίωση σε drift), όχι με transaction | §5.13 |
+| L30 | Επαναφορά: τα legs παίρνουν νέο `updated_at` → νέο παράθυρο 30 ημερών για τον cleanup (η αρχική `date` μένει) — βλ. E14/E34 | §5.13 |
 
 ---
 

@@ -69,8 +69,7 @@ class _AccountsPageState extends State<AccountsPage>
   /// Η διαγραφή λογαριασμού απαιτεί σύνδεση για να μη μείνουν ορφανές κινήσεις.
   bool _isOfflineConfirmed(BuildContext context) {
     try {
-      final connectivity = context.read<ConnectivityService>();
-      return connectivity.isInitialized && connectivity.isOffline;
+      return context.read<ConnectivityService>().isConfirmedOffline;
     } catch (_) {
       return false;
     }
@@ -353,22 +352,22 @@ class _AccountsPageState extends State<AccountsPage>
                   _showErrorSnack(context, 'Το Όνομα είναι Υποχρεωτικό');
                   return;
                 }
-                // ✅ Έλεγχος διπλότυπων με το service
-                final canContinue = await AccountDuplicateService.instance
+                // ✅ Έλεγχος διπλότυπων με το service (E33: 3 καταστάσεις)
+                final outcome = await AccountDuplicateService.instance
                     .checkForCreateAccount(context, userId, name);
 
                 DebugConfig.print(
-                  '🧾 [CREATE] duplicate check result=$canContinue',
+                  '🧾 [CREATE] duplicate check outcome=$outcome',
                 );
 
-                if (!canContinue) {
-                  // Αν βρέθηκε διπλότυπο ή έγινε επαναφορά, κλείσε το dialog
+                if (outcome == CreateAccountOutcome.keepDialog) {
+                  // Ακύρωση/αποτυχία επαναφοράς → μένει ανοιχτή η δημιουργία
+                  return;
+                }
+
+                if (outcome == CreateAccountOutcome.closeDialog) {
+                  // Διπλότυπο ή επιτυχής επαναφορά → κλείσε το dialog
                   if (!dialogContext.mounted) return;
-
-                  DebugConfig.print(
-                    '🧾 [CREATE] dialog closing – starting background create',
-                  );
-
                   Navigator.pop(dialogContext);
                   return;
                 }
@@ -1400,6 +1399,7 @@ class _AccountsPageState extends State<AccountsPage>
       hasAnyTransaction: plan.hasAnyTransaction,
       budgetsCount: budgetsCount,
       pendingCount: plan.pendingLegUuids.length,
+      targetIsVisible: account.isActive,
     );
 
     if (actionDecision.isBlocked) {
