@@ -57,12 +57,13 @@ budget που εμφανίζεται «Όλοι» με λάθος spent (ή πο
 - **E51** (INFO): ανενεργά budgets αόρατα σε όλη την εφαρμογή.
 - **E52** (INFO): legacy budgets χωρίς `is_active`/`deleted` αόρατα.
 - **E53** (LOW): `BudgetModel.fromFirestore` `amount as num` → legacy doc ρίχνει τον listener.
+- **E54** (INFO): «Οι 0 κινήσεις» στον διάλογο αρχειοθέτησης (κοσμητικό).
 
 ## Quality gates
 
 - `flutter analyze` → **No issues found**.
 - `flutter test` → **238/238** (222 + 13 + 3).
-- Device tests (POCO X3, demo@yahoo.com): βλ. `device test/` και §επόμενο.
+- Device tests (POCO X3, demo@yahoo.com, `2.3.6+13`): **7/7 PASS** — 4 λογαριασμοί με budgets (ενεργό/ανενεργό/legacy/μικτό) αρχειοθετήθηκαν, 3 (soft-deleted budget, budget «Όλοι», καθαρός control) διαγράφηκαν. Πλήρης πίνακας + PNG: `device test/L26_device_tests.md` και `device test/screenshots/l26_*.png`. Καθαρισμός: 0 test docs· demo αμετάβλητο (9 accounts / 240 budgets).
 
 ## Backups
 
