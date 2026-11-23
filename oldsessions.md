@@ -58,7 +58,7 @@
 | 26 | 2026-11-23 | 23 | [E34: καθαρισμός βάσης](oldsessions/26-session-23-e34-cleanup.md) | Νέο batch ανά chunk (E34)· nested subcategories + cascade· soft-deleted (E39)· φρέσκια preview· offline gate· 3-κατάστατο αποτέλεσμα· E37–E49· 219 tests· v2.3.5+12 |
 | 27 | 2026-11-23 | 24 | [E17: indexes repo ↔ deployed](oldsessions/27-session-24-e17-indexes.md) | Mirror 7/7 (D1–D7, legacy D3/D7)· guard test 3 tests· deploy no-op (7 READY, ίδιο ruleset)· DESIGN/error_list· 222 tests· κανένα version bump |
 | 28 | 2026-11-23 | 25 | [L23: αναδιατύπωση](oldsessions/28-session-25-l23-reclassified.md) | Απόδειξη ότι καμία κανονική ενέργεια χρήστη δεν αφήνει ένα σκέλος (E11: session 17, device tests #4/#7)· L23 = αμυντικό κενό (αποτυχία ανάγνωσης group / χωρίς group id / αλλοιωμένο group)· μόνο docs, κανένα version bump |
-| 29 | 2026-11-23 | 26 | [L26: gate budgets στη διαγραφή](oldsessions/29-session-26-l26-budget-gate.md) | Μέτρηση **όλων** των μη διαγραμμένων budgets (server query + `AccountBudgetUsage`, raw maps)· `budgetsUnknown` φράσσει μόνο τη διαγραφή· επαναξιολόγηση μετά το φρέσκο preflight (E50)· E51–E53· 238 tests· v2.3.6+13 |
+| 29 | 2026-11-23 | 26 | [L26: gate budgets στη διαγραφή](oldsessions/29-session-26-l26-budget-gate.md) | Μέτρηση **όλων** των μη διαγραμμένων budgets (server query + `AccountBudgetUsage`, raw maps)· `budgetsUnknown` φράσσει μόνο τη διαγραφή· επαναξιολόγηση μετά το φρέσκο preflight (E50)· E51–E54· 238 tests· v2.3.6+13 |
 
 ## Έλεγχος συνέπειας
 
@@ -66,7 +66,7 @@
 |---|---|
 | Κεφάλαια στον φάκελο | **29** (01–29) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1382** |
+| Σύνολο γραμμών κεφαλαίων | **1383** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

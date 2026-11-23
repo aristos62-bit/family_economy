@@ -254,11 +254,11 @@ pubspec.yaml  (version: 2.3.6+13)         ← ΜΟΝΟ εδώ αλλάζει η 
 
 ## 3. Δομή repo & `lib/`
 
-### 3.1 Μετρήσεις (22/11/2026· tests 23/11/2026)
+### 3.1 Μετρήσεις (23/11/2026)
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **105** (τα 2 `*.backup` είναι πλέον untracked/ignored) |
+| Dart αρχεία στο `lib/` | **109** (τα 2 `*.backup` είναι πλέον untracked/ignored) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
@@ -296,6 +296,7 @@ lib/
       ui_tokens.dart                           # ColorsUI, TypographyUI (primaryFont = Roboto)
     utils/
       account_delete_guard.dart                # Φραγή/απόφαση διαγραφής-αρχειοθέτησης λογαριασμού (E7, E26, καθαρό Dart)
+      account_budget_usage.dart                # Μέτρηση **όλων** των μη διαγραμμένων budgets ανά λογαριασμό (L26, καθαρό Dart)
       account_balance.dart                     # Κανόνας «μετράει στο υπόλοιπο;» + υπολογισμός (E20, καθαρό Dart)
       account_restore_policy.dart              # Πλάνο επαναφοράς λογαριασμού: skip reasons, απόλυτο υπόλοιπο, chunks (E19/E14, καθαρό Dart)
       account_totals.dart                      # Ένα σημείο αλήθειας για το συνολικό υπόλοιπο (E26, εξαιρέσεις E27)
@@ -558,8 +559,8 @@ lib/
 | Απόφαση E7 | `core/utils/account_delete_guard.dart` — καθαρό Dart, **0 reads** |
 | Είσοδος E7 | `AccountsProvider.accounts.length` (ήδη φιλτραρισμένο: `deleted == false` ∧ `isActive`) |
 | Κανόνας E7 | `1` ενεργός → φραγή (warning panel αντί για tile)· `≥2` → επιτρέπεται |
-| Απόφαση E26 | `AccountDeleteGuard.decide(activeAccountCount, hasAnyTransaction, budgetsCount, pendingCount)` → `delete` / `archive` / `block*` |
-| Κανόνας E26 | Διαγραφή **μόνο** χωρίς κινήσεις **και** χωρίς budgets· αλλιώς αρχειοθέτηση· φραγή για τελευταίο ενεργό ή εκκρεμείς προγραμματισμένες |
+| Απόφαση E26 | `AccountDeleteGuard.decide(activeAccountCount, hasAnyTransaction, budgetsCount, pendingCount, targetIsVisible)` → `delete` / `archive` / `block*` |
+| Κανόνας E26 | Διαγραφή **μόνο** χωρίς κινήσεις **και** χωρίς **μη διαγραμμένα** budgets· αλλιώς αρχειοθέτηση· φραγή για τελευταίο ενεργό ή εκκρεμείς προγραμματισμένες |
 | Αρχειοθέτηση | `is_active=false` + `archived_at` (client `Timestamp.fromDate`)· `updated_at` = `serverTimestamp`· **1 write, 0 reads, offline-safe**· καμία κίνηση δεν αγγίζεται |
 | Σύνολο E26 | `countsInTotal = isActive || archivedAt != null` → οι legacy `is_active=false` χωρίς marker μένουν **εκτός** (0 migration)· υπολογισμός μόνο μέσω `AccountTotals` |
 | Αναγνώριση ονόματος | `getAccountByUuid` ψάχνει σε **όλους** τους μη διαγραμμένους (`_accounts`) → σωστό όνομα σε budgets/κινήσεις (E12) |
@@ -885,8 +886,9 @@ schema_version (int), schema_updated_at (Timestamp)
 | `widget_test.dart` | 1 | `ErrorApp` εμφανίζει μήνυμα σφάλματος |
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
 | `startup_error_view_test.dart` | 5 | Κείμενα, ενέργειες, λεπτομέρειες, `textScale 1.45` χωρίς overflow |
-| `account_delete_guard_test.dart` | 38 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) + `targetIsVisible` αρχειοθετημένου στόχου (E32) |
-| `account_restore_policy_test.dart` | 23 | Κανόνας επαναφοράς (E19/E14): μόνο marked ζεύγη, κρυφές κινήσεις χρήστη, εκκρεμή, missing/deleted peers, απόλυτο υπόλοιπο σε cents, chunks ≤499, fingerprint, μηνύματα |
+| `account_delete_guard_test.dart` | 41 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) + `targetIsVisible` αρχειοθετημένου στόχου (E32) + πεδία budgets στο πλάνο (L26) |
+| `account_budget_usage_test.dart` | 13 | Μέτρηση όλων των μη διαγραμμένων budgets (L26): soft-deleted, legacy χωρίς `is_active`/`deleted`, «Όλοι», άλλος λογαριασμός, ανενεργά, trim, κενά |
+| `account_restore_policy_test.dart` | 24 | Κανόνας επαναφοράς (E19/E14): μόνο marked ζεύγη, κρυφές κινήσεις χρήστη, εκκρεμή, missing/deleted peers, απόλυτο υπόλοιπο σε cents, chunks ≤499, fingerprint, μηνύματα |
 | `account_totals_test.dart` | 7 | `countsInTotal`, εξαιρέσεις χρήστη (και «όλοι εξαιρεμένοι»), legacy `is_active=false`, αρνητικά υπόλοιπα (E26/E27) |
 | `account_balance_test.dart` | 20 | Κανόνας «μετράει στο υπόλοιπο» (E20): εκκρεμείς/εκτελεσμένες/διαγραμμένες, «Άμεση» μελλοντική, ζεύγη, cents, μηνύματα |
 | `database_cleanup_policy_test.dart` | 41 | Κανόνας καθαρισμού (E34): chunks ≤499, όρια ημερών, parser ημερομηνιών, κριτήρια υπενθυμίσεων/budgets, soft-deleted (E39), aged docs, μηνύματα |
