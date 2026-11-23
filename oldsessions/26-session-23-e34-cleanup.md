@@ -15,9 +15,9 @@
 | `lib/core/utils/database_cleanup_policy.dart` | **Νέο** — καθαρό Dart: όρια ημερών, parser ημερομηνιών, κριτήρια υπενθυμίσεων/budgets/soft-deleted, `chunk()` ≤499, `CleanupOutcome`, μηνύματα |
 | `lib/core/services/database_cleanup_service.dart` | Ξαναγράφτηκε: chunked helper με **νέο** batch ανά chunk· nested υποκατηγορίες + cascade· soft-deleted (E39)· oil σε ξεχωριστό batch· `CleanupOptions` χωρίς `cleanSubcategories`· per-task αποτέλεσμα (committed + error) |
 | `lib/presentation/screens/options/database_cleanup_page.dart` | Offline gate + `OfflineAppBarChip`· πάντα φρέσκια προεπισκόπηση· 3-κατάστατο αποτέλεσμα· `PopScope` + κλείδωμα επιλογών· scrollable διάλογοι· ενιαίο tile «Κατηγορίες & Υποκατηγορίες» |
-| `test/unit/core/utils/database_cleanup_policy_test.dart` | **Νέο** — 40 tests |
+| `test/unit/core/utils/database_cleanup_policy_test.dart` | **Νέο** — 41 tests |
 | `pubspec.yaml` | `2.3.4+11` → `2.3.5+12` (PATCH) |
-| `DESIGN.md` | §3 (νέο αρχείο), §5.14 (νέος πίνακας καθαρισμού), §9 (218 tests), §11 (L31/L32) |
+| `DESIGN.md` | §3 (νέο αρχείο), §5.14 (νέος πίνακας καθαρισμού), §9 (219 tests), §11 (L31/L32) |
 | `error_list.md` | E34 → FIXED· νέα E37–E49· νέα σειρά εκκρεμοτήτων |
 
 ### Τι διορθώθηκε (σύνοψη)
@@ -41,7 +41,7 @@
 | Έλεγχος | Αποτέλεσμα |
 |---|---|
 | `flutter analyze` | ✅ No issues found |
-| `flutter test` | ✅ **218/218** (178 + 40 νέα) |
+| `flutter test` | ✅ **219/219** (178 + 41 νέα) |
 | Device test | POCO X3, `demo@yahoo.com` — βλ. `device test/README.md` § E34 |
 
 ### Εκκρεμότητες

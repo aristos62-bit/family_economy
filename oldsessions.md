@@ -23,7 +23,7 @@
 |---|---|
 | Έκδοση | **2.3.5+12** |
 | Τελευταίο κεφάλαιο | **26** — E34: καθαρισμός βάσης (2026-11-23) |
-| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **218/218** |
+| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **219/219** |
 | Επόμενη εκκρεμότητα | **E17** — indexes vs deployed + rules audit (`error_list.md`) |
 
 ## Κεφάλαια
@@ -55,7 +55,7 @@
 | 23 | 2026-11-23 | 22 | [Συγχρονισμός τεκμηρίωσης](oldsessions/23-session-22-docs-sync.md) | Έλεγχος 4 docs μετά το E27· AGENTS χωρίς πλήθος tests· κατάσταση 2.3.3+10 / 152 tests· error_list E11/E13/E24 → FIXED + E14/E15/E17 «εκτός σειράς»· DESIGN αναλλοίωτο |
 | 24 | 2026-11-23 | 22b | [E10: κλείσιμο ως μη εφαρμόσιμο](oldsessions/24-session-22b-e10-closed.md) | `MessageBubble`/`ChatMessagesList` δεν υπάρχουν στο `lib/` (μόνο `MessageService` snackbars)· E10 → 🚫 WON'T FIX· σειρά εκκρεμοτήτων: E5, E19 |
 | 25 | 2026-11-23 | 22c | [E19/E14: επαναφορά λογαριασμού](oldsessions/25-session-22c-e19-restore-account.md) | Καθαρός κανόνας + service I/O· μόνο marked ζεύγη· απόλυτο υπόλοιπο (cents)· 4 reads + επανέλεγχος· 6 φάσεις· offline gate· E29–E33· 178 tests· device tests OK (POCO X3)· v2.3.4+11 |
-| 26 | 2026-11-23 | 23 | [E34: καθαρισμός βάσης](oldsessions/26-session-23-e34-cleanup.md) | Νέο batch ανά chunk (E34)· nested subcategories + cascade· soft-deleted (E39)· φρέσκια preview· offline gate· 3-κατάστατο αποτέλεσμα· E37–E49· 218 tests· v2.3.5+12 |
+| 26 | 2026-11-23 | 23 | [E34: καθαρισμός βάσης](oldsessions/26-session-23-e34-cleanup.md) | Νέο batch ανά chunk (E34)· nested subcategories + cascade· soft-deleted (E39)· φρέσκια preview· offline gate· 3-κατάστατο αποτέλεσμα· E37–E49· 219 tests· v2.3.5+12 |
 
 ## Έλεγχος συνέπειας
 

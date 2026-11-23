@@ -258,7 +258,7 @@
 - `database_cleanup_service.dart` κρατούσε **ένα** `WriteBatch` και το ξαναχρησιμοποιούσε μετά το `commit()` → το επόμενο `batch.delete()` πετάει, το catch επιστρέφει 0 και καθαρίζονται μόνο τα πρώτα 500 docs.
 - **✅ Διορθώθηκε (`2.3.5+12`):** ο καθαρισμός ξαναγράφτηκε γύρω από **ένα** chunked helper (`CleanupPolicy.chunk` + **νέο** `WriteBatch` ανά chunk ≤499). Κάθε εργασία επιστρέφει **τι έχει πραγματικά committed** + τυχόν σφάλμα (χωρίς exception), ώστε να συνεχίζει στις υπόλοιπες.
 - **Αρχεία:** `core/utils/database_cleanup_policy.dart` (νέο, καθαρό Dart), `core/services/database_cleanup_service.dart` (I/O), `presentation/screens/options/database_cleanup_page.dart` (UI).
-- **Tests:** `database_cleanup_policy_test.dart` (νέο, 40) → **218/218**, `flutter analyze` καθαρό.
+- **Tests:** `database_cleanup_policy_test.dart` (νέο, 41) → **219/219**, `flutter analyze` καθαρό.
 - **Indexes/rules:** **καμία** αλλαγή· μόνο single-field equality + client-side φίλτρο ηλικίας.
 - **Περιορισμοί:** L31 (queued writes mid-run), L32 (όνομα κατηγορίας σε scheduled).
 

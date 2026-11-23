@@ -599,7 +599,7 @@ lib/
 | Reads | Μόνο single-field equality (`transactions.deleted`, `categories` unfiltered) + **client-side** φίλτρο ηλικίας → **0 νέα indexes** |
 | Υποκατηγορίες | **Nested** `categories/{id}/subcategories` (όχι top-level, όχι `collectionGroup`)· cascade πριν τη διαγραφή κατηγορίας |
 | Soft-deleted | Υπενθυμίσεις/προϋπολογισμοί με `deleted:true` διαγράφονται με ηλικία `updated_at` (fallback `created_at`) — E39 |
-| Κριτήρια | Υπενθυμίσεις: διαβασμένη/απορριφθείσα/παραδοθείσα/ληγμένη recurring/προγραμματισμένη στο παρελθόν · Budgets: `end_date` πριν το όριο ή ανενεργό με ληγμένη λήξη · Συναλλαγές/κατηγορίες: `updated_at` < όριο (χωρίς `updated_at` → **δεν** διαγράφονται) |
+| Κριτήρια | Υπενθυμίσεις: διαβασμένη/απορριφθείσα/παραδοθείσα/ληγμένη recurring (με το όριο ηλικίας)/προγραμματισμένη στο παρελθόν · Budgets: `end_date` πριν το όριο ή ανενεργό με ληγμένη λήξη · Συναλλαγές/κατηγορίες: `updated_at` < όριο (χωρίς `updated_at` → **δεν** διαγράφονται) |
 | Ροή UI | offline gate (`isConfirmedOffline`) → **πάντα φρέσκια** προεπισκόπηση → επιβεβαίωση με τα φρέσκα πλήθη → εκτέλεση · `PopScope` + κλείδωμα επιλογών κατά την εκτέλεση |
 | Αποτέλεσμα | **3 καταστάσεις**: `complete` / `partial` (συνέχεια στις υπόλοιπες εργασίες + λίστα αποτυχιών) / `cancelled` |
 | Oil | `oil_purchases` (chunked) + `settings/oil_tank` (ξεχωριστό batch)· το `oil_page` ξαναδημιουργεί defaults |
@@ -858,11 +858,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (218 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (219 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ No issues found (~5s) |
-| `flutter test` | ✅ 218/218 |
+| `flutter test` | ✅ 219/219 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 ### 9.2 Τι καλύπτεται
@@ -881,7 +881,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `account_restore_policy_test.dart` | 23 | Κανόνας επαναφοράς (E19/E14): μόνο marked ζεύγη, κρυφές κινήσεις χρήστη, εκκρεμή, missing/deleted peers, απόλυτο υπόλοιπο σε cents, chunks ≤499, fingerprint, μηνύματα |
 | `account_totals_test.dart` | 7 | `countsInTotal`, εξαιρέσεις χρήστη (και «όλοι εξαιρεμένοι»), legacy `is_active=false`, αρνητικά υπόλοιπα (E26/E27) |
 | `account_balance_test.dart` | 20 | Κανόνας «μετράει στο υπόλοιπο» (E20): εκκρεμείς/εκτελεσμένες/διαγραμμένες, «Άμεση» μελλοντική, ζεύγη, cents, μηνύματα |
-| `database_cleanup_policy_test.dart` | 40 | Κανόνας καθαρισμού (E34): chunks ≤499, όρια ημερών, parser ημερομηνιών, κριτήρια υπενθυμίσεων/budgets, soft-deleted (E39), aged docs, μηνύματα |
+| `database_cleanup_policy_test.dart` | 41 | Κανόνας καθαρισμού (E34): chunks ≤499, όρια ημερών, parser ημερομηνιών, κριτήρια υπενθυμίσεων/budgets, soft-deleted (E39), aged docs, μηνύματα |
 
 ### 9.3 Τι **δεν** καλύπτεται
 

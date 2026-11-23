@@ -172,10 +172,10 @@ class CleanupPolicy {
     if (dismissedAt != null && dismissedAt.isBefore(cutoffDate)) return true;
     // 3. Παραδόθηκε και είναι παλιά.
     if (deliveredAt != null && deliveredAt.isBefore(cutoffDate)) return true;
-    // 4. Ληγμένη επαναλαμβανόμενη σειρά.
+    // 4. Ληγμένη επαναλαμβανόμενη σειρά — **το slider ισχύει και εδώ**.
     if (isRecurring &&
         recurringEndAt != null &&
-        recurringEndAt.isBefore(now)) {
+        recurringEndAt.isBefore(cutoffDate)) {
       return true;
     }
     // 5. Προγραμματισμένη στο παρελθόν και δεν παραδόθηκε ποτέ.

@@ -165,7 +165,22 @@ void main() {
       );
     });
 
-    test('ληγμένη επαναλαμβανόμενη → διαγραφή', () {
+    test('ληγμένη επαναλαμβανόμενη πριν το όριο → διαγραφή', () {
+      expect(
+        CleanupPolicy.shouldDeleteNotification(
+          <String, dynamic>{
+            'deleted': false,
+            'is_recurring': true,
+            'recurring_end_at': ts(old),
+          },
+          now,
+          90,
+        ),
+        isTrue,
+      );
+    });
+
+    test('ληγμένη επαναλαμβανόμενη πρόσφατα → παραμένει (slider)', () {
       expect(
         CleanupPolicy.shouldDeleteNotification(
           <String, dynamic>{
@@ -176,7 +191,7 @@ void main() {
           now,
           365,
         ),
-        isTrue,
+        isFalse,
       );
     });
 
