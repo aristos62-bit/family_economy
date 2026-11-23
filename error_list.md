@@ -18,6 +18,7 @@
 > Τα **E12**, **E16**, **E26** διορθώθηκαν με την **αρχειοθέτηση λογαριασμών** (έκδοση `2.3.0+7`, 21/11/2026).
 > Το **E28** διορθώθηκε με την **ίδια λογική στις αναφορές** — φίλτρο `stats_page`/`tag_stats_page` (έκδοση `2.3.1+8`, 22/11/2026).
 > Το **E27** διορθώθηκε με **μία πηγή αλήθειας για τις εξαιρέσεις** (`AccountsProvider`) — γράφημα και Λογαριασμοί δείχνουν το ίδιο σύνολο (έκδοση `2.3.3+10`, 22/11/2026).
+> **Εκτός σειράς (τεχνικό χρέος, χωρίς ορισμένη προτεραιότητα):** **E14**, **E15**, **E17** — 🔵 OPEN.
 > **Εκκρεμεί εξωτερικός έλεγχος (δεν μπλοκάρει):** (α) deployed rules = repo rules, (β) ύπαρξη ήδη σπασμένων ζευγών στα δεδομένα (θα χρειαστεί χωριστή επισκευή — L23).
 
 ## Ευρήματα
@@ -104,7 +105,7 @@
 - Επόμενη κατεύθυνση: ListView reconciliation, parent constraints, `MediaQuery` propagation.
 - Πλήρες ιστορικό ελέγχων: [`oldsessions/09-bubble-layout-cache-bug.md`](oldsessions/09-bubble-layout-cache-bug.md).
 
-**E11 — Μεταφορές με διαγραμμένο λογαριασμό (OPEN)**
+**E11 — Μεταφορές με διαγραμμένο λογαριασμό (FIXED)**
 - Το `_deleteAccount` κρύβει μόνο τα docs με `account_id == uuid`. Σε μεταφορά, το άλλο σκέλος έχει `account_id` = **peer** λογαριασμό και δείχνει πίσω με `transfer_peer_account_id` → μένει ενεργό.
 - Αποτέλεσμα: το ποσό παραμένει στο peer υπόλοιπο χωρίς «ταιριαστό» σκέλος· δεν υπάρχει έλεγχος ακεραιότητας.
 - Επηρεάζει και προγραμματισμένες μεταφορές (`scheduled_transactions_service`).
@@ -124,9 +125,10 @@
 - Mislabel + λάθος ποσό, χωρίς crash.
 - **✅ Διορθώθηκε 21/11/2026 (`2.3.0+7`):** το `getAccountByUuid` ψάχνει πλέον σε **όλους** τους μη διαγραμμένους (`_accounts`, μαζί με αρχειοθετημένους και legacy `is_active=false`) → το όνομα εμφανίζεται σωστά. Το `spent = 0` παραμένει **ορθό** για όσους είχαν ήδη διαγραφεί (οι κινήσεις τους διαγράφηκαν)· με την αρχειοθέτηση (**E26**) το πρόβλημα δεν ξαναδημιουργείται.
 
-**E13 — Restore >500 κινήσεις (OPEN)**
+**E13 — Restore >500 κινήσεις (FIXED)**
 - `account_duplicate_service.dart:121–130`: ένα `batch` για όλες τις κινήσεις του λογαριασμού → αποτυγχάνει πάνω από 500 εγγραφές.
 - Υπάρχει ήδη chunking pattern στο `database_cleanup_service.dart:428,491`.
+- **✅ Έκλεισε με το E11 (21/11/2026):** chunking ≤499 και στο restore (βλ. E11, «Επαναφορά»).
 
 **E14 — Restore μετά τον cleanup (OPEN)**
 - Ο cleanup διαγράφει οριστικά soft-deleted κινήσεις μετά από 30 ημέρες (`database_cleanup_service.dart:473–499`) αλλά **δεν** αγγίζει `accounts`.
@@ -176,7 +178,7 @@
 **E23 — Διπλές γραμμές scheduled transfer (INFO)**
 - `getScheduledTransactions` (`scheduled_transactions_service.dart:665–682`) επιστρέφει **2 γραμμές** ανά εκκρεμή μεταφορά (μία ανά leg).
 
-**E24 — Offline διαγραφή με ατελή cache (OPEN)**
+**E24 — Offline διαγραφή με ατελή cache (FIXED)**
 - Το default `Source.serverAndCache` επιστρέφει offline **κενό/μερικό** `QuerySnapshot` **χωρίς exception**. Άρα το `_deleteAccount` (`accounts_page.dart:1293–1299`) μπορεί να κρύψει μόνο τον λογαριασμό και να αφήσει **ενεργές** κινήσεις (αόρατες μόνο επειδή ο λογαριασμός κρύφτηκε)· με το E11 το ίδιο αφήνει **ενεργό peer σκέλος**.
 - **Διόρθωση (στο πλαίσιο E11):** φραγή διαγραφής όταν `ConnectivityService.isInitialized && isOffline`, με σαφές μήνυμα. Το service είναι ήδη provider (`main.dart:83–85`, `connectivity_service.dart:27–29`).
 - **✅ Device test 21/11/2026:** airplane mode → «OFFLINE» → διαγραφή → κόκκινο snackbar «Η διαγραφή λογαριασμού απαιτεί σύνδεση στο internet», καμία εγγραφή (`device test/screenshots/e11_79_offline_blocked.png`).

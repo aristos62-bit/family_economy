@@ -54,7 +54,7 @@ https://github.com/aristos62-bit/family_economy
 |---|---|
 | `flutter pub get` | Εγκατάσταση dependencies |
 | `flutter analyze` | **No issues found** |
-| `flutter test` | **115/115** |
+| `flutter test` | **Όλα περνούν** (πλήθος: `DESIGN.md` §9) |
 | `flutter run -d windows` | Desktop build |
 | `flutter run -d chrome` | Web build |
 | `dart run flutter_launcher_icons` | Αναγέννηση app icons |
