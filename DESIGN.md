@@ -940,17 +940,19 @@ schema_version (int), schema_updated_at (Timestamp)
 | `backups/` | Τοπικά αντίγραφα — **ignored** (0 tracked) |
 | `Dependencies/VC_redist.x64.exe` | Εξάρτηση installer (17,7 MB) |
 
-### 10.2 Κατάσταση repository (24/11/2026)
+### 10.2 Κατάσταση repository (24/11/2026, μετά το `77c303c`)
 
 | Μέτρηση | Τιμή |
 |---|---|
-| Tracked αρχεία | **616** |
-| Commits | 59 |
+| Tracked αρχεία | **618** |
+| Commits | 60 |
 | Tags | **2** (`v2.0.1`, `v2.1.0`) |
-| Μέγεθος `.git` | **23,9 MB** |
+| Μέγεθος `.git` | **24,0 MB** |
 | `.gitignore` | 64 γραμμές (`/build/`, `/android/build/`, `build_logs/`, `InstallerOutput/`, `serviceAccountKey.json`, `node_modules/`, `backups/`, `*.backup`, …) |
 | CI/CD | ❌ κανένα |
 | Ιδιαιτερότητες | **Κανένα backup στο git** — `backups/` και `*.backup` είναι untracked/ignored (0 tracked) |
+
+> Tracked αρχεία & commits αλλάζουν με κάθε commit — η τιμή ισχύει **μόνο** για το αναφερόμενο commit.
 
 ### 10.3 `import-data.js` (script εισαγωγής)
 
