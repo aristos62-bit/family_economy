@@ -27,7 +27,7 @@
 ### Εκκρεμότητες
 
 - `DESIGN.md` §1.3 «77 outdated» — δεν επαληθεύεται offline (`flutter pub outdated` απαιτεί δίκτυο).
-- `assets/icons/subcategories/expense/desktop.ini` είναι **tracked** στο git (Windows artifact) — υποψήφιο για `git rm --cached` + `.gitignore`.
+- `assets/icons/subcategories/expense/desktop.ini` είναι **tracked** στο git (Windows artifact) → καταγράφηκε ως **E55** στο `error_list.md`· η διόρθωση (`git rm --cached` + `.gitignore`) θέλει έγκριση.
 - Windows build (`LNK2019`) παραμένει — βλ. `DESIGN.md` §11 L33.
 
 ### Backups
