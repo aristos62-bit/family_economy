@@ -53,9 +53,10 @@ https://github.com/aristos62-bit/family_economy
 | Εντολή | Αναμενόμενο |
 |---|---|
 | `flutter pub get` | Εγκατάσταση dependencies |
-| `flutter analyze` | **No issues found** |
+| `flutter analyze` | **0 errors / 0 warnings** — 72 `info` deprecations (`DESIGN.md` §9) |
 | `flutter test` | **Όλα περνούν** (πλήθος: `DESIGN.md` §9) |
-| `flutter run -d windows` | Desktop build |
+| `flutter build apk --debug` | ✅ `√ Built build\app\outputs\flutter-apk\app-debug.apk` |
+| `flutter run -d windows` | Desktop build — απαιτεί VS 2026 18.1.1 + SDK 10.0.26100 (`DESIGN.md` §2.5) |
 | `flutter run -d chrome` | Web build |
 | `dart run flutter_launcher_icons` | Αναγέννηση app icons |
 
@@ -65,7 +66,7 @@ https://github.com/aristos62-bit/family_economy
 
 ## Σταθερές του project (μη αμφισβητούμενες)
 
-- **Πλατφόρμες επιβεβαιωμένες:** Android, Windows, Web. Τα iOS/macOS/Linux **δεν** έχουν `Podfile` → ανεπιβεβαίωτα (`DESIGN.md` §2.3).
+- **Πλατφόρμες επιβεβαιωμένες:** Android, Windows, Web. Το **Windows** απαιτεί VS 2026 18.1.1 + SDK 10.0.26100· με παλιότερο toolchain αποτυγχάνει το link (`DESIGN.md` §2.5). Τα iOS/macOS/Linux **δεν** έχουν `Podfile` → ανεπιβεβαίωτα (`DESIGN.md` §2.3).
 - **Firestore:** όλα τα δεδομένα κάτω από `users/{uid}/...`· soft-delete παντού (`DESIGN.md` §6).
 - **State management:** αποκλειστικά Provider/`ChangeNotifier` (`DESIGN.md` §5).
 - **Γλώσσα UI:** Ελληνικά (el-GR), fallback en-US (`DESIGN.md` §8.6).

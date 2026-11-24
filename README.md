@@ -4,7 +4,7 @@
 προγραμματισμένες κινήσεις, γραφήματα και στατιστικά. Ελληνικό UI, Material 3,
 ανοιχτό/σκοτεινό θέμα, offline-first με Firebase.
 
-Έκδοση εφαρμογής: **2.1.0+3** (`pubspec.yaml` — μοναδική πηγή της έκδοσης).
+Έκδοση εφαρμογής: **2.3.7+14** (`pubspec.yaml` — μοναδική πηγή της έκδοσης, επαληθεύτηκε 24/11/2026).
 
 ---
 
@@ -30,7 +30,7 @@
 | Πλατφόρμα | Κατάσταση |
 |---|---|
 | Android | ✅ Επιβεβαιωμένο |
-| Windows | ✅ Επιβεβαιωμένο (installer με Inno Setup) |
+| Windows | ✅ Επιβεβαιωμένο με VS 2026 18.1.1 + SDK 10.0.26100· ⚠️ με VS 2022 17.10.1 + SDK 10.0.22621 το link αποτυγχάνει (LNK2019) |
 | Web | ✅ Επιβεβαιωμένο |
 | iOS / macOS / Linux | ⚠️ Ο φάκελος υπάρχει, αλλά **χωρίς `Podfile`** → build μη επιβεβαιωμένο |
 
@@ -40,7 +40,7 @@
 
 ## Τεχνολογίες
 
-Flutter **3.47.8** / Dart **3.13.7** (μετρημένο 19/11/2026), Firebase (Auth,
+Flutter **3.50.1** / Dart **3.14.0** (μετρημένο 24/11/2026), Firebase (Auth,
 Cloud Firestore), Provider / `ChangeNotifier`, `flutter_local_notifications`,
 `fl_chart`, `local_auth`, `pdf` / `excel`.
 
@@ -53,8 +53,8 @@ Resolved εκδόσεις πακέτων, αρχιτεκτονική, Firestore 
 
 - Flutter SDK (stable) — το `environment.sdk: ^3.10.4` του `pubspec.yaml`
   είναι **constraint της Dart**, όχι έκδοση Flutter
-- Για Android build: Android SDK 36 · Java **17** (target) · JDK 21 στο CLI
-- Για Windows build: Visual Studio με C++ desktop workload
+- Για Android build: Android SDK 36 · Java **17** (target) · **JDK 22** στο CLI (`flutter config --jdk-dir`) · Gradle **9.5.0** / AGP **9.3.1**
+- Για Windows build: Visual Studio **2026 18.1.1** + Windows SDK **10.0.26100** (βλ. `DESIGN.md` §2.5)
 - Firebase project με:
   - `lib/firebase_options.dart`
   - `android/app/google-services.json`
@@ -70,8 +70,8 @@ Resolved εκδόσεις πακέτων, αρχιτεκτονική, Firestore 
 
 ```sh
 flutter pub get
-flutter analyze     # αναμενόμενο: No issues found
-flutter test        # αναμενόμενο: 115/115
+flutter analyze     # αναμενόμενο: 0 errors/warnings (72 info deprecations)
+flutter test        # αναμενόμενο: 238/238
 ```
 
 Εκτέλεση:

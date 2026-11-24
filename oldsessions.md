@@ -60,14 +60,15 @@
 | 28 | 2026-11-23 | 25 | [L23: αναδιατύπωση](oldsessions/28-session-25-l23-reclassified.md) | Απόδειξη ότι καμία κανονική ενέργεια χρήστη δεν αφήνει ένα σκέλος (E11: session 17, device tests #4/#7)· L23 = αμυντικό κενό (αποτυχία ανάγνωσης group / χωρίς group id / αλλοιωμένο group)· μόνο docs, κανένα version bump |
 | 29 | 2026-11-23 | 26 | [L26: gate budgets στη διαγραφή](oldsessions/29-session-26-l26-budget-gate.md) | Μέτρηση **όλων** των μη διαγραμμένων budgets (server query + `AccountBudgetUsage`, raw maps)· `budgetsUnknown` φράσσει μόνο τη διαγραφή· επαναξιολόγηση μετά το φρέσκο preflight (E50)· E51–E54· 238 tests· v2.3.6+13 |
 | 30 | 2026-11-23 | 27 | [E22/E54: καθαρισμός & κείμενο](oldsessions/30-session-27-e22-e54.md) | Αφαίρεση νεκρής `applyLocalBalanceDelta` (η `updateAccountBalance` μένει ενεργή, E20)· διάλογος αρχειοθέτησης «Καμία κίνηση· το υπόλοιπο … διατηρείται» για 0 κινήσεις· 238 tests· v2.3.7+14 |
+| 31 | 2026-11-24 | 28 | [Flutter 3.50.1 upgrade: repair guide](oldsessions/31-session-28-flutter-350-upgrade-repair.md) | Οδηγός για άλλον υπολογιστή: JDK 22, Gradle 9.5.0 / AGP 9.3.1 / Kotlin 2.4.20, migration DSL του AGP 9, Firebase CLI λογαριασμός· APK + web build OK, 238 tests· Windows LNK2019 (VS/SDK) παραμένει |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **30** (01–30) |
+| Κεφάλαια στον φάκελο | **31** (01–31) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1419** |
+| Σύνολο γραμμών κεφαλαίων | **1526** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

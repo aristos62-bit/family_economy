@@ -1,7 +1,7 @@
 # Family Economy — DESIGN.md
 
 > **Μοναδική πηγή τεχνικής αλήθειας για το project.**
-> Τελευταία επαλήθευση: **22/11/2026** (Flutter 3.47.8 / Dart 3.13.7).
+> Τελευταία επαλήθευση: **24/11/2026** (Flutter 3.50.1 / Dart 3.14.0).
 > Κάθε τιμή εδώ **μετρήθηκε** από κώδικα, config ή toolchain — δεν γράφτηκε από μνήμη.
 
 ---
@@ -43,17 +43,18 @@ git ls-files | Measure-Object      # τι είναι tracked
 
 ## 1. Stack & εκδόσεις
 
-### 1.1 Toolchain (μετρημένο, 22/11/2026)
+### 1.1 Toolchain (μετρημένο, 24/11/2026)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Flutter | **3.47.8** — channel stable, framework `737ba8f885` (22/10/2026), engine `cf636b1dfb` |
-| Dart | **3.13.7** |
-| DevTools | 2.60.0 |
-| JDK (CLI) | 21.0.2 (ρυθμισμένο στο `flutter config`) |
+| Flutter | **3.50.1** — channel stable, framework `ae9b586f34` (18/11/2026), engine `51379e6df48ea8ee7205623b90fe66491cad8df3` |
+| Dart | **3.14.0** |
+| DevTools | 2.61.0 |
+| JDK (CLI) | **22.0.1** (ρυθμισμένο στο `flutter config --jdk-dir`· και το Android Studio είναι ρυθμισμένο σε JDK 22) |
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
-| Visual Studio | Community 2026 18.1.1 · Windows SDK 10.0.26100.0 |
-| App version | **`2.3.7+14`** (`pubspec.yaml`, επαληθεύτηκε 23/11/2026) |
+| Gradle / AGP / Kotlin | **9.5.0 / 9.3.1 / 2.4.20** (βλ. §2.1) |
+| Visual Studio | Community **2022 17.10.1** · Windows SDK **10.0.22621.0** — ⚠️ Windows build μη λειτουργικό (βλ. §2.5, §11 L33) |
+| App version | **`2.3.7+14`** (`pubspec.yaml`, επαληθεύτηκε 24/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -185,9 +186,9 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Gradle | 8.14 |
-| Android Gradle Plugin | 8.11.1 |
-| Kotlin | 2.2.20 |
+| Gradle | **9.5.0** |
+| Android Gradle Plugin | **9.3.1** (Built-in Kotlin) |
+| Kotlin | **2.4.20** |
 | Java source/target | **17** |
 | Core library desugaring | 2.0.4 |
 | google-services plugin | 4.3.15 |
@@ -195,6 +196,8 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 | `MainActivity` | `FlutterFragmentActivity` (απαιτείται για `local_auth`) |
 | min / target / compileSdk | Από τα `flutter.*` defaults του SDK (δεν ορίζονται ρητά) |
 | Release | Υπογράφεται με **debug key**· `minifyEnabled`/`shrinkResources` **off** |
+
+> Από Flutter 3.50.1 / AGP 9 το `id("kotlin-android")` **δεν** εφαρμόζεται· χρησιμοποιείται Built-in Kotlin και το `jvmTarget` ορίζεται με `kotlin { compilerOptions { jvmTarget = JvmTarget.JVM_17 } }`.
 
 ### 2.2 AndroidManifest
 
@@ -220,7 +223,8 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 
 ### 2.5 Windows
 
-- Build μέσω Visual Studio 2026 (18.1.1) + Windows SDK 10.0.26100.0.
+- Απαιτεί **Visual Studio 2026 (18.1.1)** + Windows SDK **10.0.26100.0** (τιμή που είχε επιβεβαιωθεί 22/11/2026).
+- ⚠️ Με **VS 2022 17.10.1 + SDK 10.0.22621.0** το build αποτυγχάνει σε linker (LNK2019/LNK1120, Firebase C++ SDK 13.13.1) — βλ. §11 L33.
 - Target output: `build/windows/x64/runner/Release/` (τοπικό build).
 
 ### 2.6 Installer & build script
@@ -240,13 +244,15 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 | Σημείωση | Το `.iss` χρησιμοποιεί **σχετικές** διαδρομές (`{#SourcePath}` / script dir) → μεταφέρεται σε άλλο PC |
 | `InstallerOutput/` | ✅ στο `.gitignore` (38+ MB exe — δεν ανεβαίνει ποτέ) |
 
-### 2.7 Κατάσταση build (22/11/2026) — ✅ υγιές
+### 2.7 Κατάσταση build (24/11/2026)
 
 | Έλεγχος | Αποτέλεσμα |
 |---|---|
-| `flutter build bundle` | ✅ EXIT 0 |
-| `flutter analyze` | ✅ No issues found |
-| `flutter test` | ✅ 238/238 |
+| `flutter build apk --debug` | ✅ `√ Built build\app\outputs\flutter-apk\app-debug.apk` |
+| `flutter build web --release` | ✅ `√ Built build\web` (Wasm dry-run warnings από `image`) |
+| `flutter build windows --debug` | ❌ LNK2019/LNK1120 — VS/SDK (βλ. §11 L33) |
+| `flutter analyze` | ⚠️ 0 errors / 0 warnings · **72 info** (`material.dart` deprecation) |
+| `flutter test` | ✅ **238/238** |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -870,9 +876,11 @@ schema_version (int), schema_updated_at (Timestamp)
 | Framework | `flutter_test` (238 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
-| `flutter analyze` | ✅ No issues found (~5s) |
+| `flutter analyze` | ⚠️ **0 errors / 0 warnings** · **72 info** (`package:flutter/material.dart` deprecated → `material_ui`) |
 | `flutter test` | ✅ 238/238 |
 | CI | ❌ καμία αυτοματοποίηση |
+
+> Το `flutter analyze` επιστρέφει **exit code 1** όταν υπάρχει έστω και `info`· τα 72 info δεν μπλοκάρουν build.
 
 ### 9.2 Τι καλύπτεται
 
@@ -1012,6 +1020,9 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L30 | Επαναφορά: τα legs παίρνουν νέο `updated_at` → νέο παράθυρο 30 ημερών για τον cleanup (η αρχική `date` μένει) — βλ. E14/E34 | §5.13 |
 | L31 | Καθαρισμός (E34): αν χαθεί η σύνδεση **μέσα** στην εκτέλεση, με persistence ON τα writes μπαίνουν σε **ουρά** — η αναφορά μπορεί να δείξει μερικό αποτέλεσμα ενώ οι διαγραφές εφαρμόζονται αργότερα | §5.14 |
 | L32 | Καθαρισμός (E34): hard delete κατηγορίας → μόνο το `ScheduledTransactionsService.getCategoryName/getSubcategoryName` δείχνει «Άγνωστη Κατηγορία/Υποκατηγορία» (οι κινήσεις δείχνουν ήδη «Χωρίς κατηγορία») | §5.14 |
+| L33 | **Windows build:** με VS 2022 17.10.1 + Windows SDK 10.0.22621.0 το link αποτυγχάνει (LNK2019/LNK1120: `__std_*`, `_Cnd_timedwait_for_unchecked`, `_Avx2WmemEnabled` από Firebase C++ SDK 13.13.1). Απαιτείται VS 2026 18.1.1 + SDK 10.0.26100 (flutterfire #17270) | §2.5 |
+| L34 | **KGP:** `file_picker`, `firebase_auth`, `firebase_core`, `package_info_plus`, `shared_preferences_android` εφαρμόζουν ακόμα Kotlin Gradle Plugin· μελλοντική Flutter θα αποτύχει μέχρι να υιοθετήσουν Built-in Kotlin | §2.1 |
+| L35 | **Deprecations:** 72 `info` για `package:flutter/material.dart` (→ `material_ui`) — μη blocking, αλλά θα γίνουν removal σε μελλοντική Flutter | §9.1 |
 
 ---
 
