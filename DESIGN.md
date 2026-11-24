@@ -39,6 +39,12 @@ Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
 
+**Κανόνας μέτρησης:** τα πλήθη κώδικα μετρώνται με
+`Get-ChildItem lib -Recurse -Filter *.dart | Select-String -Pattern <X> | Measure-Object`
+και γράφονται με ημερομηνία. Όπου ένα πλήθος **δεν** είναι σταθερό ή αναπαραγώγιμο
+(π.χ. εξαρτάται από το φίλτρο/εργαλείο), χρησιμοποιείται **ποιοτική** διατύπωση
+(«δεκάδες», «σε όλα τα σημεία») αντί για ακριβές νούμερο.
+
 ---
 
 ## 1. Stack & εκδόσεις
@@ -100,7 +106,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | Path | Κατάσταση |
 |---|---|
 | `assets/fonts/` | ✅ 3 αρχεία NotoSans (Regular, Bold, Italic) — δηλωμένα στο `pubspec.yaml` (`fonts:`) |
-| `assets/icons/` | ✅ 276 αρχεία (accounts, categories/subcategories income/expense, default.*, app_icon.png) |
+| `assets/icons/` | ✅ 277 αρχεία (accounts, categories/subcategories income/expense, default.*, app_icon.png) — περιλαμβάνει ένα `desktop.ini` |
 | `assets/images/` | ✅ Υπάρχει (άδειος φάκελος + `.gitkeep`)· δηλώνεται στο `pubspec.yaml` |
 
 Η γραμματοσειρά που εφαρμόζεται πραγματικά στο UI είναι **Roboto** (`TypographyUI.primaryFont` στο `core/theme/ui_tokens.dart`). Το NotoSans είναι δηλωμένο αλλά **δεν** χρησιμοποιείται από το theme.
@@ -128,10 +134,10 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.3.3 · BUILD_NO=10   (από pubspec, STEP 0)
-         ├── APK      FamilyBudget_v2.3.3.apk
+   └── build_and_setup_final.bat  APP_VER=2.3.7 · BUILD_NO=14   (από pubspec, STEP 0)
+         ├── APK      FamilyBudget_v2.3.7.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.3.3.exe   (FileVersion 2.3.3.10)
+               └── FamilyBudgetSetup_v2.3.7.exe   (FileVersion 2.3.7.14)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -144,7 +150,7 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 | **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.3 (build 10)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.7 (build 14)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -225,7 +231,7 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 
 - Απαιτεί **Visual Studio 2026 (18.1.1)** + Windows SDK **10.0.26100.0** (τιμή που είχε επιβεβαιωθεί 22/11/2026).
 - ⚠️ Με **VS 2022 17.10.1 + SDK 10.0.22621.0** το build αποτυγχάνει σε linker (LNK2019/LNK1120, Firebase C++ SDK 13.13.1) — βλ. §11 L33.
-- Target output: `build/windows/x64/runner/Release/` (τοπικό build).
+- Target output: `build/windows/x64/runner/Release/` (release) ή `build/windows/x64/runner/Debug/` (debug) — τοπικό build.
 
 ### 2.6 Installer & build script
 
@@ -260,18 +266,18 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 
 ## 3. Δομή repo & `lib/`
 
-### 3.1 Μετρήσεις (23/11/2026)
+### 3.1 Μετρήσεις (24/11/2026)
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **109** (τα 2 `*.backup` είναι πλέον untracked/ignored) |
+| Dart αρχεία στο `lib/` | **109** (κανένα `*.backup` στο τρέχον clone) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
 | Tests | 15 αρχεία · **238** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
-| `node_modules/` | 5.086 αρχεία, 41,4 MB — **εκτός git** (πλέον ignored) |
+| `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
 ### 3.2 Δέντρο `lib/` (επαληθευμένο)
 
@@ -281,7 +287,7 @@ lib/
   firebase_options.dart         # Firebase config ανά πλατφόρμα (5 πλατφόρμες)
 
   core/
-    accessibility/accessibility_service.dart   # Semantics / screen reader (61 αρχεία το χρησιμοποιούν)
+    accessibility/accessibility_service.dart   # Semantics / screen reader (60 αρχεία το χρησιμοποιούν)
     data/
       schema.dart                              # Έκδοση δεδομένων: σταθερές, parser, καθαρή απόφαση (χωρίς Firebase)
       schema_service.dart                      # Gate + migrations + εγγραφή έκδοσης (timeout + cache verify)
@@ -376,8 +382,7 @@ lib/
 | Στοιχείο | Απόδειξη |
 |---|---|
 | `core/widgets/biometric_gate.dart` | 0 imports εκτός του εαυτού του |
-| `services/recurring_notifications_service.dart` | 0 imports· η κλήση `generateAhead` είναι σχολιασμένη (`app_start.dart:101`) |
-| `lib/*.backup` (2 αρχεία) | Untracked/ignored, δεν συμπεριλαμβάνονται σε build |
+| `services/recurring_notifications_service.dart` | 0 imports· η κλήση `generateAhead` είναι σχολιασμένη (`app_start.dart:128`) |
 
 ---
 
@@ -402,26 +407,27 @@ lib/
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Animation | 1500 ms (γίνεται 1 ms αν `reduceMotion`) |
-| `precacheImage` | Logo |
-| Καθυστέρηση πριν τη μετάβαση | 2500 ms |
-| Μετάβαση | `Navigator.pushReplacement → AppStart` |
+| Animation | 1500 ms (γίνεται 1 ms αν `disableAnimations` / reduce motion) |
+| `precacheImage` | `assets/icons/finance1.webp` (logo) |
+| Καθυστέρηση πριν τη μετάβαση | **Καμία**· 2500 ms **μόνο** όταν `accessibleNavigation` (να προλάβει να τελειώσει η ανακοίνωση TalkBack) |
+| Μετάβαση | `Navigator.pushReplacement → AppStart` (πάντα· το `AppStart` αποφασίζει Login/Home) |
 
 ### 4.3 `AppStart` (auth gateway)
 
 | # | Βήμα | Γραμμή |
 |---|---|---|
-| 1 | `authStateChanges` → αν `user == null` → `LoginPage` | 66–71 |
-| 2 | Φόρτωση user document → `default_currency` (default `EUR`) | 79–81 |
-| 3 | `BiometricSettingsService.load(uid)` | 84 |
-| 4 | Αν `enabled && mode == 'always'` → `BiometricAuthService.authenticate()`· σε αποτυχία → `LoginPage` | 87–98 |
-| 5 | **E4 gate:** `SchemaService.checkAndMigrate(...)` με το doc των γραμμών 79–81 (**0 νέα reads**) | 103–107 (μέθοδος 174–189) |
-| 6 | `ScheduledTransactionsService.checkAndExecutePendingTransactions(uid)` | 110, 191–218 |
-| 7 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` | 120–147 |
+| 1 | `FirebaseAuth.instance.currentUser` → αν `null` → `LoginRegisterPage` | 67–75 |
+| 2 | Φόρτωση user document (+ δημιουργία αν λείπει) → `default_currency` (default `EUR`) | 80–91 |
+| 3 | `BiometricSettingsService.instance.load(uid)` | 93 |
+| 4 | Αν `enabled && mode == 'always'` → `BiometricAuthService.authenticate()`· σε αποτυχία → exception → `StartupErrorView` | 96–107 |
+| 5 | **E4 gate:** `SchemaService.checkAndMigrate(...)` με το doc των γραμμών 80–91 (**0 νέα reads**) | 112–116 (μέθοδος 189–203) |
+| 6 | `_runOnboardingIfNeeded` — resume διακοπέντος onboarding | 122, 209–223 |
+| 7 | `ScheduledTransactionsService.checkAndExecutePendingTransactions(uid)` | 125, 226–252 |
+| 8 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` | 135–156 |
 
-> Το `RecurringNotificationsService().generateAhead(...)` είναι **σχολιασμένο** (`app_start.dart:113`).
+> Το `RecurringNotificationsService().generateAhead(...)` είναι **σχολιασμένο** (`app_start.dart:128`).
 
-> **Σειρά σημαντική:** το gate τρέχει **μετά** το βιομετρικό (μόνο ο νόμιμος χρήστης προκαλεί writes) και **πριν** τις scheduled transactions (που γράφουν). `SchemaBlockedException` → typed catch (148) → `StartupErrorView` (239) με «Ξανά» / «Αποσύνδεση».
+> **Σειρά σημαντική:** το gate τρέχει **μετά** το βιομετρικό (μόνο ο νόμιμος χρήστης προκαλεί writes) και **πριν** τις scheduled transactions (που γράφουν). `SchemaBlockedException` → typed catch (163) → `StartupErrorView` (274) με «Ξανά» / «Αποσύνδεση».
 
 ### 4.4 `MyApp` / `ErrorApp`
 
@@ -449,14 +455,15 @@ lib/
 | Firestore | `users/{userId}/...` | ✅ |
 
 **Κανόνας που ισχύει ως πρόθεση, όχι ως πραγματικότητα:** «Firestore μόνο από Providers/Services».
-Μετρημένο: **83 άμεσες κλήσεις `FirebaseFirestore.instance` σε 30 αρχεία**
+Μετρημένο: **74 άμεσες κλήσεις `FirebaseFirestore.instance` σε 31 αρχεία**
 
 | Στρώμα | Κλήσεις |
 |---|---|
-| `presentation/` | **42** (σε 14 αρχεία) |
-| `providers/` | 22 (σε 6 αρχεία) |
-| `services/` + `core/` | 18 (σε 9 αρχεία) |
-| `main.dart` | 1 |
+| `presentation/` | **36** (σε 14 αρχεία) |
+| `providers/` | 24 (σε 6 αρχεία) |
+| `services/` | 7 (σε 4 αρχεία) |
+| `core/` | 6 (σε 6 αρχεία) |
+| `main.dart` | 1 (σε 1 αρχείο) |
 
 ### 5.2 Providers
 
@@ -465,7 +472,7 @@ lib/
 | `AccountsProvider` | Λίστα λογαριασμών + **εξαιρέσεις από το σύνολο** (E27) | `updateAccountBalance` **ενεργή** (εγγραφή E20)· οι εξαιρέσεις ζουν εδώ (getter/setter, prefs) ώστε Λογαριασμοί & `graf_4` να δείχνουν το ίδιο σύνολο· η νεκρή `applyLocalBalanceDelta` **αφαιρέθηκε** (E22) |
 | `CategoriesProvider` | Categories + subcategories | `firstLoad` flag για UI readiness |
 | `TransactionsProvider` | Transactions ανά περίοδο | Cache + φίλτρα |
-| `BudgetsProvider` | Budgets + spent | **Δύο** υπολογισμοί (βλ. 5.6) |
+| `BudgetsProvider` | Budgets + spent | **Τρεις** διαδρομές υπολογισμού (βλ. §5.6) |
 | `NotificationsProvider` | Ειδοποιήσεις + scheduling | Timer **2 λεπτών** για catch-up recurring |
 | `TagsProvider` | Tags | Optimistic CRUD |
 | `ThemeProvider` | ThemeMode | Μόνο SharedPreferences — **χωρίς** Firestore |
@@ -474,22 +481,24 @@ lib/
 
 | Στοιχείο | Μέτρηση |
 |---|---|
-| Αρχεία που το χρησιμοποιούν | **2** (`transactions_show_page.dart`, `transaction_entry_details_step.dart`) |
-| Σημεία κλήσης | **3** — `create` (874-882), `edit` (952), `delete` (390) |
+| Αρχεία που το χρησιμοποιούν | **3** (`accounts_page.dart`, `transactions_show_page.dart`, `transaction_entry_details_step.dart`) |
+| Σημεία κλήσης | **6** — `create` (882), `edit` (952), `delete` (390), `previewAccountDelete` (1542), `archiveAccount` (1591), `restoreArchivedAccount` (1615) |
 | Τι κάνει | Batch write + `FieldValue.increment` στο `current_balance` |
-| Τι **δεν** περνά από αυτό | Budgets, categories, accounts, tags, notifications, oil, scheduled CRUD |
+| Τι **δεν** περνά από αυτό | Budgets, categories, tags, notifications, oil, scheduled CRUD — οι λογαριασμοί περνούν **μόνο** για preview/archive/restore |
 
 ### 5.4 Ποιος γράφει `current_balance`
 
 | Αρχείο | Αναφορές |
 |---|---|
-| `core/services/transactions_actions_service.dart` | 17 |
+| `core/services/transactions_actions_service.dart` | 20 |
 | `services/scheduled_transactions_service.dart` | 3 |
-| `providers/accounts_provider.dart` | 3 |
-| `presentation/screens/accounts/accounts_page.dart` | 3 |
-| `core/services/account_restore_service.dart` | 3 (peer delta / απόλυτο υπόλοιπο / μηδενισμός — E19) |
-| `services/account_duplicate_service.dart` | 0 (μεταφέρθηκε στο `account_restore_service`) |
+| `providers/accounts_provider.dart` | 4 |
+| `presentation/screens/accounts/accounts_page.dart` | 1 |
+| `core/services/account_restore_service.dart` | 4 (peer delta / απόλυτο υπόλοιπο / μηδενισμός — E19) |
+| `services/account_duplicate_service.dart` | 0 εγγραφές (μόνο ανάγνωση: `_amountOf(data['current_balance'])`) |
 | `services/onboarding_service.dart` | 1 |
+
+> Τα `core/utils/account_balance.dart` και `core/utils/account_restore_policy.dart` αναφέρουν το πεδίο **μόνο** ως κανόνα (καθαρό Dart, 0 I/O) — δεν είναι writers.
 
 > Άρα το υπόλοιπο **δεν** ενημερώνεται αποκλειστικά από ένα σημείο (όπως ίσχυε σε παλιότερη περιγραφή).
 >
@@ -529,7 +538,7 @@ lib/
 ### 5.9 Connectivity & accessibility
 
 - `ConnectivityService`: 2s debounce → `onSyncComplete` → `MessageService.showSyncComplete`.
-- `AccessibilityService`: χρησιμοποιείται σε **61** αρχεία (semantics/ανακοινώσεις).
+- `AccessibilityService`: χρησιμοποιείται σε **60** αρχεία (semantics/ανακοινώσεις).
 - `AnnouncementOverlay` στο `MaterialApp.builder` (μαζί με `TextScaler` clamp 0.85–1.45).
 
 ### 5.10 Ειδοποιήσεις (local notifications)
@@ -556,7 +565,7 @@ lib/
 ### 5.12 Oil module & exports
 
 - Oil: `oil_page.dart` + `oil/` (12 αρχεία) — ρυθμίσεις σε `settings/oil_tank` (`avg_cost_per_liter`, `liters_at_last_purchase`, `price_per_liter`), ιστορικό σε `oil_purchases`.
-- Εξαγωγή δεδομένων: `pdf` + `excel` + `file_picker` στις σελίδες `stats2_averages_page`, `stats3_page`, `stats4_budget_page`.
+- Εξαγωγή δεδομένων: `pdf` + `excel` + `file_picker` σε **5** σελίδες στατιστικών (`stats_page`, `stats2_averages_page`, `stats3_page`, `stats4_budget_page`, `tag_stats_page`).
 
 ### 5.13 Διαγραφή & αρχειοθέτηση λογαριασμού (E7, E11, E26, E28)
 
@@ -594,13 +603,13 @@ lib/
 
 > Ο κανόνας E7 **δεν** αγγίζει υπόλοιπα· το E11 αντιστρέφει **μόνο** τα deltas των ζευγών μεταφορών που ακυρώνει. Η αρχειοθέτηση (E26) δεν αγγίζει καμία κίνηση και δεν χρειάζεται preflight για εγγραφή· τα budget docs που δείχνουν σε αρχειοθετημένο λογαριασμό συνεχίζουν να δουλεύουν και δείχνουν σωστό όνομα (E12).
 >
-> **E19 — όπου «επαναφορά», ο κανόνας ζει σε καθαρό Dart** (`account_restore_policy.dart`, 0 I/O, 23 unit tests). Ο διάλογος (`account_duplicate_service.dart`) παίρνει **μόνο** `ConnectivityService` από το δικό του context (root provider)· `userId`/νόμισμα/όνομα περνούν ως παράμετροι (ο `AccountsProvider` δημιουργείται **μέσα** στο `MaterialPageRoute` του `app_start.dart`).
+> **E19 — όπου «επαναφορά», ο κανόνας ζει σε καθαρό Dart** (`account_restore_policy.dart`, 0 I/O, 24 unit tests). Ο διάλογος (`account_duplicate_service.dart`) παίρνει **μόνο** `ConnectivityService` από το δικό του context (root provider)· `userId`/νόμισμα/όνομα περνούν ως παράμετροι (ο `AccountsProvider` δημιουργείται **μέσα** στο `MaterialPageRoute` του `app_start.dart`).
 
 ### 5.14 Καθαρισμός βάσης (E34)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Κανόνας | `core/utils/database_cleanup_policy.dart` — καθαρό Dart, **0 I/O**, 40 unit tests |
+| Κανόνας | `core/utils/database_cleanup_policy.dart` — καθαρό Dart, **0 I/O**, 41 unit tests |
 | I/O | `core/services/database_cleanup_service.dart` (`users/{uid}/...`, `Source.server`) |
 | Εργασίες | Υπενθυμίσεις · Προϋπολογισμοί · Συναλλαγές · **Κατηγορίες & Υποκατηγορίες (μία)** · Δεξαμενή Πετρελαίου |
 | Chunking | **Νέο** `WriteBatch` ανά chunk ≤**499** — ποτέ επανάχρηση μετά το `commit()` (E34) |
@@ -622,15 +631,15 @@ lib/
 
 | Συλλογή | Χρήση στον κώδικα (`lib/`) |
 |---|---|
-| `users/{uid}` | ✅ 142 αναφορές |
-| `transactions` | ✅ 38 |
-| `categories` (+ `subcategories`) | ✅ 27 + 12 |
-| `accounts` | ✅ 16 |
-| `notifications` | ✅ 14 |
-| `budgets` | ✅ 13 |
-| `oil_purchases` | ✅ 7 |
-| `settings` (doc `oil_tank`) | ✅ 5 |
-| `tags` | ✅ 4 |
+| `users/{uid}` | ✅ σε όλη την εφαρμογή |
+| `transactions` | ✅ |
+| `categories` (+ `subcategories`) | ✅ |
+| `accounts` | ✅ |
+| `notifications` | ✅ |
+| `budgets` | ✅ |
+| `oil_purchases` | ✅ |
+| `settings` (doc `oil_tank`) | ✅ |
+| `tags` | ✅ |
 | `exchange_rates` | ⚠️ **0** — μόνο `import-data.js` / `docs/` |
 | `account_snapshots` | ⚠️ **0** |
 | `attachments` | ⚠️ **0** |
@@ -722,7 +731,7 @@ schema_version (int), schema_updated_at (Timestamp)
 ```
 
 > **E4:** `schema_version` = έκδοση **δεδομένων** ανά χρήστη (`baseline = current = 1`). Αν το πεδίο λείπει ⇒ baseline. Το `schema_updated_at` είναι **πληροφοριακό** — καμία απόφαση δεν βασίζεται σε αυτό (μπορεί να είναι `null` μέχρι τον συγχρονισμό).
-> **Δεν** υπάρχει αντίγραφο σε SharedPreferences: το root doc είναι διαθέσιμο offline (`persistenceEnabled` + `CACHE_SIZE_UNLIMITED`, `main.dart:64–67`).
+> **Δεν** υπάρχει αντίγραφο σε SharedPreferences: το root doc είναι διαθέσιμο offline (`persistenceEnabled` + `CACHE_SIZE_UNLIMITED`, `main.dart:65–68`).
 
 ### 6.3 Indexes (`firestore.indexes.json`)
 
@@ -744,8 +753,8 @@ schema_version (int), schema_updated_at (Timestamp)
 ### 6.4 Δομικά χαρακτηριστικά
 
 - Όλα τα δεδομένα χρήστη ζουν **κάτω από `users/{uid}`** (εκτός από το global `exchange_rates`).
-- **Soft-delete παντού**: `deleted: boolean` αντί για πραγματική διαγραφή (`deleted` → 247 αναφορές).
-- Sync πεδία: `uuid` (423), `updated_at` (116), `last_modified_device_id` (13), `deleted` (247).
+- **Soft-delete παντού**: `deleted: boolean` αντί για πραγματική διαγραφή — εκατοντάδες αναφορές σε όλο το `lib/`.
+- Sync πεδία: `uuid` (παντού ως doc id / αναφορά), `updated_at`, `last_modified_device_id`, `deleted` — από δεκάδες έως εκατοντάδες αναφορές.
 - **Διαγραφή λογαριασμού χρήστη**: δεν γίνεται cascade στο Firestore από την εφαρμογή· καθαρισμός μέσω `DatabaseCleanupService` / ροών διαγραφής.
 - Αναφορές μεταξύ docs γίνονται με **uuid strings** (`account_id`, `category_id`, `transfer_group_id`), όχι με document references.
 
@@ -799,7 +808,7 @@ schema_version (int), schema_updated_at (Timestamp)
 |---|---|
 | Ποσό | `amount` **με πρόσημο** (income θετικό, expense αρνητικό) |
 | Τύπος | `transaction_type`: `'income'` / `'expense'` (+ `isTransfer` από `transfer_group_id`) |
-| Μεταφορά | **2 docs** με κοινό `transfer_group_id` (πηγή αρνητική, προορισμός θετική) — 31 αναφορές |
+| Μεταφορά | **2 docs** με κοινό `transfer_group_id` (πηγή αρνητική, προορισμός θετική) — δεκάδες αναφορές |
 | Peer δείκτες | `transfer_peer_uuid` + `transfer_peer_account_id` σε κάθε σκέλος (νέα ζεύγη) → 0 reads για το άλλο σκέλος |
 | Ακύρωση ζεύγους | Διαγραφή λογαριασμού → marker `annulled_by_account_deleted` + αντιστροφή και των 2 υπολοίπων (ολοκληρωμένο) ή 0 deltas (εκκρεμές) — §5.13 |
 | Κατηγορία μεταφοράς | Δημιουργείται αυτόματα (`_getOrCreateTransferCategory`) όταν χρειάζεται |
@@ -808,13 +817,13 @@ schema_version (int), schema_updated_at (Timestamp)
 
 ### 8.2 Soft-delete & συγχρονισμός
 
-- Καμία φυσική διαγραφή: `deleted: boolean` (247 αναφορές).
+- Καμία φυσική διαγραφή: `deleted: boolean` (εκατοντάδες αναφορές).
 - Sync πεδία: `uuid`, `updated_at`, `last_modified_device_id`, `deleted`.
 - `created_at` / `updated_at` ως Firestore `Timestamp`.
 
 ### 8.3 Optimistic updates & offline-first
 
-- `notifyListeners()` **67** φορές σε providers/UI.
+- `notifyListeners()` σε **δεκάδες** σημεία σε providers/UI.
 - Τοπική αλλαγή state → ενημέρωση UI → Firestore write στο background.
 - `Settings(persistenceEnabled: true, cacheSizeUnlimited)` → offline writes επιτρέπονται.
 - `ConnectivityService` (2s debounce) → `onSyncComplete` → μήνυμα συγχρονισμού.
@@ -832,7 +841,7 @@ schema_version (int), schema_updated_at (Timestamp)
 
 - `DebugConfig._debug = false` (default OFF).
 - `DebugConfig.print()` — κανονικά logs, `DebugConfig.startup()` — χρόνοι εκκίνησης.
-- `FirebaseFirestore.setLoggingEnabled(DebugConfig.isDebug)` (`main.dart:70`).
+- `FirebaseFirestore.setLoggingEnabled(DebugConfig.isDebug)` (`main.dart:71`).
 
 ### 8.6 Theme & τοπικοποίηση
 
@@ -862,7 +871,7 @@ schema_version (int), schema_updated_at (Timestamp)
 
 ### 8.10 Accessibility
 
-- `AccessibilityService` σε 61 αρχεία (semantics, ανακοινώσεις).
+- `AccessibilityService` σε 60 αρχεία (semantics, ανακοινώσεις).
 - `AnnouncementOverlay` τυλίγει όλο το app.
 
 ---
@@ -931,17 +940,17 @@ schema_version (int), schema_updated_at (Timestamp)
 | `backups/` | Τοπικά αντίγραφα — **ignored** (0 tracked) |
 | `Dependencies/VC_redist.x64.exe` | Εξάρτηση installer (17,7 MB) |
 
-### 10.2 Κατάσταση repository (22/11/2026)
+### 10.2 Κατάσταση repository (24/11/2026)
 
 | Μέτρηση | Τιμή |
 |---|---|
-| Tracked αρχεία | **595** |
-| Commits | 42 |
+| Tracked αρχεία | **616** |
+| Commits | 59 |
 | Tags | **2** (`v2.0.1`, `v2.1.0`) |
-| Μέγεθος `.git` | **24,5 MB** |
-| `.gitignore` | 51 γραμμές (`/build/`, `build_logs/`, `InstallerOutput/`, `serviceAccountKey.json`, `node_modules/`, `backups/`, `*.backup`, …) |
+| Μέγεθος `.git` | **23,9 MB** |
+| `.gitignore` | 64 γραμμές (`/build/`, `/android/build/`, `build_logs/`, `InstallerOutput/`, `serviceAccountKey.json`, `node_modules/`, `backups/`, `*.backup`, …) |
 | CI/CD | ❌ κανένα |
-| Ιδιαιτερότητες | **Κανένα backup στο git** — `backups/`, `lib/*.backup`, `oldsessions.md.backup` είναι untracked/ignored (22/11/2026) |
+| Ιδιαιτερότητες | **Κανένα backup στο git** — `backups/` και `*.backup` είναι untracked/ignored (0 tracked) |
 
 ### 10.3 `import-data.js` (script εισαγωγής)
 
@@ -960,7 +969,7 @@ schema_version (int), schema_updated_at (Timestamp)
 2. `Dependencies/VC_redist.x64.exe` (17,7 MB) στο repo — απαραίτητο για τον installer.
 3. Το `.iss` χρησιμοποιεί **σχετικές** διαδρομές → μεταφέρεται σε άλλο PC. Απαιτεί `/DMyAppVersion` (αλλιώς `#error`).
 4. `build/` και `build_logs/` είναι ignored (δεν μπαίνουν σε commits).
-5. `node_modules/` είναι πλέον ignored (5.086 αρχεία εκτός git).
+5. `node_modules/` είναι πλέον ignored (δεν υπάρχει στο τρέχον clone· δημιουργείται μόνο από το `import-data.js`).
 6. `InstallerOutput/` είναι **ignored** (38,6 MB setup exe — δεν ανεβαίνει ποτέ).
 
 ### 10.5 Επαλήθευση indexes & rules (read-only)
@@ -988,7 +997,7 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 
 | # | Περιορισμός | Στοιχείο |
 |---|---|---|
-| L1 | Το layering δεν επιβάλλεται: 83 άμεσες κλήσεις Firestore (42 σε UI) | §5.1 |
+| L1 | Το layering δεν επιβάλλεται: 74 άμεσες κλήσεις Firestore σε 31 αρχεία (36 σε UI) | §5.1 |
 | L2 | Τα υπόλοιπα γράφονται από **6** διαφορετικά αρχεία | §5.4 |
 | L3 | 5 συλλογές υπάρχουν στους κανόνες αλλά δεν χρησιμοποιούνται | §6.1 |
 | L4 | Κανόνες χωρίς validation πεδίων/ορίων | §7.2 |

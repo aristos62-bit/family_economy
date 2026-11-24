@@ -1,5 +1,7 @@
 # 📄 transaction_tags collection (Firestore)
 
+> ⚠️ **Legacy αρχείο — δεν ενημερώνεται.** Ιστορική περιγραφή schema (import script). Η **τρέχουσα** τεχνική αλήθεια είναι το [`DESIGN.md`](../../DESIGN.md) §6.
+
 Αυτός ο πίνακας χρησιμοποιείται για τη συσχέτιση συναλλαγών με tags, σε ένα many-to-many σχήμα.
 
 ---

@@ -1,5 +1,7 @@
 # 🔐 Firestore Security Rules — Τεκμηρίωση
 
+> ⚠️ **Legacy αρχείο — δεν ενημερώνεται.** Ιστορική τεκμηρίωση. Η **τρέχουσα** αλήθεια είναι το ίδιο το [`firestore.rules`](../../firestore.rules) και το [`DESIGN.md`](../../DESIGN.md) §7.
+
 ## 🆕 Τελευταία ενημέρωση: 2026-11-19
 ## 📁 Συνδεδεμένο αρχείο: `firestore.rules` (89 γραμμές, `rules_version = '2'`)
 

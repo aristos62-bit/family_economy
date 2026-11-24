@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | Έκδοση | **2.3.7+14** |
-| Τελευταίο κεφάλαιο | **30** — E22/E54: νεκρός κώδικας + κείμενο διαλόγου (2026-11-23) |
+| Τελευταίο κεφάλαιο | **33** — Έλεγχος & διόρθωση όλων των `.md` (2026-11-24) |
 | Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **238/238** |
 | Επόμενη εκκρεμότητα | **L18** — `ErrorApp` «Επανεκκίνηση» → `Null check operator` (`error_list.md`) |
 
@@ -61,14 +61,16 @@
 | 29 | 2026-11-23 | 26 | [L26: gate budgets στη διαγραφή](oldsessions/29-session-26-l26-budget-gate.md) | Μέτρηση **όλων** των μη διαγραμμένων budgets (server query + `AccountBudgetUsage`, raw maps)· `budgetsUnknown` φράσσει μόνο τη διαγραφή· επαναξιολόγηση μετά το φρέσκο preflight (E50)· E51–E54· 238 tests· v2.3.6+13 |
 | 30 | 2026-11-23 | 27 | [E22/E54: καθαρισμός & κείμενο](oldsessions/30-session-27-e22-e54.md) | Αφαίρεση νεκρής `applyLocalBalanceDelta` (η `updateAccountBalance` μένει ενεργή, E20)· διάλογος αρχειοθέτησης «Καμία κίνηση· το υπόλοιπο … διατηρείται» για 0 κινήσεις· 238 tests· v2.3.7+14 |
 | 31 | 2026-11-24 | 28 | [Flutter 3.50.1 upgrade: repair guide](oldsessions/31-session-28-flutter-350-upgrade-repair.md) | Οδηγός για άλλον υπολογιστή: JDK 22, Gradle 9.5.0 / AGP 9.3.1 / Kotlin 2.4.20, migration DSL του AGP 9, Firebase CLI λογαριασμός· APK + web build OK, 238 tests· Windows LNK2019 (VS/SDK) παραμένει |
+| 32 | 2026-11-24 | 29 | [`.gitignore` για `android/build` & καθαρισμός repo](oldsessions/32-session-29-gitignore-repo-hygiene.md) | `/build/` πιάνει μόνο τη ρίζα → προστέθηκε `/android/build/` (μόνο φάκελος, δεν αγγίζει `build.gradle.kts`)· διαγραφή untracked `android/build/` και παλιού clone (51,1 MB, clean)· commit `6e29980`· 238 tests, 72 info |
+| 33 | 2026-11-24 | 30 | [Έλεγχος & διόρθωση όλων των `.md`](oldsessions/33-session-30-docs-audit-fixes.md) | Πλήρης έλεγχος 58 `.md`· `DESIGN.md` ~20 διορθώσεις (74/31 κλήσεις Firestore, 60 αρχεία accessibility, 24/41 tests, 616 tracked/59 commits/64 γρ. `.gitignore`, `currentUser` αντί `authStateChanges`, `LoginRegisterPage`, splash delay μόνο με `accessibleNavigation`, 3/6 σημεία `TransactionsActionsService`, 5 σελίδες export, γραμμές κώδικα)· `README.md` 7 γραφήματα + Kotlin· `AGENTS.md` Windows υπό συνθήκη· `error_list.md` σειρά E35/E36· banner legacy στα 15 `docs/`· κανόνας μέτρησης στο §9.1 |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **31** (01–31) |
+| Κεφάλαια στον φάκελο | **33** (01–33) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1526** |
+| Σύνολο γραμμών κεφαλαίων | **1627** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

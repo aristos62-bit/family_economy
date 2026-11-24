@@ -1,5 +1,7 @@
 # 📄 users collection (Firestore)
 
+> ⚠️ **Legacy αρχείο — δεν ενημερώνεται.** Ιστορική περιγραφή schema (import script). Η **τρέχουσα** τεχνική αλήθεια είναι το [`DESIGN.md`](../../DESIGN.md) §6.
+
 Η συλλογή `users` αποθηκεύει επιπλέον στοιχεία για κάθε χρήστη πέρα από όσα καλύπτει η Firebase Authentication.
 
 ---
