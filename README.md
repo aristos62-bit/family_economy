@@ -53,7 +53,7 @@ Resolved εκδόσεις πακέτων, αρχιτεκτονική, Firestore 
 
 - Flutter SDK (stable) — το `environment.sdk: ^3.10.4` του `pubspec.yaml`
   είναι **constraint της Dart**, όχι έκδοση Flutter
-- Για Android build: Android SDK 36 · Java **17** (target) · **JDK 22** στο CLI (`flutter config --jdk-dir`) · Gradle **9.5.0** / AGP **9.3.1** / Kotlin **2.4.20**
+- Για Android build: Android SDK 36 · Java **17** (target) · **JDK 21 ή 22** στο CLI (και τα δύο επαληθευμένα) · Gradle **9.5.0** / AGP **9.3.1** / Kotlin **2.4.20**
 - Για Windows build: Visual Studio **2026 18.1.1** + Windows SDK **10.0.26100** (βλ. `DESIGN.md` §2.5)
 - Firebase project με:
   - `lib/firebase_options.dart`

@@ -66,7 +66,7 @@ https://github.com/aristos62-bit/family_economy
 
 ## Σταθερές του project (μη αμφισβητούμενες)
 
-- **Πλατφόρμες επιβεβαιωμένες:** Android, Web. Το **Windows** είναι επιβεβαιωμένο **μόνο** με VS 2026 18.1.1 + SDK 10.0.26100· με παλιότερο toolchain αποτυγχάνει το link (LNK2019 — συμβαίνει στο τρέχον μηχάνημα, `DESIGN.md` §2.5, §2.7). Τα iOS/macOS/Linux **δεν** έχουν `Podfile` → ανεπιβεβαίωτα (`DESIGN.md` §2.3).
+- **Πλατφόρμες επιβεβαιωμένες:** Android, Web, **Windows**. Το Windows απαιτεί VS 2026 18.1.1 + SDK 10.0.26100· με παλιότερο toolchain (π.χ. VS 2022) αποτυγχάνει το link (LNK2019 — `DESIGN.md` §2.5, §2.7). Τα iOS/macOS/Linux **δεν** έχουν `Podfile` → ανεπιβεβαίωτα (`DESIGN.md` §2.3).
 - **Firestore:** όλα τα δεδομένα κάτω από `users/{uid}/...`· soft-delete παντού (`DESIGN.md` §6).
 - **State management:** αποκλειστικά Provider/`ChangeNotifier` (`DESIGN.md` §5).
 - **Γλώσσα UI:** Ελληνικά (el-GR), fallback en-US (`DESIGN.md` §8.6).
