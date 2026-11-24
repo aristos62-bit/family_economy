@@ -257,6 +257,7 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 | `flutter build apk --debug` | ✅ `√ Built build\app\outputs\flutter-apk\app-debug.apk` |
 | `flutter build web --release` | ✅ `√ Built build\web` (Wasm dry-run warnings από `image`) |
 | `flutter build windows --debug` | ❌ LNK2019/LNK1120 — VS/SDK (βλ. §11 L33) |
+| `flutter build windows --release` | ✅ `√ Built build\windows\x64\runner\Release\family_economy.exe` — **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026, επιβεβαιωμένο· το ❌ ισχύει μόνο με VS 2022) |
 | `flutter analyze` | ⚠️ 0 errors / 0 warnings · **72 info** (`material.dart` deprecation) |
 | `flutter test` | ✅ **238/238** |
 
