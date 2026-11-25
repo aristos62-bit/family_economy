@@ -22,8 +22,8 @@
 | | |
 |---|---|
 | Έκδοση | **2.3.7+14** |
-| Τελευταίο κεφάλαιο | **34** — Ευθυγράμμιση με remote & επαλήθευση σε VS 2026 (2026-11-24) |
-| Quality gates | `flutter analyze` ✅ · `flutter test` ✅ **238/238** |
+| Τελευταίο κεφάλαιο | **35** — E56: migration σε `material_ui` (2026-11-25) |
+| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **238/238** |
 | Επόμενη εκκρεμότητα | **L18** — `ErrorApp` «Επανεκκίνηση» → `Null check operator` (`error_list.md`) |
 
 ## Κεφάλαια
@@ -64,14 +64,15 @@
 | 32 | 2026-11-24 | 29 | [`.gitignore` για `android/build` & καθαρισμός repo](oldsessions/32-session-29-gitignore-repo-hygiene.md) | `/build/` πιάνει μόνο τη ρίζα → προστέθηκε `/android/build/` (μόνο φάκελος, δεν αγγίζει `build.gradle.kts`)· διαγραφή untracked `android/build/` και παλιού clone (51,1 MB, clean)· commit `6e29980`· 238 tests, 72 info |
 | 33 | 2026-11-24 | 30 | [Έλεγχος & διόρθωση όλων των `.md`](oldsessions/33-session-30-docs-audit-fixes.md) | Πλήρης έλεγχος 58 `.md`· `DESIGN.md` ~20 διορθώσεις (74/31 κλήσεις Firestore, 60 αρχεία accessibility, 24/41 tests, 616 tracked/59 commits/64 γρ. `.gitignore`, `currentUser` αντί `authStateChanges`, `LoginRegisterPage`, splash delay μόνο με `accessibleNavigation`, 3/6 σημεία `TransactionsActionsService`, 5 σελίδες export, γραμμές κώδικα)· `README.md` 7 γραφήματα + Kotlin· `AGENTS.md` Windows υπό συνθήκη· `error_list.md` σειρά E35/E36· banner legacy στα 15 `docs/`· κανόνας μέτρησης στο §9.1 |
 | 34 | 2026-11-24 | 31 | [Ευθυγράμμιση με remote & VS 2026](oldsessions/34-session-31-remote-sync-vs2026.md) | Το remote είχε ήδη τη migration + docs audit → `reset --mixed origin/main` (απόρριψη 3 τοπικών commits + διπλού κεφαλαίου 31)· μόνη επαληθευμένη διαφορά: `build windows --release` ✅ με VS 2026 18.1.1 (❌ μόνο με VS 2022 — L33)· JDK 21/22· commit `5786d58`, `HEAD == origin/main` |
+| 35 | 2026-11-25 | 32 | [E56: migration σε `material_ui`](oldsessions/35-session-32-material-ui-migration.md) | 72 info → **0**: `material_ui` 1.11.1, 70 imports μέσω `dart fix --code=migrate_design_widgets`, `GlobalMaterialLocalizations.delegates`· audit legacy πακέτων (fl_chart/responsive_framework) → κανένα conflict τύπων, χωρίς bridge· analyze 0/0/0, 238/238, apk/web/windows ✅, χωρίς version bump |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **34** (01–34) |
+| Κεφάλαια στον φάκελο | **35** (01–35) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1690** |
+| Σύνολο γραμμών κεφαλαίων | **1760** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

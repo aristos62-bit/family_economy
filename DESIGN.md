@@ -86,10 +86,11 @@ git ls-files | Measure-Object      # τι είναι tracked
 | uuid | `^4.5.3` | 4.5.3 |
 | intl | `^0.20.2` | **0.20.3** |
 | flutter_phoenix | `^1.1.1` | 1.1.1 |
+| material_ui | `^1.11.1` | **1.11.1** (+ transitive `cupertino_ui` 1.1.7) |
 | package_info_plus | `^9.0.1` | **9.0.1** |
 | flutter_lints (dev) | `^6.0.0` | 6.0.0 |
 
-`flutter pub get` → **77 πακέτα** έχουν νεότερες εκδόσεις εκτός constraints.
+`flutter pub get` → **75 πακέτα** έχουν νεότερες εκδόσεις εκτός constraints.
 
 ### 1.3 Πακέτα χωρίς (ή με ελάχιστη) χρήση
 
@@ -250,7 +251,7 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 | Σημείωση | Το `.iss` χρησιμοποιεί **σχετικές** διαδρομές (`{#SourcePath}` / script dir) → μεταφέρεται σε άλλο PC |
 | `InstallerOutput/` | ✅ στο `.gitignore` (38+ MB exe — δεν ανεβαίνει ποτέ) |
 
-### 2.7 Κατάσταση build (24/11/2026)
+### 2.7 Κατάσταση build (25/11/2026)
 
 | Έλεγχος | Αποτέλεσμα |
 |---|---|
@@ -258,7 +259,7 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 | `flutter build web --release` | ✅ `√ Built build\web` (Wasm dry-run warnings από `image`) |
 | `flutter build windows --debug` | ❌ LNK2019/LNK1120 — **μόνο με VS 2022** 17.10.1 + SDK 10.0.22621.0 (βλ. §11 L33) |
 | `flutter build windows --release` | ✅ `√ Built build\windows\x64\runner\Release\family_economy.exe` — **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026, επιβεβαιωμένο· το ❌ ισχύει μόνο με VS 2022) |
-| `flutter analyze` | ⚠️ 0 errors / 0 warnings · **72 info** (`material.dart` deprecation) |
+| `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
 | `flutter test` | ✅ **238/238** |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
@@ -886,11 +887,11 @@ schema_version (int), schema_updated_at (Timestamp)
 | Framework | `flutter_test` (238 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
-| `flutter analyze` | ⚠️ **0 errors / 0 warnings** · **72 info** (`package:flutter/material.dart` deprecated → `material_ui`) |
+| `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
 | `flutter test` | ✅ 238/238 |
 | CI | ❌ καμία αυτοματοποίηση |
 
-> Το `flutter analyze` επιστρέφει **exit code 1** όταν υπάρχει έστω και `info`· τα 72 info δεν μπλοκάρουν build.
+> Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
 
 ### 9.2 Τι καλύπτεται
 
@@ -1034,7 +1035,7 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L32 | Καθαρισμός (E34): hard delete κατηγορίας → μόνο το `ScheduledTransactionsService.getCategoryName/getSubcategoryName` δείχνει «Άγνωστη Κατηγορία/Υποκατηγορία» (οι κινήσεις δείχνουν ήδη «Χωρίς κατηγορία») | §5.14 |
 | L33 | **Windows build:** με VS 2022 17.10.1 + Windows SDK 10.0.22621.0 το link αποτυγχάνει (LNK2019/LNK1120: `__std_*`, `_Cnd_timedwait_for_unchecked`, `_Avx2WmemEnabled` από Firebase C++ SDK 13.13.1). Απαιτείται VS 2026 18.1.1 + SDK 10.0.26100 (flutterfire #17270) — ✅ **επιβεβαιωμένο 24/11/2026**: και τα τρία builds (apk/web/windows release) περνούν | §2.5 |
 | L34 | **KGP:** `file_picker`, `firebase_auth`, `firebase_core`, `package_info_plus`, `shared_preferences_android` εφαρμόζουν ακόμα Kotlin Gradle Plugin· μελλοντική Flutter θα αποτύχει μέχρι να υιοθετήσουν Built-in Kotlin | §2.1 |
-| L35 | **Deprecations:** 72 `info` για `package:flutter/material.dart` (→ `material_ui`) — μη blocking, αλλά θα γίνουν removal σε μελλοντική Flutter | §9.1 |
+| L35 | **✅ Διορθώθηκε 25/11/2026 (E56)** — migration σε `material_ui` **1.11.1**: 70 imports (`lib/` + `test/`) → `package:material_ui/material_ui.dart` + `GlobalMaterialLocalizations.delegates` στο `main.dart`. Το `package:flutter/material.dart` παραμένει deprecated στο SDK, αλλά **δεν** χρησιμοποιείται πλέον από τον κώδικα της εφαρμογής | §9.1 |
 
 ---
 

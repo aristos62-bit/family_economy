@@ -40,7 +40,8 @@
 
 ## Τεχνολογίες
 
-Flutter **3.50.1** / Dart **3.14.0** (μετρημένο 24/11/2026), Firebase (Auth,
+Flutter **3.50.1** / Dart **3.14.0** (μετρημένο 24/11/2026), `material_ui` 1.11.1
+(Material UI), Firebase (Auth,
 Cloud Firestore), Provider / `ChangeNotifier`, `flutter_local_notifications`,
 `fl_chart`, `local_auth`, `pdf` / `excel`.
 
@@ -70,7 +71,7 @@ Resolved εκδόσεις πακέτων, αρχιτεκτονική, Firestore 
 
 ```sh
 flutter pub get
-flutter analyze     # αναμενόμενο: 0 errors/warnings (72 info deprecations)
+flutter analyze     # αναμενόμενο: No issues found (0 errors / 0 warnings / 0 info)
 flutter test        # αναμενόμενο: 238/238
 ```
 

@@ -24,6 +24,7 @@
 > Το **E17** διορθώθηκε με **mirror των 7 indexes** + guard test (23/11/2026)· καμία αλλαγή cloud.
 > Τα **L26/E50** διορθώθηκαν με το **gate budgets στη διαγραφή λογαριασμού** (έκδοση `2.3.6+13`, 23/11/2026)· τα **E51–E54** είναι ℹ️ INFO/LOW.
 > Τα **E22/E54** διορθώθηκαν ως **καθαρισμός νεκρού κώδικα + κείμενο διαλόγου** (έκδοση `2.3.7+14`, 23/11/2026).
+> Το **E56** διορθώθηκε με τη **migration σε `material_ui` 1.11.1** (70 imports + `GlobalMaterialLocalizations.delegates`, χωρίς version bump — 25/11/2026)· `flutter analyze` πλέον **0/0/0**.
 > **Εκτός σειράς (τεχνικό χρέος, χωρίς ορισμένη προτεραιότητα):** **E15** — 🔵 OPEN · **E55** — ℹ️ INFO.
 > Το **E10** έκλεισε ως **μη εφαρμόσιμο** (η λειτουργία `MessageBubble`/`ChatMessagesList` αφαιρέθηκε από την εφαρμογή — 23/11/2026).
 > **Εκκρεμεί εξωτερικός έλεγχος (δεν μπλοκάρει):** (α) ✅ deployed rules = repo rules (23/11/2026 — semantic diff 57=57), (β) ύπαρξη ήδη σπασμένων ζευγών στα δεδομένα — μόνο **read-only έλεγχος** (L23· καμία κανονική ενέργεια χρήστη δεν τα παράγει).
@@ -87,6 +88,7 @@
 | E53 | `BudgetModel.fromFirestore`: `amount as num` / `user_id as String` → legacy doc ρίχνει **όλο** τον listener | — | ℹ️ LOW | 2026-11-23 |
 | E54 | Διάλογος αρχειοθέτησης: «Οι **0** κινήσεις … διατηρούνται» όταν δεν υπάρχουν κινήσεις | — | ✅ FIXED | 2026-11-23 |
 | E55 | Windows artifact `assets/icons/subcategories/expense/desktop.ini` είναι **tracked** στο git (δεν ανήκει στο repo) | — | ℹ️ INFO | 2026-11-24 |
+| E56 | 72 `info` deprecations: `package:flutter/material.dart` → Material ως ξεχωριστό πακέτο (`material_ui`) | — | ✅ FIXED | 2026-11-25 |
 
 ### Λεπτομέρειες
 
@@ -355,6 +357,13 @@
 **E55 — Windows artifact στο git (INFO)**
 - Το `assets/icons/subcategories/expense/desktop.ini` είναι **tracked** (`git ls-files`), δημιουργήθηκε από τον Explorer σε Windows. Δεν επηρεάζει build ή runtime.
 - **Προτεινόμενη ενέργεια (δεν έγινε):** `git rm --cached "assets/icons/subcategories/expense/desktop.ini"` + γραμμή `desktop.ini` στο `.gitignore`. Απαιτεί έγκριση χρήστη (αλλαγή σε tracked αρχείο).
+
+**E56 — 72 info deprecations: `material.dart` → `material_ui` (FIXED 25/11/2026)**
+- **Αίτιο:** από τη Flutter 3.47 το Material αποσπάστηκε από το SDK σε ξεχωριστό πακέτο· το `package:flutter/material.dart` είναι `@Deprecated` (→ `package:material_ui/material_ui.dart`). Κάθε import έβγαζε 1 info, μαζί με τους 2 deprecated localization delegates του `main.dart` = **72 info** (70 αρχεία).
+- **✅ Διόρθωση:** `material_ui: ^1.11.1` στο `pubspec.yaml` (transitive `cupertino_ui` 1.1.7)· `dart fix --apply --code=migrate_design_widgets` → **70 imports** σε 70 αρχεία· `main.dart`: `localizationsDelegates: GlobalMaterialLocalizations.delegates` (καλύπτει Material + Cupertino + Widgets) και αφαίρεση του πλέον άχρηστου import `flutter_localizations`.
+- **Έλεγχος legacy εξαρτήσεων:** `fl_chart` (χρησιμοποιεί `Theme.of` μόνο στο `CandlestickChart`, που δεν χρησιμοποιούμε), `responsive_framework` (`Theme.of(context).platform` — σωστό fallback), `flutter_phoenix`/`nested` (καμία χρήση Material) → **κανένα** conflict τύπων (δύο αντίγραφα Material classes) και καμία ανάγκη για `MaterialUiCompatibilityBridge` (άλλωστε είναι deprecated).
+- **Επαλήθευση:** `flutter analyze` → **No issues found** (0/0/0)· `flutter test` → **238/238**· `build apk --debug` ✅ · `build web --release` ✅ · `build windows --release` ✅.
+- **Καμία** αλλαγή σε λογική/Firestore/έκδοση (`2.3.7+14` παραμένει)· backups: `backups/2026-11-25-material-ui/`.
 
 ## Πώς προσθέτω εύρημα
 

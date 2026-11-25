@@ -53,7 +53,7 @@ https://github.com/aristos62-bit/family_economy
 | Εντολή | Αναμενόμενο |
 |---|---|
 | `flutter pub get` | Εγκατάσταση dependencies |
-| `flutter analyze` | **0 errors / 0 warnings** — 72 `info` deprecations (`DESIGN.md` §9) |
+| `flutter analyze` | **0 errors / 0 warnings / 0 info** (No issues found) |
 | `flutter test` | **Όλα περνούν** (πλήθος: `DESIGN.md` §9) |
 | `flutter build apk --debug` | ✅ `√ Built build\app\outputs\flutter-apk\app-debug.apk` |
 | `flutter run -d windows` | Desktop build — απαιτεί VS 2026 18.1.1 + SDK 10.0.26100 (`DESIGN.md` §2.5) |
