@@ -30,7 +30,7 @@
 | Πλατφόρμα | Κατάσταση |
 |---|---|
 | Android | ✅ Επιβεβαιωμένο |
-| Windows | ✅ Επιβεβαιωμένο **μόνο** με VS 2026 18.1.1 + SDK 10.0.26100· ❌ στο τρέχον μηχάνημα (VS 2022 17.10.1 + SDK 10.0.22621 → LNK2019) |
+| Windows | ✅ Επιβεβαιωμένο με **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026)· ❌ με παλιότερο toolchain (VS 2022 17.10.1 + SDK 10.0.22621 → LNK2019) |
 | Web | ✅ Επιβεβαιωμένο |
 | iOS / macOS / Linux | ⚠️ Ο φάκελος υπάρχει, αλλά **χωρίς `Podfile`** → build μη επιβεβαιωμένο |
 
@@ -120,6 +120,7 @@ SemVer `MAJOR.MINOR.PATCH+BUILD` — η έκδοση αλλάζει **μόνο**
 | [`AGENTS.md`](AGENTS.md) | Κανόνες λειτουργίας για agents |
 | [`oldsessions.md`](oldsessions.md) | Ιστορικό: ευρετήριο κεφαλαίων (+ φάκελος [`oldsessions/`](oldsessions/)) |
 | [`error_list.md`](error_list.md) | Ευρήματα & εκκρεμότητες: κατάσταση και σειρά διόρθωσης |
+| [`new_material_fix.md`](new_material_fix.md) | Οδηγός migration `material_ui` για άλλα Flutter projects |
 | `docs/` | Legacy περιγραφές schema (import script) |
 | `data/*.json` | Δεδομένα εισαγωγής |
 

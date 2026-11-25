@@ -371,7 +371,7 @@
 - **Εύρημα (smoke test POCO X3, release):** η κάρτα «Έσοδα / Έξοδα» έδειχνε `Τρέχουσα: ╬£╬«╬╜╬▒╧é` αντί `Μήνας`. Το accessibility tree επιβεβαίωσε ότι η **αποθηκευμένη** τιμή (`graf1_period_<uid>`) ήταν UTF-8 bytes διαβασμένα ως **CP437** (`CE 9C CE AE CE BD CE B1 CF 82`), δηλαδή πρόβλημα δεδομένων παλιάς εγκατάστασης — όχι κώδικα ή localization (καμία ένδειξη σε analyze/test/build/logcat).
 - **Επίπτωση:** λάθος ετικέτα· η τιμή δεν ταίριαζε με τις επιλογές, άρα τα γραφήματα έπεφταν στο προεπιλεγμένο εύρος και η «Προβολή γραφημάτων» δεν έδειχνε επιλεγμένη περίοδο.
 - **✅ Διόρθωση:** νέο `core/utils/period_prefs.dart` (`PeriodPrefs`): `isValid` (γνωστές επιλογές + `Custom_YYYY-MM-DD_YYYY-MM-DD`), `repairEncoding` (CP437 → UTF-8, Latin-1/CP1252 → UTF-8, αποδοχή **μόνο** αν βγει έγκυρη περίοδος) και `load` που **ξαναγράφει** τη διορθωμένη τιμή (self-healing). Χρήση στα 2 σημεία ανάγνωσης: `general_view_page` (5 γραφήματα) και `view_option_page`.
-- **Επαλήθευση:** `flutter analyze` → **No issues found**· `flutter test` → **251/251** (+13 `period_prefs_test.dart`, με το πραγματικό χαλασμένο string)· καμία αλλαγή σε Firestore/έκδοση· backups: `backups/2026-11-25-e57-period-repair/`.
+- **Επαλήθευση:** `flutter analyze` → **No issues found**· `flutter test` → **251/251** (+13 `period_prefs_test.dart`, με το πραγματικό χαλασμένο string)· `flutter build apk --debug` ✅· καμία αλλαγή σε Firestore/έκδοση· backups: `backups/2026-11-25-e57-period-repair/`.
 
 ## Πώς προσθέτω εύρημα
 
