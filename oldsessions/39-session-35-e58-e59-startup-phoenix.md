@@ -69,4 +69,5 @@ flutter test    → +260: All tests passed!        (255 + 5 νέα)
 
 ## 7. Ανοιχτά
 
+- **Docs audit 25/11/2026 (commit `985fcbf`):** E58/E59 → ✅ FIXED με λεπτομέρειες + commit, DESIGN §4.1 ακριβείς γραμμές / §4.2 άδεια post-frame / §4.4 διατύπωση / §5.9 / νέο L36 (`dispose` δεν καλείται) / §3.1 **17** test αρχεία, AGENTS/README χωρίς αλλαγές.
 - **E60** (INFO): `DebugConfig._debug = false` σταθερό → `print`/`startup` δεν τυπώνουν τίποτα σε κανένα build (άρα και τα logs του L18 hardening είναι σιωπηλά). Πρόταση: `kDebugMode` ή `--dart-define`.
