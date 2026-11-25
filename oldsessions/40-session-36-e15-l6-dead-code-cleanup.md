@@ -33,11 +33,11 @@
 | `flutter analyze` | ✅ No issues found |
 | `flutter test` | ✅ **260/260** (ίδιο πλήθος — καμία δοκιμή δεν αφαιρέθηκε) |
 | `flutter build apk --debug` | ✅ |
-| Device tests (POCO X3, `9593c01e`) | ✅ βλ. `device test/` |
+| Device tests (POCO X3, `9593c01e`) | ✅ **17/17 PASS** — install/version, cold start, offline→online ×3 (chip + κανένα παλιό μήνυμα), footer έκδοσης, logcat 0 FATAL/ANR, logout + re-login με ακέραια δεδομένα (`device test/logs/e15_results.txt`, `device test/screenshots/e15_*.png`) |
 
 ### Εκκρεμότητες
 
-- **E61** (INFO): κεντρικά μηνύματα + διατύπωση «offline → θα συγχρονιστεί» — ιδέα χωρίς υλοποίηση.
+- **E61** (INFO): κεντρικά μηνύματα + διατύπωση «offline → θα συγχρονιστεί» — ιδέα χωρίς υλοποίηση· αποφασίστηκε να προχωρήσει **μόνο** με κανονική 4-βηματική πρόταση (το Firestore δεν δίνει συνολικό pending count· χρειάζονται αποφάσεις για νούμερο/θέση/timeout του `waitForPendingWrites()`).
 - **L11**: 181 άμεσα `SnackBar(...)` σε 27 αρχεία — καμία κεντρική πολιτική μηνυμάτων/a11y.
 - Επόμενη στη σειρά: **E5** (ντετερμινιστικά IDs onboarding).
 
