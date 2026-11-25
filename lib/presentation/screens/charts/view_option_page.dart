@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:family_economy/presentation/screens/charts/chart_registry.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
+import 'package:family_economy/core/utils/period_prefs.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
@@ -171,8 +172,13 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
       final keyPrefix = _periodKeyForChart(chartId);
       if (keyPrefix == null) continue;
 
-      final saved = prefs.getString('${keyPrefix}_period_${_userId!}');
-      _chartPeriods[chartId] = saved ?? _defaultPeriods[chartId]!;
+      // Self-healing: διορθώνει χαλασμένες τιμές (λάθος κωδικοποίηση) και τις
+      // ξαναγράφει σωστές.
+      _chartPeriods[chartId] = await PeriodPrefs.load(
+        prefs,
+        '${keyPrefix}_period_${_userId!}',
+        _defaultPeriods[chartId]!,
+      );
     }
 
     setState(() {});

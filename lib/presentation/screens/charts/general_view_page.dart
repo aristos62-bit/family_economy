@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:family_economy/presentation/screens/charts/chart_registry.dart';
 import 'package:family_economy/presentation/screens/charts/view_option_page.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
+import 'package:family_economy/core/utils/period_prefs.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 
@@ -118,12 +119,32 @@ class GeneralViewPageState extends State<GeneralViewPage> {
     final defaultOrder = availableCharts.map((c) => c.id).toList();
     final defaultVisibility = List.filled(availableCharts.length, true);
 
-    // Load periods for each chart
-    final period1 = prefs.getString('graf1_period_$userId') ?? 'Εβδομάδα';
-    final period2 = prefs.getString('graf2_period_$userId') ?? 'Μήνας';
-    final period3 = prefs.getString('graf3_period_$userId') ?? 'Εβδομάδα';
-    final period5 = prefs.getString('graf5_period_$userId') ?? 'Μήνας';
-    final period6 = prefs.getString('graf6_period_$userId') ?? 'Μήνας';
+    // Load periods for each chart (self-healing: διορθώνει χαλασμένες τιμές)
+    final period1 = await PeriodPrefs.load(
+      prefs,
+      'graf1_period_$userId',
+      'Εβδομάδα',
+    );
+    final period2 = await PeriodPrefs.load(
+      prefs,
+      'graf2_period_$userId',
+      'Μήνας',
+    );
+    final period3 = await PeriodPrefs.load(
+      prefs,
+      'graf3_period_$userId',
+      'Εβδομάδα',
+    );
+    final period5 = await PeriodPrefs.load(
+      prefs,
+      'graf5_period_$userId',
+      'Μήνας',
+    );
+    final period6 = await PeriodPrefs.load(
+      prefs,
+      'graf6_period_$userId',
+      'Μήνας',
+    );
 
     // Migration: Add new charts to existing installations
     List<String> finalOrder;
