@@ -4,7 +4,7 @@
 // Ρόλος: Κεντρική διαχείριση μηνυμάτων με accessibility & offline support
 // ============================================================
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';

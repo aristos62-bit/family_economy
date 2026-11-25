@@ -7,7 +7,7 @@
 // - Μία κύρια ενέργεια + προαιρετική δευτερεύουσα.
 // ============================================================
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class StartupErrorView extends StatelessWidget {
   const StartupErrorView({

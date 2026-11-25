@@ -3,7 +3,7 @@
 // Path: lib/presentation/screens/transactions/transactions_show_page.dart
 // ============================================================
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 // Core imports

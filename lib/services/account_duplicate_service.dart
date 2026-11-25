@@ -6,7 +6,7 @@
 // Το I/O της επαναφοράς ζει στο core/services/account_restore_service.dart.
 // ============================================================
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 

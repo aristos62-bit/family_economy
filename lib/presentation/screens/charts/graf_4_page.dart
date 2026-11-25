@@ -6,7 +6,7 @@
 // ✅ OPTIMIZED: Already uses real-time AccountsProvider
 // ============================================================
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:family_economy/providers/accounts_provider.dart';

@@ -3,7 +3,7 @@
 // Location: lib/presentation/screens/charts/chart_registry.dart
 // ============================================================
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:family_economy/presentation/screens/charts/graf_1_page.dart';
 import 'package:family_economy/presentation/screens/charts/graf_2_page.dart';
 import 'package:family_economy/presentation/screens/charts/graf_3_page.dart';

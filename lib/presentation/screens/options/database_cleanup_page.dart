@@ -8,7 +8,7 @@
 // ✅ Scrollable διάλογοι (resize / text scale 0.85–1.45)
 // ============================================================
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'package:family_economy/core/accessibility/accessibility_service.dart';

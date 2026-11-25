@@ -4,7 +4,7 @@
 // Ρόλος: Ημερολόγιο με real-time ενημέρωση εσόδων/εξόδων
 // ============================================================
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'package:family_economy/core/accessibility/accessibility_service.dart';

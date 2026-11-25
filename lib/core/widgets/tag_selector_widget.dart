@@ -8,7 +8,7 @@
 // ✅ Responsive: Wrap chips, tablet/mobile/desktop
 // ============================================================
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:family_economy/providers/tags_provider.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
