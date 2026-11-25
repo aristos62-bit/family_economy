@@ -21,10 +21,10 @@
 
 | | |
 |---|---|
-| Έκδοση | **2.3.7+14** |
-| Τελευταίο κεφάλαιο | **36** — E57: self-healing περίοδος γραφημάτων (2026-11-25) |
-| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **251/251** |
-| Επόμενη εκκρεμότητα | **L18** — `ErrorApp` «Επανεκκίνηση» → `Null check operator` (`error_list.md`) |
+| Έκδοση | **2.3.8+15** |
+| Τελευταίο κεφάλαιο | **37** — L18: πραγματικό retry στην οθόνη σφάλματος εκκίνησης (2026-11-25) |
+| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **253/253** |
+| Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`) |
 
 ## Κεφάλαια
 
@@ -66,14 +66,15 @@
 | 34 | 2026-11-24 | 31 | [Ευθυγράμμιση με remote & VS 2026](oldsessions/34-session-31-remote-sync-vs2026.md) | Το remote είχε ήδη τη migration + docs audit → `reset --mixed origin/main` (απόρριψη 3 τοπικών commits + διπλού κεφαλαίου 31)· μόνη επαληθευμένη διαφορά: `build windows --release` ✅ με VS 2026 18.1.1 (❌ μόνο με VS 2022 — L33)· JDK 21/22· commit `5786d58`, `HEAD == origin/main` |
 | 35 | 2026-11-25 | 32 | [E56: migration σε `material_ui`](oldsessions/35-session-32-material-ui-migration.md) | 72 info → **0**: `material_ui` 1.11.1, 70 imports μέσω `dart fix --code=migrate_design_widgets`, `GlobalMaterialLocalizations.delegates`· audit legacy πακέτων (fl_chart/responsive_framework) → κανένα conflict τύπων, χωρίς bridge· analyze 0/0/0, 238/238, apk/web/windows ✅, χωρίς version bump |
 | 36 | 2026-11-25 | 33 | [E57: self-healing περίοδος γραφημάτων](oldsessions/36-session-33-e57-period-prefs.md) | Smoke test POCO X3: `╬£╬«╬╜╬▒╧é` αντί `Μήνας` (UTF-8 ως CP437) → νέο `PeriodPrefs` (isValid + repair CP437/CP1252 + επανεγγραφή) στα 2 σημεία ανάγνωσης· 13 tests → **251/251**, analyze 0/0/0, apk ✅, χωρίς version bump· νέο `new_material_fix.md` (οδηγός migration για άλλα projects) |
+| 37 | 2026-11-25 | 34 | [L18: retry στην οθόνη σφάλματος](oldsessions/37-session-34-l18-errorapp-retry.md) | `Phoenix.rebirth` έξω από το `Phoenix` → `Null check`· εξαγωγή `_bootstrap` + stateful `ErrorApp` με «Δοκιμή ξανά» (guard `Firebase.apps`, best-effort settings, a11y, μετρητής προσπαθειών)· 253/253 tests, analyze 0/0/0, apk ✅· νέα E58/E59· v2.3.8+15 |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **36** (01–36) |
+| Κεφάλαια στον φάκελο | **37** (01–37) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1816** |
+| Σύνολο γραμμών κεφαλαίων | **1859** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 
