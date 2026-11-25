@@ -16,7 +16,7 @@
 |---|---|---|
 | Άδεια ειδοποιήσεων | **split**: `initialize(requestPermissions: false)` στην εκκίνηση, δημόσιο `requestPermissions()` μετά το πρώτο frame | η εκκίνηση δεν εξαρτάται από διάλογο του λειτουργικού |
 | Πολιτική theme/notifications | **best-effort** με όρια 4s / 6s | ήδη καταπίνονται εσωτερικά· hang ήταν το πραγματικό ρίσκο |
-| Connectivity | δημιουργία **μέσα** στη guarded ροή με `??=` | σήμερα διέρρεε (subscription χωρίς `dispose` στην error path) |
+| Connectivity | δημιουργία **μέσα** στη guarded ροή με `??=` (μία φορά ανά διεργασία) | πριν δημιουργούνταν πριν το `try`· το `dispose()` δεν καλείται έτσι κι αλλιώς (`.value` provider — L36) |
 | E59 βάθος | **πλήρης αφαίρεση** wrapper + `pubspec.yaml` + lock | πακέτο 3 ετών, 70 pub points, μηδενική χρήση |
 
 ## 3. Αλλαγές
@@ -24,7 +24,7 @@
 | Αρχείο | Αλλαγή |
 |---|---|
 | `lib/main.dart` | `main()` = `ensureInitialized` + `try { _startApplication() } catch { runApp(ErrorApp(onRetry: _startApplication)) }`· νέο δημόσιο `prepareStartup()` (`:63`) με injectable βήματα/χρόνους· `_startApplication()` (`:103`) = prepare + `_bootstrap`· module-level `_themeProvider` / `_connectivityService` (`??=`) / `_startupAttempted`· `resetStartupForTest()` (`:116`)· αφαίρεση import & `Phoenix` wrapper (πλέον `MaterialApp` απευθείας) |
-| `lib/services/notifications_service.dart` | `initialize({bool requestPermissions = true})` → οι 8 εσωτερικοί καλούντες αμετάβλητοι· `_initialized = true` πριν την άδεια· δημόσιο `requestPermissions()` |
+| `lib/services/notifications_service.dart` | `initialize({bool requestPermissions = true})` → ο μοναδικός άλλος καλών (`login_page.dart:184`, default `true`) μένει αμετάβλητος· `_initialized = true` πριν την άδεια· δημόσιο `requestPermissions()` (`:107`) |
 | `lib/presentation/screens/splash/splash_screen.dart` | `unawaited(NotificationsService().requestPermissions())` στην αρχή του `_initializeApp` (post-frame) + `dart:async` |
 | `pubspec.yaml` | αφαίρεση `flutter_phoenix: ^1.1.1`· version `2.3.10+17` |
 | `pubspec.lock` | `flutter pub get` → «These packages are no longer being depended on: flutter_phoenix 1.1.1», `-8` γραμμές (μόνο αυτό· το transitive `nested` 1.0.0 προέρχεται από άλλο πακέτο) |
@@ -57,9 +57,9 @@ flutter test    → +260: All tests passed!        (255 + 5 νέα)
 
 ## 5. Device smoke (POCO X3)
 
-- `app-release.apk` (85 MB) → install, cold start, footer `2.3.10 (build 17)`.
-- Διάλογος άδειας ειδοποιήσεων **μετά** το splash (πάνω σε πραγματική οθόνη).
-- logcat: FATAL 0, `Null check` 0, `Phoenix` 0.
+- `app-release.apk` (85 MB) → install (`versionCode=17`), cold start online και **offline** (banner OFFLINE με cached δεδομένα), footer `2.3.10 (build 17)`, rotation χωρίς crash.
+- Διάλογος άδειας ειδοποιήσεων: **δεν επαληθεύτηκε οπτικά** — η συσκευή τρέχει Android 12 (SDK 31), όπου το `POST_NOTIFICATIONS` δεν είναι runtime permission (υπάρχει από API 33). Η ροή καλύπτεται από κώδικα + unit tests.
+- logcat: FATAL 0, `Null check` 0, `Phoenix` 0. Λεπτομέρειες: `device test/E58_E59_device_tests.md`.
 
 ## 6. Μάθημα
 

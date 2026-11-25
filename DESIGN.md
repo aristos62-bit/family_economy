@@ -276,7 +276,7 @@ pubspec.yaml  (version: 2.3.10+17)        ← ΜΟΝΟ εδώ αλλάζει η 
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 16 αρχεία · **260** `test()`/`testWidgets()` |
+| Tests | 17 αρχεία · **260** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -284,7 +284,7 @@ pubspec.yaml  (version: 2.3.10+17)        ← ΜΟΝΟ εδώ αλλάζει η 
 
 ```
 lib/
-  main.dart                     # Entry point, Firebase init, MultiProvider, MaterialApp, ErrorApp
+  main.dart                     # Entry point, guarded startup (prepareStartup), Firebase init, MultiProvider, MaterialApp, ErrorApp
   firebase_options.dart         # Firebase config ανά πλατφόρμα (5 πλατφόρμες)
 
   core/
@@ -396,12 +396,12 @@ lib/
 |---|---|---|
 | 1 | `WidgetsFlutterBinding.ensureInitialized()` (το μόνο βήμα εκτός δοχείου — χωρίς binding δεν μπορεί να υπάρξει UI) | 28 |
 | 2 | `try { _startApplication() } catch → runApp(ErrorApp(onRetry: _startApplication))` (E58) | 31–42 |
-| 3 | `prepareStartup()` → `ThemeProvider.initialize()` με **όριο 4s**· σε throw/λήξη → log + default theme (**best-effort**) | 63–73 |
-| 4 | `NotificationsService().initialize(requestPermissions: false)` με **όριο 6s**· best-effort· η άδεια ζητείται μετά το πρώτο frame (`SplashScreen`) | 75–86 |
-| 5 | `ConnectivityService()` — δημιουργείται **μία φορά** (`??=`), μέσα στη guarded ροή· σφάλμα διαδίδεται | 93–95 |
-| 6 | `_bootstrap(...)` → `Firebase.initializeApp(options)` (`isRetry` → skip αν `Firebase.apps` δεν είναι κενό) | 103–122 · 125 · 133–137 |
+| 3 | `prepareStartup()` → `ThemeProvider.initialize()` με **όριο 4s**· σε throw/λήξη → log + default theme (**best-effort**) | 63–81 |
+| 4 | `NotificationsService().initialize(requestPermissions: false)` με **όριο 6s**· best-effort· η άδεια ζητείται μετά το πρώτο frame (`SplashScreen`) | 83–92 |
+| 5 | `ConnectivityService()` — δημιουργείται **μία φορά** (`??=`), μέσα στη guarded ροή· σφάλμα διαδίδεται | 94–96 |
+| 6 | `_bootstrap(...)` → `Firebase.initializeApp(options)` (`isRetry` → skip αν `Firebase.apps` δεν είναι κενό) | 109–113 · 125 · 134–139 |
 | 7 | `FirebaseAuth.authStateChanges().first` με **timeout 2s** → persisted user | 147–150 |
-| 8 | `Settings(persistenceEnabled: true, cacheSizeUnlimited)` — **best-effort** (L18) | 161–170 |
+| 8 | `Settings(persistenceEnabled: true, cacheSizeUnlimited)` — **best-effort** (L18) | 160–169 |
 | 9 | `FirebaseFirestore.setLoggingEnabled(DebugConfig.isDebug)` | 172 |
 | 10 | `runApp(MultiProvider(ThemeProvider, ConnectivityService) → MyApp)` | 175–189 |
 | 11 | Σε αποτυχία (connectivity/Firebase) → `ErrorApp`· το «Δοκιμή ξανά» καλεί ξανά το `_startApplication` (ίδια instances, κανένα διπλό listener) | 35–41 · 103–113 |
@@ -412,6 +412,7 @@ lib/
 |---|---|
 | Animation | 1500 ms (γίνεται 1 ms αν `disableAnimations` / reduce motion) |
 | `precacheImage` | `assets/icons/finance1.webp` (logo) |
+| Άδεια ειδοποιήσεων | `NotificationsService().requestPermissions()` **post-frame** (χωρίς `await`) — δεν μπλοκάρει την εκκίνηση (E58) |
 | Καθυστέρηση πριν τη μετάβαση | **Καμία**· 2500 ms **μόνο** όταν `accessibleNavigation` (να προλάβει να τελειώσει η ανακοίνωση TalkBack) |
 | Μετάβαση | `Navigator.pushReplacement → AppStart` (πάντα· το `AppStart` αποφασίζει Login/Home) |
 
@@ -437,7 +438,7 @@ lib/
 - **E59 (`2.3.10+17`):** ο `Phoenix` wrapper και η εξάρτηση `flutter_phoenix` **αφαιρέθηκαν** — το `MyApp.build` επιστρέφει απευθείας το `MaterialApp`. Καμία αναφορά δεν έμεινε σε `lib/`/`test/` (`pubspec.lock`: μόνο το `flutter_phoenix` έφυγε, το transitive `nested` προέρχεται από άλλο πακέτο).
 - `ErrorApp` → κοινό `StartupErrorView` (`core/widgets/startup_error_view.dart`)· **ίδια** κείμενα, ίδιο `Scaffold` background.
 - ✅ Το «Επανεκκίνηση» πετούσε `Null check` — **διορθώθηκε 25/11/2026 (L18)**: το `ErrorApp` είναι πλέον stateful, το κουμπί «Δοκιμή ξανά» καλεί ξανά την πλήρη εκκίνηση (`_startApplication`, `main.dart:103`) και ανοίγει την εφαρμογή· σε αποτυχία δείχνει το νέο σφάλμα + μετρητή προσπαθειών. Δεν υπάρχει πια `Phoenix.rebirth`.
-- **E58 (`2.3.10+17`):** καμία αρχικοποίηση δεν μένει εκτός δοχείου σφάλματος. Το `prepareStartup` (`main.dart:63`) τρέχει theme (όριο 4s) και notifications (όριο 6s) **best-effort** — σε throw/λήξη γράφει log και συνεχίζει· το `ConnectivityService` δημιουργείται μία φορά (`??=`) μέσα στην ίδια ροή, ώστε ένα σφάλμα να οδηγεί σε `ErrorApp` αντί για κενή οθόνη. Η διαρροή του παλιού `ConnectivityService()` (δημιουργία στο `main` χωρίς `dispose` στην error path) εξαλείφεται. Η άδεια ειδοποιήσεων ζητείται **μετά το πρώτο frame** (`SplashScreen`, `notifications_service.dart` → δημόσιο `requestPermissions()`), όχι πριν το `runApp`.
+- **E58 (`2.3.10+17`):** καμία αρχικοποίηση δεν μένει εκτός δοχείου σφάλματος. Το `prepareStartup` (`main.dart:63`) τρέχει theme (όριο 4s) και notifications (όριο 6s) **best-effort** — σε throw/λήξη γράφει log και συνεχίζει· το `ConnectivityService` δημιουργείται **μία φορά ανά διεργασία** (`??=`, `main.dart:94-96`) μέσα στην ίδια ροή, ώστε ένα σφάλμα να οδηγεί σε `ErrorApp` αντί για κενή οθόνη και το «Δοκιμή ξανά» να μην προσθέτει δεύτερο instance/listener. Η άδεια ειδοποιήσεων ζητείται **μετά το πρώτο frame** (`SplashScreen`, `notifications_service.dart` → δημόσιο `requestPermissions()`), όχι πριν το `runApp`.
 - **Retry hardening (`2.3.9+16`, μετά από code review):** η προσπάθεια έχει όριο **20s** (`Future.timeout` + `ignore()` ώστε μια καθυστερημένη ολοκλήρωση να μη βγει uncaught) και σε λήξη εμφανίζεται σχετικό μήνυμα αντί για μόνιμο «Νέα προσπάθεια…»· το κουμπί είναι **disabled** όσο τρέχει (`StartupErrorView.primaryEnabled`, default `true` ώστε το `AppStart` να μη μεταβληθεί)· κάθε αποτυχία/λήξη γράφεται με `DebugConfig.print`.
 - `localizationsDelegates`: Material/Widgets/Cupertino.
 - `supportedLocales`: `el-GR` (προεπιλογή), `en-US` (fallback).
@@ -542,7 +543,7 @@ lib/
 
 ### 5.9 Connectivity & accessibility
 
-- `ConnectivityService`: 2s debounce → `onSyncComplete` → `MessageService.showSyncComplete`.
+- `ConnectivityService`: μία φορά ανά διεργασία από `prepareStartup` (`main.dart:94-96`)· 2s debounce → `onSyncComplete` → `MessageService.showSyncComplete`. Το `dispose()` δεν καλείται (`.value` provider — L36).
 - `AccessibilityService`: χρησιμοποιείται σε **60** αρχεία (semantics/ανακοινώσεις).
 - `AnnouncementOverlay` στο `MaterialApp.builder` (μαζί με `TextScaler` clamp 0.85–1.45).
 
@@ -1041,6 +1042,7 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L33 | **Windows build:** με VS 2022 17.10.1 + Windows SDK 10.0.22621.0 το link αποτυγχάνει (LNK2019/LNK1120: `__std_*`, `_Cnd_timedwait_for_unchecked`, `_Avx2WmemEnabled` από Firebase C++ SDK 13.13.1). Απαιτείται VS 2026 18.1.1 + SDK 10.0.26100 (flutterfire #17270) — ✅ **επιβεβαιωμένο 24/11/2026**: και τα τρία builds (apk/web/windows release) περνούν | §2.5 |
 | L34 | **KGP:** `file_picker`, `firebase_auth`, `firebase_core`, `package_info_plus`, `shared_preferences_android` εφαρμόζουν ακόμα Kotlin Gradle Plugin· μελλοντική Flutter θα αποτύχει μέχρι να υιοθετήσουν Built-in Kotlin | §2.1 |
 | L35 | **✅ Διορθώθηκε 25/11/2026 (E56)** — migration σε `material_ui` **1.11.1**: 70 imports (`lib/` + `test/`) → `package:material_ui/material_ui.dart` + `GlobalMaterialLocalizations.delegates` στο `main.dart`. Το `package:flutter/material.dart` παραμένει deprecated στο SDK, αλλά **δεν** χρησιμοποιείται πλέον από τον κώδικα της εφαρμογής | §9.1 |
+| L36 | `ConnectivityService`: το `dispose()` (ακύρωση debounce timer + stream subscription, `connectivity_service.dart:120-125`) **δεν καλείται** πουθενά — ο provider χρησιμοποιεί `.value` (`main.dart:182-184`) και το `_MyAppState.dispose` μηδενίζει μόνο το `onSyncComplete`. Σκόπιμο singleton που ζει όσο η διεργασία· επίπτωση μόνο σε hot-restart/tests, καμία στη λειτουργία | §4.1, §5.9 |
 
 ---
 

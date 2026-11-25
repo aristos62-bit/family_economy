@@ -28,9 +28,9 @@
 > Τα **E22/E54** διορθώθηκαν ως **καθαρισμός νεκρού κώδικα + κείμενο διαλόγου** (έκδοση `2.3.7+14`, 23/11/2026).
 > Το **E56** διορθώθηκε με τη **migration σε `material_ui` 1.11.1** (70 imports + `GlobalMaterialLocalizations.delegates`, χωρίς version bump — 25/11/2026)· `flutter analyze` πλέον **0/0/0**.
 > Το **E57** διορθώθηκε με **self-healing ανάγνωση της περιόδου γραφημάτων** (`PeriodPrefs`: επιδιόρθωση CP437/CP1252 + επανεγγραφή, 13 tests — 25/11/2026).
-> **Εκτός σειράς (τεχνικό χρέος, χωρίς ορισμένη προτεραιότητα):** **E15** — 🔵 OPEN · **E55** — ℹ️ INFO.
+> **Εκτός σειράς (τεχνικό χρέος, χωρίς ορισμένη προτεραιότητα):** **E15** — 🔵 OPEN · **E55**, **E60** — ℹ️ INFO.
 > Το **E10** έκλεισε ως **μη εφαρμόσιμο** (η λειτουργία `MessageBubble`/`ChatMessagesList` αφαιρέθηκε από την εφαρμογή — 23/11/2026).
-> Τα **E58/E59** προέκυψαν από την ανάλυση του **L18** (25/11/2026): το **E58** 🔵 OPEN (ίδια περιοχή, δεν διορθώνεται μαζί του), το **E59** ℹ️ INFO.
+> Τα **E58/E59** προέκυψαν από την ανάλυση του **L18** (25/11/2026) και ✅ διορθώθηκαν στην `2.3.10+17` (λεπτομέρειες παρακάτω· νέο **E60** ℹ️ INFO από τον ίδιο έλεγχο).
 > **Εκκρεμεί εξωτερικός έλεγχος (δεν μπλοκάρει):** (α) ✅ deployed rules = repo rules (23/11/2026 — semantic diff 57=57), (β) ύπαρξη ήδη σπασμένων ζευγών στα δεδομένα — μόνο **read-only έλεγχος** (L23· καμία κανονική ενέργεια χρήστη δεν τα παράγει).
 
 ## Ευρήματα
@@ -94,8 +94,8 @@
 | E55 | Windows artifact `assets/icons/subcategories/expense/desktop.ini` είναι **tracked** στο git (δεν ανήκει στο repo) | — | ℹ️ INFO | 2026-11-24 |
 | E56 | 72 `info` deprecations: `package:flutter/material.dart` → Material ως ξεχωριστό πακέτο (`material_ui`) | — | ✅ FIXED | 2026-11-25 |
 | E57 | Χαλασμένη τιμή περιόδου γραφήματος στο SharedPreferences (`╬£╬«╬╜╬▒╧é` αντί `Μήνας` — UTF-8 bytes ως CP437) | — | ✅ FIXED | 2026-11-25 |
-| E58 | `ThemeProvider.initialize()` / `NotificationsService().initialize()` τρέχουν **έξω** από το `try` της εκκίνησης → αποτυχία = uncaught exception χωρίς οθόνη σφάλματος | `2.3.10+17` | ✅ FIXED | 2026-11-25 |
-| E59 | Μετά τη διόρθωση του L18 το `Phoenix` (`main.dart:172`) και η εξάρτηση `flutter_phoenix` δεν έχουν καμία χρήση (νεκρός κώδικας) | `2.3.10+17` | ✅ FIXED | 2026-11-25 |
+| E58 | `ThemeProvider.initialize()` / `NotificationsService().initialize()` τρέχουν **έξω** από το `try` της εκκίνησης → αποτυχία = uncaught exception χωρίς οθόνη σφάλματος | — | ✅ FIXED | 2026-11-25 |
+| E59 | Μετά τη διόρθωση του L18 το `Phoenix` (`main.dart`, πριν την αφαίρεση) και η εξάρτηση `flutter_phoenix` δεν είχαν καμία χρήση (νεκρός κώδικας) | — | ✅ FIXED | 2026-11-25 |
 | E60 | `DebugConfig._debug = false` σταθερό → `DebugConfig.print/startup` δεν τυπώνουν τίποτα, σε κανένα build (και τα logs του L18 hardening) | — | ℹ️ INFO | 2026-11-25 |
 
 ### Λεπτομέρειες
@@ -379,15 +379,20 @@
 - **✅ Διόρθωση:** νέο `core/utils/period_prefs.dart` (`PeriodPrefs`): `isValid` (γνωστές επιλογές + `Custom_YYYY-MM-DD_YYYY-MM-DD`), `repairEncoding` (CP437 → UTF-8, Latin-1/CP1252 → UTF-8, αποδοχή **μόνο** αν βγει έγκυρη περίοδος) και `load` που **ξαναγράφει** τη διορθωμένη τιμή (self-healing). Χρήση στα 2 σημεία ανάγνωσης: `general_view_page` (5 γραφήματα) και `view_option_page`.
 - **Επαλήθευση:** `flutter analyze` → **No issues found**· `flutter test` → **251/251** (+13 `period_prefs_test.dart`, με το πραγματικό χαλασμένο string)· `flutter build apk --debug` ✅· καμία αλλαγή σε Firestore/έκδοση· backups: `backups/2026-11-25-e57-period-repair/`.
 
-**E58 — Αρχικοποιήσεις εκτός δοχείου σφάλματος (OPEN 25/11/2026)**
-- Το `main.dart:34` (`themeProvider.initialize()`) και το `main.dart:38` (`NotificationsService().initialize()`) εκτελούνται **πριν** το `try` που ξεκινά στο `main.dart:44` και καταλήγει στην οθόνη σφάλματος (`main.dart:51`).
-- Επίπτωση: εξαίρεση σε ένα από τα δύο = uncaught exception → ο χρήστης **δεν** βλέπει ούτε «Σφάλμα Αρχικοποίησης» ούτε το κουμπί επανάληψης (λευκή/μαύρη οθόνη).
-- **Γιατί δεν διορθώνεται μαζί με το L18** (απόφαση 2Α, 25/11/2026): το retry της οθόνης σφάλματος θα ξανάτρεχε `NotificationsService().initialize()` (singleton) — διπλή αρχικοποίηση που δεν έχει ελεγχθεί· το ρίσκο δεν ανήκει σε διόρθωση PATCH.
-- Προτεινόμενη διόρθωση: δικό του `try/catch` γύρω από τις δύο κλήσεις, που οδηγεί στο `ErrorApp` αντί να ρίχνει το `main()`, με έλεγχο idempotency της `NotificationsService`.
+**E58 — Αρχικοποιήσεις εκτός δοχείου σφάλματος (FIXED 25/11/2026, `2.3.10+17`, commit `5cd74c3`)**
+- Πριν: το `themeProvider.initialize()`, το `NotificationsService().initialize()` και το `ConnectivityService()` εκτελούνταν **πριν** το `try` της εκκίνησης → εξαίρεση ή κόλλημα = uncaught exception/κενή οθόνη, χωρίς «Σφάλμα Αρχικοποίησης» και κουμπί επανάληψης.
+- Διόρθωση: `main()` = `WidgetsFlutterBinding.ensureInitialized()` + `try { _startApplication() } catch { runApp(ErrorApp(onRetry: _startApplication)) }`· νέο `prepareStartup()` (`lib/main.dart:63`) τρέχει theme (όριο **4s**) και notifications (όριο **6s**) **best-effort** και δημιουργεί το `ConnectivityService` **μία φορά ανά διεργασία** (`??=`, `:95`) μέσα στη guarded ροή, ώστε σφάλμα εκεί να οδηγεί σε `ErrorApp` και το retry να μη διπλασιάζει listeners.
+- Άδεια ειδοποιήσεων: `initialize({requestPermissions = false})` στην εκκίνηση + δημόσιο `requestPermissions()` που καλείται **μετά το πρώτο frame** από το `SplashScreen` (`unawaited`), ώστε η εκκίνηση να μην περιμένει διάλογο του λειτουργικού.
+- Επαλήθευση: 5 νέα unit tests (`test/unit/core/startup/prepare_startup_test.dart`)· `flutter test` **260/260**· `flutter analyze` **No issues found**· device POCO X3: cold start online/offline χωρίς κενή οθόνη, logcat FATAL/Null check 0 (`device test/E58_E59_device_tests.md`).
 
-**E59 — `Phoenix` χωρίς χρήση (INFO 25/11/2026)**
-- Μετά τη διόρθωση του L18, το `Phoenix.rebirth` δεν καλείται πουθενά (η μοναδική κλήση ήταν στο παλιό `ErrorApp`) → το wrapper `Phoenix` (`main.dart:172`) και η εξάρτηση `flutter_phoenix` (`pubspec.yaml`) μένουν **νεκρός κώδικας**, όπως το `biometric_gate`/`recurring_notifications_service` (L6).
-- Καμία επίπτωση σε build ή runtime. Η αφαίρεση αγγίζει `pubspec.yaml` + `pubspec.lock` → μόνο σε ξεχωριστή φάση, με πλήρη gates.
+**E59 — `Phoenix` χωρίς χρήση (FIXED 25/11/2026, `2.3.10+17`, commit `5cd74c3`)**
+- Πριν: μετά το L18 το `Phoenix.rebirth` δεν καλούνταν πουθενά → wrapper `Phoenix` (`main.dart:172` πριν την αφαίρεση) + εξάρτηση `flutter_phoenix` (`pubspec.yaml:40`) ήταν νεκρός κώδικας.
+- Διόρθωση: αφαιρέθηκαν και τα δύο — το `MyApp.build` επιστρέφει απευθείας το `MaterialApp`· `pubspec.lock` έχασε μόνο το `flutter_phoenix` (−8 γραμμές, το transitive `nested` προέρχεται από άλλο πακέτο).
+- Επαλήθευση: `flutter analyze` 0/0/0, `flutter test` 260/260, release APK + device smoke (rotation χωρίς crash, `Phoenix` 0 στο logcat).
+
+**E60 — `DebugConfig` σιωπηλό σε όλα τα builds (INFO 25/11/2026)**
+- `_debug = false` σταθερό (`lib/core/utils/debug_config.dart:6`) → `DebugConfig.print`/`startup` **δεν τυπώνουν τίποτα**, άρα και τα logs του L18 hardening / E58 είναι σιωπηλά.
+- Καμία επίπτωση σε λειτουργία· προτείνεται διακόπτης ανά build (`kDebugMode` ή `--dart-define`) όταν χρειαστεί διάγνωση σε device.
 
 ## Πώς προσθέτω εύρημα
 
