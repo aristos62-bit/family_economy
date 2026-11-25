@@ -49,7 +49,7 @@ class NotificationsService {
   // INITIALIZATION
   // ============================================================
 
-  Future<void> initialize() async {
+  Future<void> initialize({bool requestPermissions = true}) async {
     if (_initialized) {
       DebugConfig.print('✅ Notifications already initialized');
       return;
@@ -88,10 +88,13 @@ class NotificationsService {
         onDidReceiveNotificationResponse: _onNotificationTapped,
       );
 
-      // ✅ Request permissions
-      await _requestPermissions();
-
       _initialized = true;
+
+      // ✅ Η άδεια ζητείται μόνο όταν το ζητήσει ο καλών (E58: η εκκίνηση
+      // δεν περιμένει διάλογο του λειτουργικού πριν υπάρξει UI).
+      if (requestPermissions) {
+        await _requestPermissions();
+      }
       // DebugConfig.print('✅ NotificationsService initialized');
     } catch (e) {
       DebugConfig.print('🔴 Error initializing notifications: $e');
@@ -99,6 +102,9 @@ class NotificationsService {
       return;
     }
   }
+
+  /// Δημόσια αίτηση άδειας ειδοποιήσεων (βλ. `SplashScreen` — E58).
+  Future<bool> requestPermissions() => _requestPermissions();
 
   // ============================================================
   // PERMISSIONS

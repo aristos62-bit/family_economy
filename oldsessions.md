@@ -21,9 +21,9 @@
 
 | | |
 |---|---|
-| Έκδοση | **2.3.9+16** |
-| Τελευταίο κεφάλαιο | **38** — L18 hardening: timeout / disabled κουμπί / logging (2026-11-25) |
-| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **255/255** |
+| Έκδοση | **2.3.10+17** |
+| Τελευταίο κεφάλαιο | **39** — E58/E59: startup error container & νεκρό Phoenix (2026-11-25) |
+| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **260/260** |
 | Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`) |
 
 ## Κεφάλαια
@@ -68,14 +68,15 @@
 | 36 | 2026-11-25 | 33 | [E57: self-healing περίοδος γραφημάτων](oldsessions/36-session-33-e57-period-prefs.md) | Smoke test POCO X3: `╬£╬«╬╜╬▒╧é` αντί `Μήνας` (UTF-8 ως CP437) → νέο `PeriodPrefs` (isValid + repair CP437/CP1252 + επανεγγραφή) στα 2 σημεία ανάγνωσης· 13 tests → **251/251**, analyze 0/0/0, apk ✅, χωρίς version bump· νέο `new_material_fix.md` (οδηγός migration για άλλα projects) |
 | 37 | 2026-11-25 | 34 | [L18: retry στην οθόνη σφάλματος](oldsessions/37-session-34-l18-errorapp-retry.md) | `Phoenix.rebirth` έξω από το `Phoenix` → `Null check`· εξαγωγή `_bootstrap` + stateful `ErrorApp` με «Δοκιμή ξανά» (guard `Firebase.apps`, best-effort settings, a11y, μετρητής προσπαθειών)· 253/253 tests, analyze 0/0/0, apk ✅· νέα E58/E59· v2.3.8+15 |
 | 38 | 2026-11-25 | 34b | [L18 hardening: timeout & disabled κουμπί](oldsessions/38-session-34b-l18-hardening.md) | Code review → 3 should-fix: `_retryTimeout` 20s με `ignore()`/`timeout()` + μήνυμα λήξης, `DebugConfig.print` σε αποτυχία/λήξη, `StartupErrorView.primaryEnabled` (default `true`, `AppStart` αμετάβλητο)→ 255/255 tests, analyze 0/0/0· v2.3.9+16 |
+| 39 | 2026-11-25 | 35 | [E58/E59: startup error container & νεκρό Phoenix](oldsessions/39-session-35-e58-e59-startup-phoenix.md) | `prepareStartup()` με per-step timeouts (theme 4s, notifications 6s, best-effort) + lazy `ConnectivityService ??=` μέσα στη guarded ροή + split άδειας ειδοποιήσεων (post-frame στο `SplashScreen`)· αφαίρεση `Phoenix` + `flutter_phoenix` (lock −8 γρ.)· 260/260 tests, analyze 0/0/0, APK/device ✅· v2.3.10+17· νέο E60 |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **38** (01–38) |
+| Κεφάλαια στον φάκελο | **39** (01–39) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1909** |
+| Σύνολο γραμμών κεφαλαίων | **1972** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/presentation/auth/app_start.dart';
+import 'package:family_economy/services/notifications_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -66,6 +69,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   // ✅ ΒΕΛΤΙΩΜΕΝΗ ΜΕΘΟΔΟΣ: Χωρίς hardcoded delays
   Future<void> _initializeApp() async {
+    // ✅ E58: η άδεια ειδοποιήσεων ζητείται μετά το πρώτο frame, όχι πριν το
+    // `runApp` — η εκκίνηση δεν περιμένει διάλογο του λειτουργικού.
+    unawaited(NotificationsService().requestPermissions());
+
     try {
       await precacheImage(
         const AssetImage('assets/icons/finance1.webp'),

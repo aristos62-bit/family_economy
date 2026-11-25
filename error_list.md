@@ -12,10 +12,9 @@
 | 1 | Απόφαση: ντετερμινιστικά IDs στο onboarding για ασφάλεια σε offline multi-device | E5 |
 | 2 | `MessageService` ανενεργό + `L6` | E15/L6 |
 | 3 | Θωράκιση μη ταυτοποιήσιμου peer (fail-closed) — αμυντικό κενό, όχι επισκευή | L23 |
-| 4 | Αρχικοποιήσεις πριν το Firebase εκτός δοχείου σφάλματος (ίδια περιοχή με L18) | E58 |
-| 5 | Καθαρισμός `Phoenix` / `flutter_phoenix` (νεκρός κώδικας μετά το L18) | E59 |
 
 > **L18** ✅ διορθώθηκε 25/11/2026 (`2.3.8+15`) — το «Δοκιμή ξανά» ξανατρέχει την αρχικοποίηση (λεπτομέρειες: `DESIGN.md` §4.4, §11 L18). **Hardening `2.3.9+16`:** timeout 20s, disabled κουμπί όσο τρέχει, debug log σε αποτυχία/λήξη.
+> **E58/E59** ✅ διορθώθηκαν 25/11/2026 (`2.3.10+17`): όλη η εκκίνηση (theme/notifications/connectivity) μπήκε σε δοχείο σφάλματος με per-step timeouts και η άδεια ειδοποιήσεων ζητείται μετά το πρώτο frame· το `Phoenix` + `flutter_phoenix` αφαιρέθηκαν.
 
 > Τα E6 και E8 είναι κλειστά (σκόπιμη συμπεριφορά / εγγενής περιορισμός) — δεν περιμένουν ενέργεια.
 > Τα **E11**, **E13**, **E24** διορθώθηκαν μαζί (έκδοση `2.2.0+6`, 21/11/2026)· τα **E18/E21/E23/E25** είναι ℹ️ INFO.
@@ -95,8 +94,9 @@
 | E55 | Windows artifact `assets/icons/subcategories/expense/desktop.ini` είναι **tracked** στο git (δεν ανήκει στο repo) | — | ℹ️ INFO | 2026-11-24 |
 | E56 | 72 `info` deprecations: `package:flutter/material.dart` → Material ως ξεχωριστό πακέτο (`material_ui`) | — | ✅ FIXED | 2026-11-25 |
 | E57 | Χαλασμένη τιμή περιόδου γραφήματος στο SharedPreferences (`╬£╬«╬╜╬▒╧é` αντί `Μήνας` — UTF-8 bytes ως CP437) | — | ✅ FIXED | 2026-11-25 |
-| E58 | `ThemeProvider.initialize()` / `NotificationsService().initialize()` τρέχουν **έξω** από το `try` της εκκίνησης → αποτυχία = uncaught exception χωρίς οθόνη σφάλματος | — | 🔵 OPEN | 2026-11-25 |
-| E59 | Μετά τη διόρθωση του L18 το `Phoenix` (`main.dart:172`) και η εξάρτηση `flutter_phoenix` δεν έχουν καμία χρήση (νεκρός κώδικας) | — | ℹ️ INFO | 2026-11-25 |
+| E58 | `ThemeProvider.initialize()` / `NotificationsService().initialize()` τρέχουν **έξω** από το `try` της εκκίνησης → αποτυχία = uncaught exception χωρίς οθόνη σφάλματος | `2.3.10+17` | ✅ FIXED | 2026-11-25 |
+| E59 | Μετά τη διόρθωση του L18 το `Phoenix` (`main.dart:172`) και η εξάρτηση `flutter_phoenix` δεν έχουν καμία χρήση (νεκρός κώδικας) | `2.3.10+17` | ✅ FIXED | 2026-11-25 |
+| E60 | `DebugConfig._debug = false` σταθερό → `DebugConfig.print/startup` δεν τυπώνουν τίποτα, σε κανένα build (και τα logs του L18 hardening) | — | ℹ️ INFO | 2026-11-25 |
 
 ### Λεπτομέρειες
 

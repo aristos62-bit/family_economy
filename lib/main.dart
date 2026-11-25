@@ -10,7 +10,6 @@ import 'package:family_economy/core/theme/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
-import 'package:flutter_phoenix/flutter_phoenix.dart';
 
 // ✅ Offline support imports
 import 'package:family_economy/core/services/connectivity_service.dart';
@@ -29,36 +28,96 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   DebugConfig.startup("APP START");
 
-  // Φόρτωση theme
-  final themeProvider = ThemeProvider();
-  await themeProvider.initialize();
-  DebugConfig.startup("ThemeProvider initialized");
-
-  // ✅ ΝΕΕΣ ΓΡΑΜΜΕΣ: Initialize NotificationsService
-  await NotificationsService().initialize();
-  DebugConfig.startup("NotificationsService initialized");
-
-  // ✅ ΝΕΟΣ: Create ConnectivityService instance
-  final connectivityService = ConnectivityService();
-  DebugConfig.startup("ConnectivityService created");
   try {
-    await _bootstrap(
-      themeProvider: themeProvider,
-      connectivityService: connectivityService,
-    );
+    await _startApplication();
   } catch (e) {
     DebugConfig.print('Firebase initialization error: $e');
     runApp(
       ErrorApp(
         error: e.toString(),
-        onRetry: () => _bootstrap(
-          themeProvider: themeProvider,
-          connectivityService: connectivityService,
-          isRetry: true,
-        ),
+        onRetry: _startApplication,
       ),
     );
   }
+}
+
+// ✅ E58: μία φορά ανά διεργασία — το «Δοκιμή ξανά» τα επαναχρησιμοποιεί.
+ThemeProvider? _themeProvider;
+ConnectivityService? _connectivityService;
+bool _startupAttempted = false;
+
+const Duration _themeInitTimeout = Duration(seconds: 4);
+const Duration _notificationsInitTimeout = Duration(seconds: 6);
+
+typedef StartupDependencies = ({
+  ThemeProvider themeProvider,
+  ConnectivityService connectivityService,
+});
+
+/// Εκτελεί τις βοηθητικές αρχικοποιήσεις **μέσα** στο δοχείο σφάλματος (E58).
+///
+/// Theme/notifications είναι best-effort: σε σφάλμα ή λήξη χρόνου
+/// καταγράφονται και η εκκίνηση συνεχίζει (ο χρήστης δεν χάνει την εφαρμογή
+/// για ένα μη κρίσιμο βήμα). Η δημιουργία του [ConnectivityService] διαδίδει
+/// το σφάλμα, ώστε να εμφανιστεί η οθόνη `ErrorApp` αντί για κενή οθόνη.
+Future<StartupDependencies> prepareStartup({
+  Future<void> Function()? initTheme,
+  Future<void> Function()? initNotifications,
+  ConnectivityService Function()? createConnectivity,
+  Duration themeTimeout = _themeInitTimeout,
+  Duration notificationsTimeout = _notificationsInitTimeout,
+}) async {
+  final theme = _themeProvider ??= ThemeProvider();
+
+  if (!theme.isInitialized) {
+    try {
+      await (initTheme ?? theme.initialize)().timeout(themeTimeout);
+      DebugConfig.startup("ThemeProvider initialized");
+    } on TimeoutException {
+      DebugConfig.print('⚠️ Theme init timed out — continuing with defaults');
+    } catch (e) {
+      DebugConfig.print('⚠️ Theme init failed (continuing): $e');
+    }
+  }
+
+  final notificationsInit = initNotifications ??
+      () => NotificationsService().initialize(requestPermissions: false);
+  try {
+    await notificationsInit().timeout(notificationsTimeout);
+    DebugConfig.startup("NotificationsService initialized");
+  } on TimeoutException {
+    DebugConfig.print('⚠️ Notifications init timed out — continuing');
+  } catch (e) {
+    DebugConfig.print('⚠️ Notifications init failed (continuing): $e');
+  }
+
+  final connectivity =
+      _connectivityService ??= (createConnectivity ?? ConnectivityService.new)();
+  DebugConfig.startup("ConnectivityService ready");
+
+  return (themeProvider: theme, connectivityService: connectivity);
+}
+
+/// Πλήρης εκκίνηση: βοηθητικές αρχικοποιήσεις + Firebase. Καλείται και από
+/// το «Δοκιμή ξανά» της [ErrorApp]· όλα τα βήματα είναι επαναχρησιμοποιήσιμα.
+Future<void> _startApplication() async {
+  final isRetry = _startupAttempted;
+  _startupAttempted = true;
+
+  final deps = await prepareStartup();
+
+  await _bootstrap(
+    themeProvider: deps.themeProvider,
+    connectivityService: deps.connectivityService,
+    isRetry: isRetry,
+  );
+}
+
+@visibleForTesting
+void resetStartupForTest() {
+  _themeProvider = null;
+  _connectivityService = null;
+  _startupAttempted = false;
 }
 
 /// Αρχικοποίηση Firebase/Firestore και εκκίνηση της εφαρμογής.
@@ -169,41 +228,39 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     final tp = context.watch<ThemeProvider>();
 
-    return Phoenix(
-      child: MaterialApp(
-        // ✅ ΝΕΟΣ: Global navigator key
-        navigatorKey: navigatorKey,
-        debugShowCheckedModeBanner: false,
+    return MaterialApp(
+      // ✅ ΝΕΟΣ: Global navigator key
+      navigatorKey: navigatorKey,
+      debugShowCheckedModeBanner: false,
 
-        // ✅ Localization support for Greek
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        supportedLocales: const [
-          Locale('el', 'GR'), // Greek
-          Locale('en', 'US'), // English (fallback)
-        ],
+      // ✅ Localization support for Greek
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: const [
+        Locale('el', 'GR'), // Greek
+        Locale('en', 'US'), // English (fallback)
+      ],
 
-        // ✅ Χρησιμοποιούμε τα themes σου
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: tp.themeMode,
+      // ✅ Χρησιμοποιούμε τα themes σου
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: tp.themeMode,
 
-        // ✅ Προστασία text scaling + Offline Banner
-        builder: (context, child) {
-          final mediaQuery = MediaQuery.of(context);
-          final textScaler = TextScaler.linear(
-            mediaQuery.textScaler.scale(1.0).clamp(0.85, 1.45),
-          );
+      // ✅ Προστασία text scaling + Offline Banner
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        final textScaler = TextScaler.linear(
+          mediaQuery.textScaler.scale(1.0).clamp(0.85, 1.45),
+        );
 
-          return MediaQuery(
-            data: mediaQuery.copyWith(textScaler: textScaler),
-            child: AnnouncementOverlay(
-              child: child ?? const SizedBox.shrink(),
-            ),
-          );
-        },
+        return MediaQuery(
+          data: mediaQuery.copyWith(textScaler: textScaler),
+          child: AnnouncementOverlay(
+            child: child ?? const SizedBox.shrink(),
+          ),
+        );
+      },
 
-        home: const SplashScreen(),
-      ),
+      home: const SplashScreen(),
     );
   }
 }
