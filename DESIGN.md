@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 253 tests
+flutter test                       # 255 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -60,7 +60,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Gradle / AGP / Kotlin | **9.5.0 / 9.3.1 / 2.4.20** (βλ. §2.1) |
 | Visual Studio | Community **2026 18.1.1** · Windows SDK **10.0.26100.0** — ✅ Windows release build επιβεβαιωμένο 24/11/2026· ⚠️ με **2022 17.10.1** + SDK 10.0.22621.0 αποτυγχάνει (§2.5, §11 L33) |
-| App version | **`2.3.8+15`** (`pubspec.yaml`, επαληθεύτηκε 25/11/2026) |
+| App version | **`2.3.9+16`** (`pubspec.yaml`, επαληθεύτηκε 25/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -128,17 +128,17 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.8+15)         ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.9+16)         ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.3.8 · BUILD_NO=15   (από pubspec, STEP 0)
-         ├── APK      FamilyBudget_v2.3.8.apk
+   └── build_and_setup_final.bat  APP_VER=2.3.9 · BUILD_NO=16   (από pubspec, STEP 0)
+         ├── APK      FamilyBudget_v2.3.9.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.3.8.exe   (FileVersion 2.3.8.15)
+               └── FamilyBudgetSetup_v2.3.9.exe   (FileVersion 2.3.9.16)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -151,7 +151,7 @@ pubspec.yaml  (version: 2.3.8+15)         ← ΜΟΝΟ εδώ αλλάζει η 
 | **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.8 (build 15)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.9 (build 16)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -260,7 +260,7 @@ pubspec.yaml  (version: 2.3.8+15)         ← ΜΟΝΟ εδώ αλλάζει η 
 | `flutter build windows --debug` | ❌ LNK2019/LNK1120 — **μόνο με VS 2022** 17.10.1 + SDK 10.0.22621.0 (βλ. §11 L33) |
 | `flutter build windows --release` | ✅ `√ Built build\windows\x64\runner\Release\family_economy.exe` — **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026, επιβεβαιωμένο· το ❌ ισχύει μόνο με VS 2022) |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ **253/253** |
+| `flutter test` | ✅ **255/255** |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -277,7 +277,7 @@ pubspec.yaml  (version: 2.3.8+15)         ← ΜΟΝΟ εδώ αλλάζει η 
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 16 αρχεία · **253** `test()`/`testWidgets()` |
+| Tests | 16 αρχεία · **255** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -437,6 +437,7 @@ lib/
 - `Phoenix` wrapper γύρω από το `MaterialApp` **μένει** αλλά δεν καλείται πλέον (μετά το L18 δεν υπάρχει `Phoenix.rebirth` πουθενά → E59, νεκρός κώδικας).
 - `ErrorApp` → κοινό `StartupErrorView` (`core/widgets/startup_error_view.dart`)· **ίδια** κείμενα, ίδιο `Scaffold` background.
 - ✅ Το «Επανεκκίνηση» πετούσε `Null check` — **διορθώθηκε 25/11/2026 (L18)**: το `ErrorApp` είναι πλέον stateful, το κουμπί «Δοκιμή ξανά» καλεί ξανά το `_bootstrap` (`main.dart:66`) και ανοίγει την εφαρμογή· σε αποτυχία δείχνει το νέο σφάλμα + μετρητή προσπαθειών. Δεν υπάρχει πια `Phoenix.rebirth`.
+- **Retry hardening (`2.3.9+16`, μετά από code review):** η προσπάθεια έχει όριο **20s** (`Future.timeout` + `ignore()` ώστε μια καθυστερημένη ολοκλήρωση να μη βγει uncaught) και σε λήξη εμφανίζεται σχετικό μήνυμα αντί για μόνιμο «Νέα προσπάθεια…»· το κουμπί είναι **disabled** όσο τρέχει (`StartupErrorView.primaryEnabled`, default `true` ώστε το `AppStart` να μη μεταβληθεί)· κάθε αποτυχία/λήξη γράφεται με `DebugConfig.print`.
 - `localizationsDelegates`: Material/Widgets/Cupertino.
 - `supportedLocales`: `el-GR` (προεπιλογή), `en-US` (fallback).
 - `themeMode` από `ThemeProvider` (light/dark/system).
@@ -885,11 +886,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (253 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (255 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 253/253 |
+| `flutter test` | ✅ 255/255 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 > Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
@@ -904,9 +905,9 @@ schema_version (int), schema_updated_at (Timestamp)
 | `monthly_trend_test.dart` | 11 | `computeMonthlyTrend` (φίλτρα, ποσοστά, edges) |
 | `budget_model_test.dart` | 8 | `matchesTransaction` (category/subcategory/total/account/date) |
 | `transactions_provider_test.dart` | 6 | `TransactionModel.isTransfer/isIncome/isExpense` |
-| `widget_test.dart` | 3 | `ErrorApp`: μήνυμα σφάλματος, αποτυχημένη επανάληψη (νέο σφάλμα + μετρητής), guard διπλού πατήματος (L18) |
+| `widget_test.dart` | 4 | `ErrorApp`: μήνυμα σφάλματος, αποτυχημένη επανάληψη (νέο σφάλμα + μετρητής), guard/disabled διπλού πατήματος, λήξη χρόνου επανάληψης (L18) |
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
-| `startup_error_view_test.dart` | 5 | Κείμενα, ενέργειες, λεπτομέρειες, `textScale 1.45` χωρίς overflow |
+| `startup_error_view_test.dart` | 6 | Κείμενα, ενέργειες, λεπτομέρειες, `primaryEnabled=false`, `textScale 1.45` χωρίς overflow |
 | `account_delete_guard_test.dart` | 41 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) + `targetIsVisible` αρχειοθετημένου στόχου (E32) + πεδία budgets στο πλάνο (L26) |
 | `account_budget_usage_test.dart` | 13 | Μέτρηση όλων των μη διαγραμμένων budgets (L26): soft-deleted, legacy χωρίς `is_active`/`deleted`, «Όλοι», άλλος λογαριασμός, ανενεργά, trim, κενά |
 | `account_restore_policy_test.dart` | 24 | Κανόνας επαναφοράς (E19/E14): μόνο marked ζεύγη, κρυφές κινήσεις χρήστη, εκκρεμή, missing/deleted peers, απόλυτο υπόλοιπο σε cents, chunks ≤499, fingerprint, μηνύματα |
@@ -1020,7 +1021,7 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L15 | `assets/images/` άδειος — εξαρτάται από `.gitkeep` | §2.7 |
 | L16 | Καμία UI/integration δοκιμή | §9.3 |
 | L17 | *(λύθηκε 19/11/2026)* Versioning **δεδομένων** — E4 | §1.5.4 |
-| L18 | **✅ Διορθώθηκε 25/11/2026 (`2.3.8+15`)** — το `ErrorApp` χτίζεται έξω από το `Phoenix` (το `runApp` γίνεται όταν το Firebase init αποτυγχάνει), άρα το `Phoenix.rebirth` (`findAncestorStateOfType()!`) πετούσε `Null check`. Πλέον το κουμπί «Δοκιμή ξανά» καλεί το `_bootstrap` (`main.dart:66`), που ξανατρέχει Firebase init + Firestore settings (best-effort) και κάνει `runApp`· σε αποτυχία η οθόνη δείχνει το νέο σφάλμα + μετρητή. Το `runApp` μπορεί να κληθεί ξανά (api.flutter.dev/flutter/widgets/runApp.html) | §4.4 |
+| L18 | **✅ Διορθώθηκε 25/11/2026 (`2.3.8+15`)** — το `ErrorApp` χτίζεται έξω από το `Phoenix` (το `runApp` γίνεται όταν το Firebase init αποτυγχάνει), άρα το `Phoenix.rebirth` (`findAncestorStateOfType()!`) πετούσε `Null check`. Πλέον το κουμπί «Δοκιμή ξανά» καλεί το `_bootstrap` (`main.dart:66`), που ξανατρέχει Firebase init + Firestore settings (best-effort) και κάνει `runApp`· σε αποτυχία η οθόνη δείχνει το νέο σφάλμα + μετρητή. Το `runApp` μπορεί να κληθεί ξανά (api.flutter.dev/flutter/widgets/runApp.html). **Hardening `2.3.9+16`:** timeout 20s στην επανάληψη, disabled κουμπί όσο τρέχει, debug log σε αποτυχία | §4.4 |
 | L19 | Web: `persistentLocalCache` **χωρίς** multi-tab manager → 2 tabs μπορεί να δουν διαφορετικά δεδομένα | §2.4 |
 | L20 | `schema_version` χωρίς field validation στους rules (γράφεται μόνο από την εφαρμογή, στον δικό της λογαριασμό) | §7.2 |
 | L21 | Φραγή διαγραφής **μόνο τοπικά**: δύο συσκευές μπορούν να διαγράψουν ταυτόχρονα τους δύο τελευταίους λογαριασμούς → 0 ενεργοί (καλύπτεται από κενή κατάσταση + CTA, χωρίς server-side guard) | §5.13 |

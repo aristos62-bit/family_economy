@@ -33,6 +33,36 @@ void main() {
       expect(taps, 1);
     });
 
+    testWidgets('απενεργοποιεί την κύρια ενέργεια όταν primaryEnabled = false',
+        (
+        tester,
+        ) async {
+      var taps = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StartupErrorView(
+              title: 'Τίτλος',
+              message: 'Μήνυμα',
+              primaryLabel: 'Νέα προσπάθεια…',
+              primaryEnabled: false,
+              onPrimary: () => taps++,
+            ),
+          ),
+        ),
+      );
+
+      final button = tester.widget<ElevatedButton>(
+        find.byWidgetPredicate((w) => w is ElevatedButton),
+      );
+      expect(button.onPressed, isNull);
+
+      await tester.tap(find.text('Νέα προσπάθεια…'));
+      await tester.pump();
+      expect(taps, 0);
+    });
+
     testWidgets('κρύβει τις λεπτομέρειες όταν είναι null ή κενές', (
         tester,
         ) async {

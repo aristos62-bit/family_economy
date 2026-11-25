@@ -227,6 +227,10 @@ class ErrorApp extends StatefulWidget {
 }
 
 class _ErrorAppState extends State<ErrorApp> {
+  /// Όριο για μία προσπάθεια επανάληψης: αν το `_bootstrap` κολλήσει, ο
+  /// χρήστης δεν πρέπει να μείνει μόνιμα στο «Νέα προσπάθεια…».
+  static const Duration _retryTimeout = Duration(seconds: 20);
+
   late String _error = widget.error;
   bool _retrying = false;
   int _attempts = 0;
@@ -237,10 +241,26 @@ class _ErrorAppState extends State<ErrorApp> {
     setState(() => _retrying = true);
 
     try {
-      await widget.onRetry();
+      final attempt = widget.onRetry();
+      // Αν ολοκληρωθεί μετά το timeout (π.χ. αργή επιτυχία), το αποτέλεσμα
+      // ή το σφάλμα του δεν πρέπει να βγει uncaught.
+      attempt.ignore();
+      await attempt.timeout(_retryTimeout);
       // Σε επιτυχία το runApp έχει ήδη αντικαταστήσει το δέντρο.
       if (!mounted) return;
       setState(() => _retrying = false);
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Η αρχικοποίηση δεν ολοκληρώθηκε σε '
+            '${_retryTimeout.inSeconds} δευτερόλεπτα.';
+        _attempts++;
+        _retrying = false;
+      });
+      DebugConfig.print('ErrorApp retry timed out');
+      AccessibilityService.announceError(
+        'Λήξη χρόνου στην επανάληψη αρχικοποίησης',
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -248,6 +268,7 @@ class _ErrorAppState extends State<ErrorApp> {
         _attempts++;
         _retrying = false;
       });
+      DebugConfig.print('ErrorApp retry failed: $e');
       AccessibilityService.announceError(
         'Αποτυχία επανάληψης αρχικοποίησης: $_error',
       );
@@ -271,6 +292,7 @@ class _ErrorAppState extends State<ErrorApp> {
           details: details,
           primaryLabel: _retrying ? 'Νέα προσπάθεια…' : 'Δοκιμή ξανά',
           primaryIcon: Icons.refresh,
+          primaryEnabled: !_retrying,
           onPrimary: _handleRetry,
         ),
       ),

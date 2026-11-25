@@ -21,9 +21,9 @@
 
 | | |
 |---|---|
-| Έκδοση | **2.3.8+15** |
-| Τελευταίο κεφάλαιο | **37** — L18: πραγματικό retry στην οθόνη σφάλματος εκκίνησης (2026-11-25) |
-| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **253/253** |
+| Έκδοση | **2.3.9+16** |
+| Τελευταίο κεφάλαιο | **38** — L18 hardening: timeout / disabled κουμπί / logging (2026-11-25) |
+| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **255/255** |
 | Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`) |
 
 ## Κεφάλαια
@@ -67,14 +67,15 @@
 | 35 | 2026-11-25 | 32 | [E56: migration σε `material_ui`](oldsessions/35-session-32-material-ui-migration.md) | 72 info → **0**: `material_ui` 1.11.1, 70 imports μέσω `dart fix --code=migrate_design_widgets`, `GlobalMaterialLocalizations.delegates`· audit legacy πακέτων (fl_chart/responsive_framework) → κανένα conflict τύπων, χωρίς bridge· analyze 0/0/0, 238/238, apk/web/windows ✅, χωρίς version bump |
 | 36 | 2026-11-25 | 33 | [E57: self-healing περίοδος γραφημάτων](oldsessions/36-session-33-e57-period-prefs.md) | Smoke test POCO X3: `╬£╬«╬╜╬▒╧é` αντί `Μήνας` (UTF-8 ως CP437) → νέο `PeriodPrefs` (isValid + repair CP437/CP1252 + επανεγγραφή) στα 2 σημεία ανάγνωσης· 13 tests → **251/251**, analyze 0/0/0, apk ✅, χωρίς version bump· νέο `new_material_fix.md` (οδηγός migration για άλλα projects) |
 | 37 | 2026-11-25 | 34 | [L18: retry στην οθόνη σφάλματος](oldsessions/37-session-34-l18-errorapp-retry.md) | `Phoenix.rebirth` έξω από το `Phoenix` → `Null check`· εξαγωγή `_bootstrap` + stateful `ErrorApp` με «Δοκιμή ξανά» (guard `Firebase.apps`, best-effort settings, a11y, μετρητής προσπαθειών)· 253/253 tests, analyze 0/0/0, apk ✅· νέα E58/E59· v2.3.8+15 |
+| 38 | 2026-11-25 | 34b | [L18 hardening: timeout & disabled κουμπί](oldsessions/38-session-34b-l18-hardening.md) | Code review → 3 should-fix: `_retryTimeout` 20s με `ignore()`/`timeout()` + μήνυμα λήξης, `DebugConfig.print` σε αποτυχία/λήξη, `StartupErrorView.primaryEnabled` (default `true`, `AppStart` αμετάβλητο)→ 255/255 tests, analyze 0/0/0· v2.3.9+16 |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **37** (01–37) |
+| Κεφάλαια στον φάκελο | **38** (01–38) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1859** |
+| Σύνολο γραμμών κεφαλαίων | **1909** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

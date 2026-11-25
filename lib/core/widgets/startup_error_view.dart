@@ -16,6 +16,7 @@ class StartupErrorView extends StatelessWidget {
     required this.message,
     required this.primaryLabel,
     required this.onPrimary,
+    this.primaryEnabled = true,
     this.details,
     this.icon = Icons.error_outline,
     this.primaryIcon,
@@ -28,6 +29,11 @@ class StartupErrorView extends StatelessWidget {
 
   final String primaryLabel;
   final VoidCallback onPrimary;
+
+  /// `false` = η κύρια ενέργεια είναι απενεργοποιημένη (π.χ. όσο τρέχει
+  /// ήδη μια επανάληψη), ώστε να μην πατιέται και να μη δηλώνεται ενεργή
+  /// στα semantics.
+  final bool primaryEnabled;
 
   /// Προαιρετικό τεχνικό κείμενο (εμφανίζεται σε monospace πλαίσιο).
   final String? details;
@@ -122,16 +128,17 @@ class StartupErrorView extends StatelessWidget {
     );
 
     final icon = primaryIcon;
+    final handler = primaryEnabled ? onPrimary : null;
     if (icon == null) {
       return ElevatedButton(
-        onPressed: onPrimary,
+        onPressed: handler,
         style: style,
         child: Text(primaryLabel),
       );
     }
 
     return ElevatedButton.icon(
-      onPressed: onPrimary,
+      onPressed: handler,
       icon: Icon(icon),
       label: Text(primaryLabel),
       style: style,

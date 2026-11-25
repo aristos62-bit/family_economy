@@ -1,7 +1,9 @@
 // Smoke tests: η οθόνη σφάλματος αρχικοποίησης (ErrorApp) χτίζεται
-// χωρίς Firebase/providers και το «Δοκιμή ξανά» δεν σκάει (L18).
+// χωρίς Firebase/providers, το «Δοκιμή ξανά» δεν σκάει (L18), δεν
+// πατιέται όσο τρέχει και λήγει με μήνυμα σε περίπτωση κολλήματος.
 import 'dart:async';
 
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:family_economy/main.dart';
 
@@ -54,6 +56,11 @@ void main() {
     await tester.pump();
     expect(find.text('Νέα προσπάθεια…'), findsOneWidget);
 
+    final runningButton = tester.widget<ElevatedButton>(
+      find.byWidgetPredicate((w) => w is ElevatedButton),
+    );
+    expect(runningButton.onPressed, isNull);
+
     await tester.tap(find.text('Νέα προσπάθεια…'));
     await tester.pump();
 
@@ -61,6 +68,32 @@ void main() {
 
     completer.complete();
     await tester.pumpAndSettle();
+    expect(find.text('Δοκιμή ξανά'), findsOneWidget);
+
+    final idleButton = tester.widget<ElevatedButton>(
+      find.byWidgetPredicate((w) => w is ElevatedButton),
+    );
+    expect(idleButton.onPressed, isNotNull);
+  });
+
+  testWidgets('ErrorApp λήγει με μήνυμα όταν η επανάληψη κολλήσει',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ErrorApp(
+        error: 'test-error',
+        onRetry: () => Completer<void>().future,
+      ),
+    );
+
+    await tester.tap(find.text('Δοκιμή ξανά'));
+    await tester.pump();
+    expect(find.text('Νέα προσπάθεια…'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 21));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('20 δευτερόλεπτα'), findsOneWidget);
+    expect(find.textContaining('Προσπάθειες: 1'), findsOneWidget);
     expect(find.text('Δοκιμή ξανά'), findsOneWidget);
   });
 }
