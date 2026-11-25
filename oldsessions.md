@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | Έκδοση | **2.3.10+17** |
-| Τελευταίο κεφάλαιο | **39** — E58/E59: startup error container & νεκρό Phoenix (2026-11-25) |
+| Τελευταίο κεφάλαιο | **40** — E15/L6: καθαρισμός νεκρού κώδικα & ειλικρινής συγχρονισμός (2026-11-25) |
 | Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **260/260** |
 | Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`) |
 
@@ -69,14 +69,15 @@
 | 37 | 2026-11-25 | 34 | [L18: retry στην οθόνη σφάλματος](oldsessions/37-session-34-l18-errorapp-retry.md) | `Phoenix.rebirth` έξω από το `Phoenix` → `Null check`· εξαγωγή `_bootstrap` + stateful `ErrorApp` με «Δοκιμή ξανά» (guard `Firebase.apps`, best-effort settings, a11y, μετρητής προσπαθειών)· 253/253 tests, analyze 0/0/0, apk ✅· νέα E58/E59· v2.3.8+15 |
 | 38 | 2026-11-25 | 34b | [L18 hardening: timeout & disabled κουμπί](oldsessions/38-session-34b-l18-hardening.md) | Code review → 3 should-fix: `_retryTimeout` 20s με `ignore()`/`timeout()` + μήνυμα λήξης, `DebugConfig.print` σε αποτυχία/λήξη, `StartupErrorView.primaryEnabled` (default `true`, `AppStart` αμετάβλητο)→ 255/255 tests, analyze 0/0/0· v2.3.9+16 |
 | 39 | 2026-11-25 | 35 | [E58/E59: startup error container & νεκρό Phoenix](oldsessions/39-session-35-e58-e59-startup-phoenix.md) | `prepareStartup()` με per-step timeouts (theme 4s, notifications 6s, best-effort) + lazy `ConnectivityService ??=` μέσα στη guarded ροή + split άδειας ειδοποιήσεων (post-frame στο `SplashScreen`)· αφαίρεση `Phoenix` + `flutter_phoenix` (lock −8 γρ.)· 260/260 tests, analyze 0/0/0, APK/device ✅· v2.3.10+17· νέο E60 |
+| 40 | 2026-11-25 | 36 | [E15/L6: νεκρός κώδικας & συγχρονισμός](oldsessions/40-session-36-e15-l6-dead-code-cleanup.md) | Διαγραφή `message_service`/`biometric_gate`/`recurring_notifications_service` + αχρησιμοποίητης `OfflineBanner`· αφαίρεση `onSyncComplete` (no-op caller: μετρητής ποτέ τροφοδοτημένος)· `MyApp` → `StatelessWidget`· 107 αρχεία στο `lib/`· 260/260 tests, analyze 0/0/0, device tests ✅· χωρίς version bump· E15/E62 FIXED, E61 INFO |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **39** (01–39) |
+| Κεφάλαια στον φάκελο | **40** (01–40) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **1984** |
+| Σύνολο γραμμών κεφαλαίων | **2030** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

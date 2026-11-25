@@ -130,17 +130,6 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         data: userData,
       );
 
-      // ✅ Recurring notifications sync (must run on login/register too)
-      // ώστε να καλύπτει: πρώτη είσοδο, login μετά από logout, κλπ.
-      try {
-        //await RecurringNotificationsService().generateAhead(uid);
-      } catch (e) {
-        // Δεν θέλουμε να κόψει το login αν κάτι πάει στραβά.
-        DebugConfig.print(
-          '⚠️ RecurringNotificationsService startup sync failed: $e',
-        );
-      }
-
       // ✅ ONBOARDING: το αποφασίζει το αποθηκευμένο flag, όχι το κουμπί Εγγραφή/Σύνδεση.
       // Αν το πεδίο λείπει => θεωρείται ολοκληρωμένο (παλιοί χρήστες δεν παίρνουν
       // δεύτερο default λογαριασμό). Οι νέοι χρήστες γράφονται πάντα με `false`.

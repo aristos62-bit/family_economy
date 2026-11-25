@@ -13,7 +13,6 @@ import 'package:family_economy/core/accessibility/accessibility_service.dart';
 
 // ✅ Offline support imports
 import 'package:family_economy/core/services/connectivity_service.dart';
-import 'package:family_economy/core/services/message_service.dart';
 import 'package:family_economy/core/widgets/startup_error_view.dart';
 
 // ✅ ΝΕΟΣ: Scheduled transactions
@@ -21,7 +20,7 @@ import 'package:family_economy/core/widgets/startup_error_view.dart';
 // ✅ ΝΕΕΣ ΓΡΑΜΜΕΣ: Notifications
 import 'package:family_economy/services/notifications_service.dart';
 
-// ✅ Global navigator key για messages
+// ✅ Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
@@ -183,46 +182,13 @@ Future<void> _bootstrap({
           value: connectivityService,
         ),
       ],
-      // ✅ ΑΛΛΑΓΗ: Περνάμε το connectivityService στο MyApp
-      child: MyApp(connectivityService: connectivityService),
+      child: const MyApp(),
     ),
   );
 }
 
-// ✅ ΑΛΛΑΓΗ: MyApp είναι τώρα StatefulWidget
-class MyApp extends StatefulWidget {
-  final ConnectivityService connectivityService;
-
-  const MyApp({
-    super.key,
-    required this.connectivityService,
-  });
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-
-  @override
-  void initState() {
-    super.initState();
-
-    // ✅ Setup sync complete callback
-    widget.connectivityService.onSyncComplete = () {
-      final context = navigatorKey.currentContext;
-      if (context != null && context.mounted) {
-        MessageService.showSyncComplete(context);
-      }
-    };
-
-  }
-
-  @override
-  void dispose() {
-    widget.connectivityService.onSyncComplete = null;
-    super.dispose();
-  }
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {

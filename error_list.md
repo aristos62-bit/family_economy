@@ -51,7 +51,7 @@
 | E12 | Budget που δείχνει διαγραμμένο λογαριασμό εμφανίζεται ως «Όλοι» και με `spent=0` | — | ✅ FIXED | 2026-11-21 |
 | E13 | `restoreAccountWithBalance` γράφει όλες τις κινήσεις σε **ένα** batch (όριο 500) | — | ✅ FIXED | 2026-11-21 |
 | E14 | Επαναφορά μετά τον cleanup 30 ημερών: επιστρέφει ο λογαριασμός χωρίς ιστορικό | — | ✅ FIXED | 2026-11-23 |
-| E15 | `MessageService` υπάρχει αλλά πρακτικά ανενεργό (μόνο `main.dart`) | — | 🔵 OPEN | 2026-11-20 |
+| E15 | `MessageService` πρακτικά ανενεργό (1 no-op call site, μετρητής ποτέ τροφοδοτημένος) + νεκρός κώδικας L6 | — | ✅ FIXED | 2026-11-25 |
 | E16 | `transaction_edit_sheet` με λογαριασμό που διαγράφηκε → orphan επιλογή στο dropdown | — | ✅ FIXED | 2026-11-21 |
 | E17 | `firestore.indexes.json` δεν είναι πλήρες σε σχέση με το deployed (π.χ. `deleted` + `date` range) | — | ✅ FIXED | 2026-11-23 |
 | E18 | `deleteTransaction` peer path δεν ελέγχει `deleted` του peer → μη idempotent (μόνο με αλλοιωμένο δεδομένο) | — | ℹ️ INFO | 2026-11-20 |
@@ -97,6 +97,8 @@
 | E58 | `ThemeProvider.initialize()` / `NotificationsService().initialize()` τρέχουν **έξω** από το `try` της εκκίνησης → αποτυχία = uncaught exception χωρίς οθόνη σφάλματος | — | ✅ FIXED | 2026-11-25 |
 | E59 | Μετά τη διόρθωση του L18 το `Phoenix` (`main.dart`, πριν την αφαίρεση) και η εξάρτηση `flutter_phoenix` δεν είχαν καμία χρήση (νεκρός κώδικας) | — | ✅ FIXED | 2026-11-25 |
 | E60 | `DebugConfig._debug = false` σταθερό → `DebugConfig.print/startup` δεν τυπώνουν τίποτα, σε κανένα build (και τα logs του L18 hardening) | — | ℹ️ INFO | 2026-11-25 |
+| E61 | Αφαιρέθηκε το `MessageService` χωρίς αντικαταστάτη· η αρχική ιδέα «offline → θα συγχρονιστεί» και το κεντρικό μήνυμα συγχρονισμού δεν υλοποιήθηκαν ποτέ | — | ℹ️ INFO | 2026-11-25 |
+| E62 | `DESIGN.md` §5.5: «186 άμεσα SnackBar σε 28 αρχεία» έναντι μέτρησης 25/11/2026 | — | ✅ FIXED | 2026-11-25 |
 
 ### Λεπτομέρειες
 
@@ -180,9 +182,16 @@
 - Άρα «Με Υπόλοιπο» επαναφέρει τον λογαριασμό χωρίς ιστορικό· το `current_balance` μένει ως είχε → πιθανή ασυμφωνία με το ιστορικό.
 - **✅ Διορθώθηκε 23/11/2026 (`2.3.4+11`):** η επαναφορά **δεν** εμπιστεύεται το αποθηκευμένο υπόλοιπο. Το πλάνο υπολογίζει απόλυτα `targetBalance = initial_balance + κινήσεις που μετράνε` (κανόνας `AccountBalanceRules`, σε cents) και η προεπισκόπηση δείχνει **X → Y**· αν δεν βρεθεί ιστορικό, το λέει ρητά («Δεν βρέθηκε ιστορικό προς επαναφορά») αντί να υπονοεί πλήρη επαναφορά. Επιπλέον, η επαναφορά γράφει **νέο `updated_at`** στα legs → νέο παράθυρο 30 ημερών για τον cleanup. **Καμία** εικασία τύπου «purged» (θα ήταν ψευδής μετά το E26).
 
-**E15 — MessageService ανενεργό (OPEN)**
-- `core/services/message_service.dart` (offline-aware snackbars + a11y) καλείται μόνο από `main.dart:120`.
-- Οι οθόνες χρησιμοποιούν τοπικά `_show*Snack` → διπλός μηχανισμός μηνυμάτων.
+**E15 — MessageService ανενεργό (FIXED 25/11/2026)**
+- `core/services/message_service.dart` (offline-aware snackbars + a11y) είχε **1** call site (`main.dart` → `showSyncComplete`) και αυτό **no-op**: ο μετρητής `_pendingOperations` αυξανόταν μόνο μέσα στο `show()`, που είχε 0 κλήσεις → το μήνυμα «Συγχρονισμός ολοκληρώθηκε» δεν εμφανίστηκε ποτέ, σε καμία έκδοση.
+- Επιπλέον το `onSyncComplete` πυροδοτούσε σε **κάθε** offline→online μετάβαση (ανεξάρτητα από εκκρεμείς εγγραφές) — άρα ούτε «αληθινό» θα ήταν το πλήθος.
+- Οι οθόνες χρησιμοποιούν άμεσα `SnackBar` (181 σε 27 αρχεία) — βλ. L11 για το υπόλοιπο χρέος.
+- **✅ Διορθώθηκε 25/11/2026 (χωρίς version bump — καμία αλλαγή συμπεριφοράς):**
+  - διαγράφηκαν `core/services/message_service.dart`, `core/widgets/biometric_gate.dart`, `services/recurring_notifications_service.dart` και η αχρησιμοποίητη `OfflineBanner` (το `OfflineAppBarChip` έμεινε, αρχείο → `offline_appbar_chip.dart`) — L6 κλειστό
+  - αφαιρέθηκε το `onSyncComplete` από το `ConnectivityService` και το callback/`dispose` από το `main.dart` (το `MyApp` είναι πλέον `StatelessWidget`)
+  - αφαιρέθηκαν τα σχολιασμένα `generateAhead` (`app_start.dart`) και το κενό `try` (`login_page.dart`)
+  - η ιδέα «offline → θα συγχρονιστεί» καταγράφηκε στο **E61** (INFO)
+  - gates: `flutter analyze` 0/0/0 · `flutter test` **260/260**
 
 **E16 — Transaction edit με διαγραμμένο λογαριασμό (FIXED)**
 - `transaction_edit_sheet.dart:85` κρατά `_accountId` από το tx· το dropdown (`:235`) δεν περιέχει διαγραμμένους → orphan τιμή.

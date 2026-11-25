@@ -12,7 +12,7 @@ import 'package:family_economy/services/scheduled_transactions_service.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/presentation/screens/charts/general_view_page.dart';
 import 'package:family_economy/presentation/screens/calendar/calendar_page.dart';
-import 'package:family_economy/core/widgets/offline_banner.dart';
+import 'package:family_economy/core/widgets/offline_appbar_chip.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

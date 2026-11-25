@@ -17,7 +17,7 @@ import 'package:family_economy/core/services/database_cleanup_service.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/utils/database_cleanup_policy.dart';
-import 'package:family_economy/core/widgets/offline_banner.dart';
+import 'package:family_economy/core/widgets/offline_appbar_chip.dart';
 
 class DatabaseCleanupPage extends StatefulWidget {
   const DatabaseCleanupPage({super.key});

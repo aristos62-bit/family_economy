@@ -1,7 +1,7 @@
 // ============================================================
 // FILE: connectivity_service.dart (UPDATED WITH DEBOUNCE)
 // Path: lib/core/services/connectivity_service.dart
-// Ρόλος: Παρακολούθηση σύνδεσης internet + sync notifications
+// Ρόλος: Παρακολούθηση σύνδεσης internet
 // ============================================================
 
 import 'dart:async';
@@ -20,9 +20,6 @@ class ConnectivityService extends ChangeNotifier {
 
   // ✅ Debounce timer για σταθερότητα
   Timer? _debounceTimer;
-
-  // ✅ Callback για sync completion (θα το καλεί η εφαρμογή)
-  VoidCallback? onSyncComplete;
 
   bool get isOnline => _isOnline;
   bool get isOffline => !_isOnline;
@@ -99,16 +96,10 @@ class ConnectivityService extends ChangeNotifier {
       );
 
       if (isStillOnline && !_isOnline) {
-        final wasOffline = !_isOnline;
         _isOnline = true;
         notifyListeners();
 
         DebugConfig.print('✅ Internet connection restored (confirmed)');
-
-        // ✅ Trigger sync complete callback
-        if (wasOffline) {
-          onSyncComplete?.call();
-        }
       } else {
         DebugConfig.print('⚠️ Connection unstable - staying offline');
       }

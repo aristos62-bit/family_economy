@@ -20,9 +20,6 @@ class _FakeConnectivity extends ChangeNotifier implements ConnectivityService {
 
   @override
   bool isConfirmedOffline = false;
-
-  @override
-  VoidCallback? onSyncComplete;
 }
 
 void main() {

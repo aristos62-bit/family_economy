@@ -271,7 +271,7 @@ pubspec.yaml  (version: 2.3.10+17)        ← ΜΟΝΟ εδώ αλλάζει η 
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **110** (κανένα `*.backup` στο τρέχον clone) |
+| Dart αρχεία στο `lib/` | **107** (κανένα `*.backup` στο τρέχον clone· μετά την αφαίρεση 4 νεκρών αρχείων, 25/11/2026) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
@@ -296,9 +296,8 @@ lib/
       auth_service.dart                        # Firebase Auth API
       biometric_auth_service.dart              # LocalAuth API
       biometric_settings_service.dart          # Mode ανά χρήστη: always / on_demand
-      connectivity_service.dart                # Online/offline, 2s debounce, onSyncComplete
+      connectivity_service.dart                # Online/offline, 2s debounce
       database_cleanup_service.dart            # Καθαρισμός παλιών / soft-deleted (chunked, E34)
-      message_service.dart                     # SnackBar sync + μηνύματα
       account_restore_service.dart             # I/O επαναφοράς διαγραμμένου λογαριασμού (E19/E14/E29-E31)
       transactions_actions_service.dart        # CRUD transactions + ενημέρωση υπολοίπων (batch)
     session/
@@ -322,14 +321,13 @@ lib/
       monthly_trend.dart                       # MonthlyPoint + computeMonthlyTrend
       period_prefs.dart                        # Ανάγνωση/επιδιόρθωση περιόδου γραφημάτων (E57, καθαρό Dart + prefs)
     widgets/
-      biometric_gate.dart                      # ⚠️ νεκρός (0 imports)
       calculator_engine.dart
       custom_currency_field.dart
       custom_text_field.dart
       helper_calculator_sheet.dart
       notification_edit_dialog.dart
       notifications_list_widget.dart
-      offline_banner.dart
+      offline_appbar_chip.dart                  # Ένδειξη OFFLINE στην AppBar
       startup_error_view.dart                   # Κοινή οθόνη σφάλματος (ErrorApp + AppStart)
       tag_selector_widget.dart
 
@@ -375,16 +373,14 @@ lib/
     account_duplicate_service.dart          # Έλεγχος διπλών ονομάτων + επαναφορά διαγραμμένων
     notifications_service.dart              # Singleton flutter_local_notifications (Europe/Athens)
     onboarding_service.dart                 # Default account/categories/subcategories
-    recurring_notifications_service.dart    # ⚠️ νεκρός (0 imports, generateAhead σχολιασμένο)
     scheduled_transactions_service.dart     # is_scheduled / is_executed / scheduled_for_date
 ```
 
 ### 3.3 Νεκρός ή ανενεργός κώδικας
 
-| Στοιχείο | Απόδειξη |
-|---|---|
-| `core/widgets/biometric_gate.dart` | 0 imports εκτός του εαυτού του |
-| `services/recurring_notifications_service.dart` | 0 imports· η κλήση `generateAhead` είναι σχολιασμένη (`app_start.dart:128`) |
+**Κανένα γνωστό νεκρό αρχείο** (25/11/2026). Τα `core/widgets/biometric_gate.dart` (195 γρ.), `core/services/message_service.dart` (288 γρ.), `core/widgets/offline_banner.dart` (η αχρησιμοποίητη κλάση `OfflineBanner`, 94 γρ.) και `services/recurring_notifications_service.dart` (296 γρ.) **αφαιρέθηκαν** — 0 imports/call sites, βλ. `error_list.md` E15/L6.
+
+> Παραμένει γνωστό χρέος μόνο για τα **άμεσα μηνύματα** (`SnackBar` σε 27 αρχεία, βλ. §5.5 / L11).
 
 ---
 
@@ -403,7 +399,7 @@ lib/
 | 7 | `FirebaseAuth.authStateChanges().first` με **timeout 2s** → persisted user | 147–150 |
 | 8 | `Settings(persistenceEnabled: true, cacheSizeUnlimited)` — **best-effort** (L18) | 160–169 |
 | 9 | `FirebaseFirestore.setLoggingEnabled(DebugConfig.isDebug)` | 172 |
-| 10 | `runApp(MultiProvider(ThemeProvider, ConnectivityService) → MyApp)` | 175–189 |
+| 10 | `runApp(MultiProvider(ThemeProvider, ConnectivityService) → MyApp)` (το `MyApp` είναι πλέον `StatelessWidget` — E15) | 174–187 |
 | 11 | Σε αποτυχία (connectivity/Firebase) → `ErrorApp`· το «Δοκιμή ξανά» καλεί ξανά το `_startApplication` (ίδια instances, κανένα διπλό listener) | 35–41 · 103–113 |
 
 ### 4.2 `SplashScreen`
@@ -429,13 +425,14 @@ lib/
 | 7 | `ScheduledTransactionsService.checkAndExecutePendingTransactions(uid)` | 125, 226–252 |
 | 8 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` | 135–156 |
 
-> Το `RecurringNotificationsService().generateAhead(...)` είναι **σχολιασμένο** (`app_start.dart:128`).
+> Οι recurring ειδοποιήσεις παράγονται από το `NotificationsProvider` (§5.10)· το νεκρό `recurring_notifications_service.dart` **αφαιρέθηκε** 25/11/2026 (L6), μαζί με τα σχολιασμένα `generateAhead` εδώ και στο `login_page.dart`.
 
 > **Σειρά σημαντική:** το gate τρέχει **μετά** το βιομετρικό (μόνο ο νόμιμος χρήστης προκαλεί writes) και **πριν** τις scheduled transactions (που γράφουν). `SchemaBlockedException` → typed catch (163) → `StartupErrorView` (274) με «Ξανά» / «Αποσύνδεση».
 
 ### 4.4 `MyApp` / `ErrorApp`
 
 - **E59 (`2.3.10+17`):** ο `Phoenix` wrapper και η εξάρτηση `flutter_phoenix` **αφαιρέθηκαν** — το `MyApp.build` επιστρέφει απευθείας το `MaterialApp`. Καμία αναφορά δεν έμεινε σε `lib/`/`test/` (`pubspec.lock`: μόνο το `flutter_phoenix` έφυγε, το transitive `nested` προέρχεται από άλλο πακέτο).
+- **E15/L6 (25/11/2026):** το `MyApp` είναι πλέον `StatelessWidget` χωρίς `connectivityService` παράμετρο· δεν υπάρχει `initState`/`dispose` ούτε callback συγχρονισμού. Ο `ConnectivityService` μένει στο `MultiProvider` (`.value`) και το διαβάζουν οι οθόνες.
 - `ErrorApp` → κοινό `StartupErrorView` (`core/widgets/startup_error_view.dart`)· **ίδια** κείμενα, ίδιο `Scaffold` background.
 - ✅ Το «Επανεκκίνηση» πετούσε `Null check` — **διορθώθηκε 25/11/2026 (L18)**: το `ErrorApp` είναι πλέον stateful, το κουμπί «Δοκιμή ξανά» καλεί ξανά την πλήρη εκκίνηση (`_startApplication`, `main.dart:103`) και ανοίγει την εφαρμογή· σε αποτυχία δείχνει το νέο σφάλμα + μετρητή προσπαθειών. Δεν υπάρχει πια `Phoenix.rebirth`.
 - **E58 (`2.3.10+17`):** καμία αρχικοποίηση δεν μένει εκτός δοχείου σφάλματος. Το `prepareStartup` (`main.dart:63`) τρέχει theme (όριο 4s) και notifications (όριο 6s) **best-effort** — σε throw/λήξη γράφει log και συνεχίζει· το `ConnectivityService` δημιουργείται **μία φορά ανά διεργασία** (`??=`, `main.dart:94-96`) μέσα στην ίδια ροή, ώστε ένα σφάλμα να οδηγεί σε `ErrorApp` αντί για κενή οθόνη και το «Δοκιμή ξανά» να μην προσθέτει δεύτερο instance/listener. Η άδεια ειδοποιήσεων ζητείται **μετά το πρώτο frame** (`SplashScreen`, `notifications_service.dart` → δημόσιο `requestPermissions()`), όχι πριν το `runApp`.
@@ -444,7 +441,7 @@ lib/
 - `supportedLocales`: `el-GR` (προεπιλογή), `en-US` (fallback).
 - `themeMode` από `ThemeProvider` (light/dark/system).
 - `builder`: `TextScaler` clamp **0.85 – 1.45** + `AnnouncementOverlay`.
-- `ConnectivityService.onSyncComplete` → `MessageService.showSyncComplete(context)`.
+- Καμία κεντρική υπηρεσία μηνυμάτων: τα μηνύματα δίνονται **άμεσα** από την κάθε οθόνη (βλ. §5.5).
 
 ---
 
@@ -514,8 +511,8 @@ lib/
 
 | Στοιχείο | Μέτρηση |
 |---|---|
-| `MessageService` | **1** χρήση (`main.dart` → `showSyncComplete`) |
-| Άμεσα `SnackBar(...)` | **186** σε **28** αρχεία |
+| Κεντρικό `MessageService` | **Αφαιρέθηκε** 25/11/2026 (E15) — είχε 1 no-op call site και μετρητή που δεν τροφοδοτούνταν ποτέ |
+| Άμεσα `SnackBar(...)` | **181** σε **27** αρχεία (μέτρηση 25/11/2026) |
 
 ### 5.6 Budgets — υπολογισμός spent
 
@@ -543,7 +540,7 @@ lib/
 
 ### 5.9 Connectivity & accessibility
 
-- `ConnectivityService`: μία φορά ανά διεργασία από `prepareStartup` (`main.dart:94-96`)· 2s debounce → `onSyncComplete` → `MessageService.showSyncComplete`. Το `dispose()` δεν καλείται (`.value` provider — L36).
+- `ConnectivityService`: μία φορά ανά διεργασία από `prepareStartup` (`main.dart:94-96`)· 2s debounce πριν επιβεβαιώσει επανασύνδεση· ενημερώνει τις οθόνες με `notifyListeners()` (`isOnline`/`isOffline`/`isConfirmedOffline`). Το `dispose()` δεν καλείται (`.value` provider — L36).
 - `AccessibilityService`: χρησιμοποιείται σε **60** αρχεία (semantics/ανακοινώσεις).
 - `AnnouncementOverlay` στο `MaterialApp.builder` (μαζί με `TextScaler` clamp 0.85–1.45).
 
@@ -832,7 +829,7 @@ schema_version (int), schema_updated_at (Timestamp)
 - `notifyListeners()` σε **δεκάδες** σημεία σε providers/UI.
 - Τοπική αλλαγή state → ενημέρωση UI → Firestore write στο background.
 - `Settings(persistenceEnabled: true, cacheSizeUnlimited)` → offline writes επιτρέπονται.
-- `ConnectivityService` (2s debounce) → `onSyncComplete` → μήνυμα συγχρονισμού.
+- `ConnectivityService` (2s debounce) → ενημέρωση ένδειξης `OFFLINE` (`OfflineAppBarChip`)· κανένα μήνυμα συγχρονισμού (E15/E61).
 
 ### 8.4 Συμβάσεις ονοματοδοσίας
 
@@ -1012,12 +1009,12 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L3 | 5 συλλογές υπάρχουν στους κανόνες αλλά δεν χρησιμοποιούνται | §6.1 |
 | L4 | Κανόνες χωρίς validation πεδίων/ορίων | §7.2 |
 | L5 | Cascade διαγραφή **μόνο** για τα ζεύγη μεταφορών κατά τη διαγραφή λογαριασμού (E11)· καμία άλλη cascade δεδομένων χρήστη | §5.13 |
-| L6 | Νεκρός κώδικας (`biometric_gate`, `recurring_notifications_service`)· η διαδρομή `users/{uid}/recurring_notifications` **δεν έχει rule** → αν ενεργοποιηθεί, `permission-denied` | §3.3 |
+| L6 | **✅ Διορθώθηκε 25/11/2026 (E15)** — ο νεκρός κώδικας (`biometric_gate`, `recurring_notifications_service`, `message_service`, η αχρησιμοποίητη `OfflineBanner`) **αφαιρέθηκε**: 0 imports/call sites. Η διαδρομή `recurring_notifications` δεν έχει πλέον ούτε rule ούτε client — αν ξαναχρειαστεί, χρειάζεται **και** rule | §3.3 |
 | L7 | 3 πακέτα με 0 χρήση + 77 outdated | §1.3 |
 | L8 | iOS/macOS χωρίς `Podfile` → builds ανεπιβεβαίωτα | §2.3 |
 | L9 | Καμία CI (analyze/test/build χειροκίνητα) | §2.6 |
 | L10 | Android release υπογράφεται με **debug key**, minify/shrink off | §2.1 |
-| L11 | `MessageService` σχεδόν ανενεργό (186 άμεσα SnackBar) | §5.5 |
+| L11 | **Μερικώς λυμένο 25/11/2026 (E15):** το `MessageService` αφαιρέθηκε· μένουν **181** άμεσα `SnackBar(...)` σε **27** αρχεία, χωρίς κεντρική πολιτική μηνυμάτων/a11y | §5.5 |
 | L12 | Budgets spent με **3** διαδρομές υπολογισμού | §5.6 |
 | L13 | *(λύθηκε 19/11/2026)* Web title/manifest τοπικοποιήθηκαν | §2.4 |
 | L14 | *(λύθηκε 19/11/2026)* Installer με σχετικές διαδρομές | §2.6 |
@@ -1042,7 +1039,7 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L33 | **Windows build:** με VS 2022 17.10.1 + Windows SDK 10.0.22621.0 το link αποτυγχάνει (LNK2019/LNK1120: `__std_*`, `_Cnd_timedwait_for_unchecked`, `_Avx2WmemEnabled` από Firebase C++ SDK 13.13.1). Απαιτείται VS 2026 18.1.1 + SDK 10.0.26100 (flutterfire #17270) — ✅ **επιβεβαιωμένο 24/11/2026**: και τα τρία builds (apk/web/windows release) περνούν | §2.5 |
 | L34 | **KGP:** `file_picker`, `firebase_auth`, `firebase_core`, `package_info_plus`, `shared_preferences_android` εφαρμόζουν ακόμα Kotlin Gradle Plugin· μελλοντική Flutter θα αποτύχει μέχρι να υιοθετήσουν Built-in Kotlin | §2.1 |
 | L35 | **✅ Διορθώθηκε 25/11/2026 (E56)** — migration σε `material_ui` **1.11.1**: 70 imports (`lib/` + `test/`) → `package:material_ui/material_ui.dart` + `GlobalMaterialLocalizations.delegates` στο `main.dart`. Το `package:flutter/material.dart` παραμένει deprecated στο SDK, αλλά **δεν** χρησιμοποιείται πλέον από τον κώδικα της εφαρμογής | §9.1 |
-| L36 | `ConnectivityService`: το `dispose()` (ακύρωση debounce timer + stream subscription, `connectivity_service.dart:120-125`) **δεν καλείται** πουθενά — ο provider χρησιμοποιεί `.value` (`main.dart:182-184`) και το `_MyAppState.dispose` μηδενίζει μόνο το `onSyncComplete`. Σκόπιμο singleton που ζει όσο η διεργασία· επίπτωση μόνο σε hot-restart/tests, καμία στη λειτουργία | §4.1, §5.9 |
+| L36 | `ConnectivityService`: το `dispose()` (ακύρωση debounce timer + stream subscription, `connectivity_service.dart:111-116`) **δεν καλείται** πουθενά — ο provider χρησιμοποιεί `.value` (`main.dart:181-183`) και το `MyApp` είναι πλέον `StatelessWidget` (χωρίς `dispose`). Σκόπιμο singleton που ζει όσο η διεργασία· επίπτωση μόνο σε hot-restart/tests, καμία στη λειτουργία | §4.1, §5.9 |
 
 ---
 

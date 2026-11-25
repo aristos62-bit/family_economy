@@ -124,9 +124,6 @@ class _AppStartState extends State<AppStart> {
       // ✅ ΚΡΙΣΙΜΗ ΔΙΟΡΘΩΣΗ: Check scheduled transactions BEFORE navigating
       await _checkScheduledTransactions(uid);
 
-      // ✅ Recurring notifications: generate occurrences ahead (killed-app safe)
-      // await RecurringNotificationsService().generateAhead(uid, horizonDays: 45);
-
       if (!mounted) return;
 
       Navigator.pushReplacement(
