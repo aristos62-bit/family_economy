@@ -72,7 +72,7 @@ Resolved εκδόσεις πακέτων, αρχιτεκτονική, Firestore 
 ```sh
 flutter pub get
 flutter analyze     # αναμενόμενο: No issues found (0 errors / 0 warnings / 0 info)
-flutter test        # αναμενόμενο: 238/238
+flutter test        # αναμενόμενο: 251/251
 ```
 
 Εκτέλεση:

@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 238 tests
+flutter test                       # 251 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -260,7 +260,7 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 | `flutter build windows --debug` | ❌ LNK2019/LNK1120 — **μόνο με VS 2022** 17.10.1 + SDK 10.0.22621.0 (βλ. §11 L33) |
 | `flutter build windows --release` | ✅ `√ Built build\windows\x64\runner\Release\family_economy.exe` — **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026, επιβεβαιωμένο· το ❌ ισχύει μόνο με VS 2022) |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ **238/238** |
+| `flutter test` | ✅ **251/251** |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -272,12 +272,12 @@ pubspec.yaml  (version: 2.3.7+14)         ← ΜΟΝΟ εδώ αλλάζει η 
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **109** (κανένα `*.backup` στο τρέχον clone) |
+| Dart αρχεία στο `lib/` | **110** (κανένα `*.backup` στο τρέχον clone) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 15 αρχεία · **238** `test()`/`testWidgets()` |
+| Tests | 16 αρχεία · **251** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -321,6 +321,7 @@ lib/
       debug_config.dart                        # _debug = false (logs OFF)
       icon_mapper.dart
       monthly_trend.dart                       # MonthlyPoint + computeMonthlyTrend
+      period_prefs.dart                        # Ανάγνωση/επιδιόρθωση περιόδου γραφημάτων (E57, καθαρό Dart + prefs)
     widgets/
       biometric_gate.dart                      # ⚠️ νεκρός (0 imports)
       calculator_engine.dart
@@ -884,11 +885,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (238 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (251 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 238/238 |
+| `flutter test` | ✅ 251/251 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 > Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
@@ -898,6 +899,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | Αρχείο | Πλήθος | Αντικείμενο |
 |---|---|---|
 | `chart_helpers_test.dart` | 9 | Εύρος ημερομηνιών, μορφοποίηση περιόδου, `parseAmount` |
+| `period_prefs_test.dart` | 13 | `PeriodPrefs` (E57): εγκυρότητα επιλογών/`Custom_`, fallback, επιδιόρθωση CP437/CP1252, self-healing εγγραφή |
 | `currency_formatter_test.dart` | 15 | Μορφοποίηση/compact/parse, αριθμητική, overspend |
 | `monthly_trend_test.dart` | 11 | `computeMonthlyTrend` (φίλτρα, ποσοστά, edges) |
 | `budget_model_test.dart` | 8 | `matchesTransaction` (category/subcategory/total/account/date) |

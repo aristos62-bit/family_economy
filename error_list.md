@@ -25,6 +25,7 @@
 > Τα **L26/E50** διορθώθηκαν με το **gate budgets στη διαγραφή λογαριασμού** (έκδοση `2.3.6+13`, 23/11/2026)· τα **E51–E54** είναι ℹ️ INFO/LOW.
 > Τα **E22/E54** διορθώθηκαν ως **καθαρισμός νεκρού κώδικα + κείμενο διαλόγου** (έκδοση `2.3.7+14`, 23/11/2026).
 > Το **E56** διορθώθηκε με τη **migration σε `material_ui` 1.11.1** (70 imports + `GlobalMaterialLocalizations.delegates`, χωρίς version bump — 25/11/2026)· `flutter analyze` πλέον **0/0/0**.
+> Το **E57** διορθώθηκε με **self-healing ανάγνωση της περιόδου γραφημάτων** (`PeriodPrefs`: επιδιόρθωση CP437/CP1252 + επανεγγραφή, 13 tests — 25/11/2026).
 > **Εκτός σειράς (τεχνικό χρέος, χωρίς ορισμένη προτεραιότητα):** **E15** — 🔵 OPEN · **E55** — ℹ️ INFO.
 > Το **E10** έκλεισε ως **μη εφαρμόσιμο** (η λειτουργία `MessageBubble`/`ChatMessagesList` αφαιρέθηκε από την εφαρμογή — 23/11/2026).
 > **Εκκρεμεί εξωτερικός έλεγχος (δεν μπλοκάρει):** (α) ✅ deployed rules = repo rules (23/11/2026 — semantic diff 57=57), (β) ύπαρξη ήδη σπασμένων ζευγών στα δεδομένα — μόνο **read-only έλεγχος** (L23· καμία κανονική ενέργεια χρήστη δεν τα παράγει).
@@ -89,6 +90,7 @@
 | E54 | Διάλογος αρχειοθέτησης: «Οι **0** κινήσεις … διατηρούνται» όταν δεν υπάρχουν κινήσεις | — | ✅ FIXED | 2026-11-23 |
 | E55 | Windows artifact `assets/icons/subcategories/expense/desktop.ini` είναι **tracked** στο git (δεν ανήκει στο repo) | — | ℹ️ INFO | 2026-11-24 |
 | E56 | 72 `info` deprecations: `package:flutter/material.dart` → Material ως ξεχωριστό πακέτο (`material_ui`) | — | ✅ FIXED | 2026-11-25 |
+| E57 | Χαλασμένη τιμή περιόδου γραφήματος στο SharedPreferences (`╬£╬«╬╜╬▒╧é` αντί `Μήνας` — UTF-8 bytes ως CP437) | — | ✅ FIXED | 2026-11-25 |
 
 ### Λεπτομέρειες
 
@@ -364,6 +366,12 @@
 - **Έλεγχος legacy εξαρτήσεων:** `fl_chart` (χρησιμοποιεί `Theme.of` μόνο στο `CandlestickChart`, που δεν χρησιμοποιούμε), `responsive_framework` (`Theme.of(context).platform` — σωστό fallback), `flutter_phoenix`/`nested` (καμία χρήση Material) → **κανένα** conflict τύπων (δύο αντίγραφα Material classes) και καμία ανάγκη για `MaterialUiCompatibilityBridge` (άλλωστε είναι deprecated).
 - **Επαλήθευση:** `flutter analyze` → **No issues found** (0/0/0)· `flutter test` → **238/238**· `build apk --debug` ✅ · `build web --release` ✅ · `build windows --release` ✅.
 - **Καμία** αλλαγή σε λογική/Firestore/έκδοση (`2.3.7+14` παραμένει)· backups: `backups/2026-11-25-material-ui/`.
+
+**E57 — Χαλασμένη περίοδος γραφήματος (FIXED 25/11/2026)**
+- **Εύρημα (smoke test POCO X3, release):** η κάρτα «Έσοδα / Έξοδα» έδειχνε `Τρέχουσα: ╬£╬«╬╜╬▒╧é` αντί `Μήνας`. Το accessibility tree επιβεβαίωσε ότι η **αποθηκευμένη** τιμή (`graf1_period_<uid>`) ήταν UTF-8 bytes διαβασμένα ως **CP437** (`CE 9C CE AE CE BD CE B1 CF 82`), δηλαδή πρόβλημα δεδομένων παλιάς εγκατάστασης — όχι κώδικα ή localization (καμία ένδειξη σε analyze/test/build/logcat).
+- **Επίπτωση:** λάθος ετικέτα· η τιμή δεν ταίριαζε με τις επιλογές, άρα τα γραφήματα έπεφταν στο προεπιλεγμένο εύρος και η «Προβολή γραφημάτων» δεν έδειχνε επιλεγμένη περίοδο.
+- **✅ Διόρθωση:** νέο `core/utils/period_prefs.dart` (`PeriodPrefs`): `isValid` (γνωστές επιλογές + `Custom_YYYY-MM-DD_YYYY-MM-DD`), `repairEncoding` (CP437 → UTF-8, Latin-1/CP1252 → UTF-8, αποδοχή **μόνο** αν βγει έγκυρη περίοδος) και `load` που **ξαναγράφει** τη διορθωμένη τιμή (self-healing). Χρήση στα 2 σημεία ανάγνωσης: `general_view_page` (5 γραφήματα) και `view_option_page`.
+- **Επαλήθευση:** `flutter analyze` → **No issues found**· `flutter test` → **251/251** (+13 `period_prefs_test.dart`, με το πραγματικό χαλασμένο string)· καμία αλλαγή σε Firestore/έκδοση· backups: `backups/2026-11-25-e57-period-repair/`.
 
 ## Πώς προσθέτω εύρημα
 
