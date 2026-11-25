@@ -26,6 +26,7 @@
 | `DESIGN.md` | §3.2 δέντρο (`period_prefs.dart`), §3.1 μετρήσεις (110 αρχεία, 16 test files, 251 tests), §9.1/§9.2 |
 | `README.md` | `flutter test` → 251/251 |
 | `error_list.md` | **E57** ✅ FIXED + λεπτομέρειες |
+| `new_material_fix.md` | **νέο** — επαναχρησιμοποιήσιμος οδηγός για τη migration `material_ui` σε άλλα Flutter projects (βήματα, παγίδες, checklist) + γραμμή στο `DESIGN.md` §12.1 |
 | `oldsessions.md` | κεφάλαιο 36 |
 
 **Σχεδιαστικές αποφάσεις**

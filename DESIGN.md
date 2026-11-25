@@ -1052,6 +1052,7 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | `oldsessions.md` | Ευρετήριο ιστορικού | Πίνακας κεφαλαίων + τρέχουσα κατάσταση |
 | `oldsessions/` | Ιστορικό ανά φάση | 1 αρχείο ανά κεφάλαιο, ποτέ επανάχρηση νούμερου, ≤150 γραμμές |
 | `error_list.md` | **Ευρήματα & εκκρεμότητες** | Προβλήματα που βρέθηκαν, κατάσταση, σειρά διόρθωσης |
+| `new_material_fix.md` | **Οδηγός migration `material_ui`** | Βήματα + παγίδες + checklist για εφαρμογή σε άλλα Flutter projects (E56) |
 | `README.md` | Παρουσίαση | Intro + links |
 | `docs/` | Legacy λεπτομέρειες | Πίνακες schema (import script) |
 | `data/*.json` | Datasets | Δεδομένα εισαγωγής |
