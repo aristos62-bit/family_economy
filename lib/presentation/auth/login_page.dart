@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:family_economy/core/data/schema_service.dart';
+import 'package:family_economy/core/data/user_doc_policy.dart';
 import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/services/onboarding_service.dart';
@@ -135,24 +136,28 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         return;
       }
 
-      var userDoc = await _authService.getUserDocument(uid);
+      // ✅ E64: μία κλήση — cache → server → create, χωρίς poll.
+      // Offline δεν γράφεται τίποτα· η ροή συνεχίζει με ό,τι υπάρχει.
+      final ensured = await _authService.ensureUserDocument(
+        user!,
+        confirmedOffline: _isConfirmedOffline(),
+      );
+      if (!mounted) return;
 
-      // ✅ Αν λείπει το user document (π.χ. χάθηκε η αρχική εγγραφή), το
-      // δημιουργούμε με όλα τα πεδία πριν το onboarding. Η μέθοδος γράφει
-      // `onboarding_completed: false`, άρα η κανονική ροή συνεχίζει ως έχει.
-      if (!userDoc.exists) {
-        await _authService.createUserDocumentIfNeeded(user!);
-        userDoc = await _authService.getUserDocument(uid);
-      }
-
-      final userData = userDoc.data();
+      final userData = ensured.data;
       final currency = userData?['default_currency'] as String? ?? 'EUR';
+
+      // E64: offline και το doc δεν υπάρχει ούτε στο cache — ορατό μήνυμα,
+      // καμία εγγραφή, η είσοδος συνεχίζει (ίδια φιλοσοφία με E5/2Α).
+      if (ensured.outcome == UserDocOutcome.skippedOffline) {
+        _showOnboardingOfflineNotice();
+      }
 
       // ✅ E4: Έλεγχος έκδοσης δεδομένων πριν το onboarding / το HomePage.
       // Χρησιμοποιεί το doc που μόλις διαβάστηκε (0 επιπλέον reads).
       await SchemaService().checkAndMigrate(
         uid: uid,
-        exists: userDoc.exists,
+        exists: ensured.exists,
         data: userData,
       );
 

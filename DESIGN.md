@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 278 tests
+flutter test                       # 292 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -60,7 +60,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Gradle / AGP / Kotlin | **9.5.0 / 9.3.1 / 2.4.20** (βλ. §2.1) |
 | Visual Studio | Community **2026 18.1.1** · Windows SDK **10.0.26100.0** — ✅ Windows release build επιβεβαιωμένο 24/11/2026· ⚠️ με **2022 17.10.1** + SDK 10.0.22621.0 αποτυγχάνει (§2.5, §11 L33) |
-| App version | **`2.3.11+18`** (`pubspec.yaml`, επαληθεύτηκε 26/11/2026) |
+| App version | **`2.3.12+19`** (`pubspec.yaml`, επαληθεύτηκε 26/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -128,17 +128,17 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.11+18)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.12+19)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.3.11 · BUILD_NO=18   (από pubspec, STEP 0)
-         ├── APK      FamilyBudget_v2.3.11.apk
+   └── build_and_setup_final.bat  APP_VER=2.3.12 · BUILD_NO=19   (από pubspec, STEP 0)
+         ├── APK      FamilyBudget_v2.3.12.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.3.11.exe   (FileVersion 2.3.11.18)
+               └── FamilyBudgetSetup_v2.3.12.exe   (FileVersion 2.3.12.19)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -151,7 +151,7 @@ pubspec.yaml  (version: 2.3.11+18)        ← ΜΟΝΟ εδώ αλλάζει η 
 | **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.11 (build 18)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.12 (build 19)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -260,7 +260,7 @@ pubspec.yaml  (version: 2.3.11+18)        ← ΜΟΝΟ εδώ αλλάζει η 
 | `flutter build windows --debug` | ❌ LNK2019/LNK1120 — **μόνο με VS 2022** 17.10.1 + SDK 10.0.22621.0 (βλ. §11 L33) |
 | `flutter build windows --release` | ✅ `√ Built build\windows\x64\runner\Release\family_economy.exe` — **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026, επιβεβαιωμένο· το ❌ ισχύει μόνο με VS 2022) |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ **278/278** |
+| `flutter test` | ✅ **292/292** |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -272,12 +272,12 @@ pubspec.yaml  (version: 2.3.11+18)        ← ΜΟΝΟ εδώ αλλάζει η 
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **108** (κανένα `*.backup` στο τρέχον clone· +1 `onboarding_defaults.dart` για E5) |
+| Dart αρχεία στο `lib/` | **109** (κανένα `*.backup` στο τρέχον clone· +1 `onboarding_defaults.dart` για E5, +1 `user_doc_policy.dart` για E64) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 18 αρχεία · **278** `test()`/`testWidgets()` |
+| Tests | 19 αρχεία · **292** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -294,8 +294,9 @@ lib/
       schema.dart                              # Έκδοση δεδομένων: σταθερές, parser, καθαρή απόφαση (χωρίς Firebase)
       schema_service.dart                      # Gate + migrations + εγγραφή έκδοσης (timeout + cache verify)
       onboarding_defaults.dart                 # E5: σταθερά onboarding ids + 14 κατηγορίες / 95 υποκατηγορίες (καθαρό Dart)
+      user_doc_policy.dart                     # E64: cache → server → create, offline codes, timeout 8s (καθαρό Dart)
     services/
-      auth_service.dart                        # Firebase Auth API
+      auth_service.dart                        # Firebase Auth API + E64 ensure user document
       biometric_auth_service.dart              # LocalAuth API
       biometric_settings_service.dart          # Mode ανά χρήστη: always / on_demand
       connectivity_service.dart                # Online/offline, 2s debounce
@@ -419,17 +420,17 @@ lib/
 | # | Βήμα | Γραμμή |
 |---|---|---|
 | 1 | `FirebaseAuth.instance.currentUser` → αν `null` → `LoginRegisterPage` | 67–75 |
-| 2 | Φόρτωση user document (+ δημιουργία αν λείπει) → `default_currency` (default `EUR`) | 80–91 |
-| 3 | `BiometricSettingsService.instance.load(uid)` | 93 |
-| 4 | Αν `enabled && mode == 'always'` → `BiometricAuthService.authenticate()`· σε αποτυχία → exception → `StartupErrorView` | 96–107 |
-| 5 | **E4 gate:** `SchemaService.checkAndMigrate(...)` με το doc των γραμμών 80–91 (**0 νέα reads**) | 112–116 (μέθοδος 189–203) |
-| 6 | `_runOnboardingIfNeeded` — resume διακοπέντος onboarding | 122, 209–223 |
-| 7 | `ScheduledTransactionsService.checkAndExecutePendingTransactions(uid)` | 125, 226–252 |
-| 8 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` | 135–156 |
+| 2 | Φόρτωση user document (E64: cache → server → create, χωρίς poll) → `default_currency` (default `EUR`) | 80–89 |
+| 3 | `BiometricSettingsService.instance.load(uid)` | 92 |
+| 4 | Αν `enabled && mode == 'always'` → `BiometricAuthService.authenticate()`· σε αποτυχία → exception → `StartupErrorView` | 95–105 |
+| 5 | **E4 gate:** `SchemaService.checkAndMigrate(...)` με το doc των γραμμών 80–89 (**0 νέα reads**) | 111–115 (μέθοδος 185–199) |
+| 6 | `_runOnboardingIfNeeded` — resume διακοπέντος onboarding | 121, 205–229 |
+| 7 | `ScheduledTransactionsService.checkAndExecutePendingTransactions(uid)` | 124, 241–267 |
+| 8 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` | 128–158 |
 
 > Οι recurring ειδοποιήσεις παράγονται από το `NotificationsProvider` (§5.10)· το νεκρό `recurring_notifications_service.dart` **αφαιρέθηκε** 25/11/2026 (L6), μαζί με τα σχολιασμένα `generateAhead` εδώ και στο `login_page.dart`.
 
-> **Σειρά σημαντική:** το gate τρέχει **μετά** το βιομετρικό (μόνο ο νόμιμος χρήστης προκαλεί writes) και **πριν** τις scheduled transactions (που γράφουν). `SchemaBlockedException` → typed catch (163) → `StartupErrorView` (274) με «Ξανά» / «Αποσύνδεση».
+> **Σειρά σημαντική:** το E4 gate τρέχει **μετά** το βιομετρικό και **πριν** τις scheduled transactions (που γράφουν). `SchemaBlockedException` → typed catch (159) → `StartupErrorView` (288) με «Ξανά» / «Αποσύνδεση». Από `2.3.12+19` το E64 ensure εκτελείται πριν το βιομετρικό· μπορεί να γράψει μόνο όταν ο server επιβεβαιώσει ότι λείπει το doc (E64).
 
 ### 4.4 `MyApp` / `ErrorApp`
 
@@ -835,6 +836,7 @@ schema_version (int), schema_updated_at (Timestamp)
 - `Settings(persistenceEnabled: true, cacheSizeUnlimited)` → offline writes επιτρέπονται.
 - `ConnectivityService` (2s debounce) → ενημέρωση ένδειξης `OFFLINE` (`OfflineAppBarChip`)· κανένα μήνυμα συγχρονισμού (E15· το E61 έκλεισε ως 🚫 WON'T FIX).
 - **Onboarding (E5, `2.3.11+18`): εξαίρεση από το offline-first.** Το `OnboardingService` διαβάζει πρώτα το root doc με `Source.server` (timeout 8s) και γράφει **μόνο** αν ο server επιβεβαιώσει `onboarding_completed: false`. Offline: καμία εγγραφή, ορατό μήνυμα (overlay + SnackBar) και η είσοδος συνεχίζει· η επανάληψη γίνεται στην επόμενη εκκίνηση (`AppStart`). Το `login_page`/`AppStart` κάνουν και fast gate με `ConnectivityService.isConfirmedOffline` πριν περιμένουν τον server.
+- **User document (E64, `2.3.12+19`):** το `AuthService.ensureUserDocument` ακολουθεί cache → server (`Source.server`, timeout 8s) → create. Offline ή timeout: **καμία εγγραφή**· η είσοδος συνεχίζει με τα διαθέσιμα δεδομένα. Καταργήθηκαν το poll 15×500ms και η διπλή δημιουργία σε `login_page`/`AppStart`.
 
 ### 8.4 Συμβάσεις ονοματοδοσίας
 
@@ -890,11 +892,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (278 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (292 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 278/278 |
+| `flutter test` | ✅ 292/292 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 > Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
@@ -913,6 +915,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `prepare_startup_test.dart` | 5 | E58: σειρά βημάτων, timeout theme, αποτυχία notifications, διάδοση σφάλματος connectivity, επαναχρησιμοποίηση instance στο retry |
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
 | `onboarding_defaults_test.dart` | 18 | E5: σταθερά ids (`default-account`, `cat-*`, `sub-*`), πλήθη 6+8 κατηγοριών / 24+71 υποκατηγοριών, μοναδικότητα, μη κενά ονόματα, sequential icons, χρώματα |
+| `user_doc_policy_test.dart` | 14 | E64: cache hit/miss, offline gate, server exists/create, timeout & offline codes, permission-denied, σταθερές 8s / 3 κωδικοί |
 | `startup_error_view_test.dart` | 6 | Κείμενα, ενέργειες, λεπτομέρειες, `primaryEnabled=false`, `textScale 1.45` χωρίς overflow |
 | `account_delete_guard_test.dart` | 41 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) + `targetIsVisible` αρχειοθετημένου στόχου (E32) + πεδία budgets στο πλάνο (L26) |
 | `account_budget_usage_test.dart` | 13 | Μέτρηση όλων των μη διαγραμμένων budgets (L26): soft-deleted, legacy χωρίς `is_active`/`deleted`, «Όλοι», άλλος λογαριασμός, ανενεργά, trim, κενά |

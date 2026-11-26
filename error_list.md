@@ -9,9 +9,9 @@
 
 | # | Ενέργεια | ID |
 |---|---|---|
-| 1 | `createUserDocumentIfNeeded` πριν το E5 gate (offline write + poll) — LOW | E64 |
+| — | Καμία ανοιχτή εκκρεμότητα | — |
 
-> **E5** ✅ διορθώθηκε 26/11/2026 (`2.3.11+18`): σταθερά ids onboarding + server-truth gate + καμία εγγραφή offline (λεπτομέρειες παρακάτω). **E63** ✅ διορθώθηκε μαζί του (σταθερό `cat-transfer`). **E64** 🔵 νέο, LOW (δεν μπλοκάρει).
+> **E5** ✅ διορθώθηκε 26/11/2026 (`2.3.11+18`): σταθερά ids onboarding + server-truth gate + καμία εγγραφή offline (λεπτομέρειες παρακάτω). **E63** ✅ διορθώθηκε μαζί του (σταθερό `cat-transfer`). **E64** ✅ διορθώθηκε 26/11/2026 (`2.3.12+19`): server-truth `ensureUserDocument`, καμία εγγραφή offline, χωρίς poll.
 
 > **L18** ✅ διορθώθηκε 25/11/2026 (`2.3.8+15`) — το «Δοκιμή ξανά» ξανατρέχει την αρχικοποίηση (λεπτομέρειες: `DESIGN.md` §4.4, §11 L18). **Hardening `2.3.9+16`:** timeout 20s, disabled κουμπί όσο τρέχει, debug log σε αποτυχία/λήξη.
 > **E58/E59** ✅ διορθώθηκαν 25/11/2026 (`2.3.10+17`): όλη η εκκίνηση (theme/notifications/connectivity) μπήκε σε δοχείο σφάλματος με per-step timeouts και η άδεια ειδοποιήσεων ζητείται μετά το πρώτο frame· το `Phoenix` + `flutter_phoenix` αφαιρέθηκαν.
@@ -101,7 +101,7 @@
 | E61 | Αφαιρέθηκε το `MessageService` χωρίς αντικαταστάτη· η αρχική ιδέα «offline → θα συγχρονιστεί» και το κεντρικό μήνυμα συγχρονισμού δεν υλοποιήθηκαν ποτέ | — | 🚫 WON'T FIX | 2026-11-26 |
 | E62 | `DESIGN.md` §5.5: «186 άμεσα SnackBar σε 28 αρχεία» έναντι μέτρησης 25/11/2026 | — | ✅ FIXED | 2026-11-25 |
 | E63 | Διπλή κατηγορία «Μεταφορά» από 2 συσκευές: `_getOrCreateTransferCategory` έγραφε τυχαίο uuid | F5 | ✅ FIXED | 2026-11-26 |
-| E64 | `createUserDocumentIfNeeded` τρέχει πριν το E5 gate: offline `set` + poll ~7.5s πριν την είσοδο | F5 | 🔵 OPEN (LOW) | 2026-11-26 |
+| E64 | `createUserDocumentIfNeeded` τρέχει πριν το E5 gate: offline `set` + poll ~7.5s πριν την είσοδο | F5 | ✅ FIXED | 2026-11-26 |
 
 ### Λεπτομέρειες
 
@@ -133,10 +133,17 @@
 - `_getOrCreateTransferCategory` σε `transactions_actions_service.dart:1133` και `scheduled_transactions_service.dart:787` έγραφε τυχαίο uuid σε κάθε συσκευή → 2 system categories `type=transfer`.
 - Λύση: σταθερό `OnboardingDefaults.transferCategoryId` (`cat-transfer`) + `SetOptions(merge:true)`. Ο υπάρχων query (`type=transfer`, `is_system=true`) παραμένει πρώτος, άρα legacy docs συνεχίζουν να βρίσκονται.
 
-**E64 — `createUserDocumentIfNeeded` πριν το gate (OPEN, LOW)**
-- Το `login_page.dart:117-120` καλεί `createUserDocumentIfNeeded` **πριν** το onboarding gate. Η μέθοδος κάνει cache-first `get()`, `set(merge:true)` και poll έως ~7.5s.
-- Offline: η εγγραφή μπαίνει στην ουρά και η poll καθυστερεί την είσοδο. Το doc id είναι `user.uid` (σταθερό) → **κανένας κίνδυνος διπλότυπων**· μόνο UX/καθαρότητα.
-- Επόμενη ενέργεια (όταν αποφασιστεί): server-truth/skip όταν `isConfirmedOffline` ή αφαίρεση του poll. Δεν μπλοκάρει το E5.
+**E64 — `createUserDocumentIfNeeded` πριν το gate (FIXED 26/11/2026, `2.3.12+19`)**
+- Το `login_page.dart:139-145` και το `app_start.dart:80-89` καλούσαν `createUserDocumentIfNeeded` **πριν** το onboarding gate. Η μέθοδος έκανε cache-first `get()`, `set(merge:true)` και poll έως ~7.5s.
+- Offline: η εγγραφή έμπαινε στην ουρά και η poll καθυστερούσε την είσοδο. Το doc id είναι `user.uid` (σταθερό) → **κανένας κίνδυνος διπλότυπων**· μόνο UX/καθαρότητα.
+- Λύση: `AuthService.ensureUserDocument` (μία κλήση από τα δύο entry points) με καθαρό κανόνα `user_doc_policy.dart`:
+  - `Source.cache` hit → επιστροφή δεδομένων, **0 δίκτυο**.
+  - Cache miss + `isConfirmedOffline` → **καμία κλήση, καμία εγγραφή**, ορατό μήνυμα (`skippedOffline`).
+  - Cache miss online → `Source.server` με timeout 8s· `set(merge:true)` **μόνο** αν ο server επιβεβαιώσει ότι λείπει.
+  - Timeout/offline codes → `skippedOffline`· άλλο σφάλμα → `skippedError` (μόνο debug log, κανένα «χωρίς σύνδεση» μήνυμα).
+  - Κατάργηση poll και της διπλής ανάγνωσης (`getUserDocument`).
+- Tests: `user_doc_policy_test.dart` (14) → σύνολο **292/292**· `flutter analyze` 0/0/0.
+- Δεν απαιτείται migration· επηρεάζει μόνο τη ροή εισόδου.
 
 **E6 — Soft-deleted account (WON'T FIX)**
 - Ο έλεγχος `accounts.limit(1)` δεν φιλτράρει `deleted` — **σκόπιμα**: αν λείπει το user doc αλλά μένουν accounts, η φραγή εμποδίζει διπλό default.

@@ -78,16 +78,14 @@ class _AppStartState extends State<AppStart> {
       final uid = user.uid;
 
       // 1) Load user data (for Session currency)
-      var userDoc = await _authService.getUserDocument(uid);
+      // ✅ E64: μία κλήση — cache → server → create, χωρίς poll.
+      final ensured = await _authService.ensureUserDocument(
+        user,
+        confirmedOffline: _isConfirmedOffline(),
+      );
+      if (!mounted) return;
 
-      // ✅ Αν λείπει το user document, το δημιουργούμε με όλα τα πεδία πριν
-      // το onboarding (η μέθοδος γράφει `onboarding_completed: false`).
-      if (!userDoc.exists) {
-        await _authService.createUserDocumentIfNeeded(user);
-        userDoc = await _authService.getUserDocument(uid);
-      }
-
-      final userData = userDoc.data();
+      final userData = ensured.data;
       final currency = (userData?['default_currency'] as String?) ?? 'EUR';
       DebugConfig.print('🔑 Loaded user document for uid=$uid with default currency=$currency');
       // 2) Load biometric settings
@@ -112,8 +110,8 @@ class _AppStartState extends State<AppStart> {
       // ✅ E4: Έλεγχος έκδοσης δεδομένων πριν από οποιαδήποτε εγγραφή.
       await _checkSchemaVersion(
         uid: uid,
-        exists: userDoc.exists,
-        data: userDoc.data(),
+        exists: ensured.exists,
+        data: userData,
       );
 
       // ✅ ONBOARDING RECOVERY: αν το flag είναι ρητά `false`, το onboarding
