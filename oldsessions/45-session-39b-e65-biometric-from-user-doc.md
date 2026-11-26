@@ -1,6 +1,6 @@
 # Session 39b (2026-11-26) — E65: βιομετρικό από το doc του E64
 
-> **Κεφάλαιο 45/45** · **Ημερομηνία:** 2026-11-26 · **Σχετικά:** E65, E64, commit `(νέο)`
+> **Κεφάλαιο 45/45** · **Ημερομηνία:** 2026-11-26 · **Σχετικά:** E65, E64, commit `81fd84e`
 
 ### Πλαίσιο
 
@@ -46,4 +46,4 @@
 
 ### Κλείσιμο session
 
-- Commit: **`(νέο)`** — `fix(auth): E65 read biometric settings from E64 user doc (0 extra reads)` · push.
+- Commit: **`81fd84e`** — `fix(auth): E65 read biometric settings from E64 user doc (0 extra reads)` · push OK.
