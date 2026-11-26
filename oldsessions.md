@@ -22,9 +22,9 @@
 | | |
 |---|---|
 | Έκδοση | **2.3.11+18** |
-| Τελευταίο κεφάλαιο | **42** — E5 ντετερμινιστικά IDs & server-truth gate (2026-11-26) |
+| Τελευταίο κεφάλαιο | **43** — L23 read-only έλεγχος & κλείσιμο (2026-11-26) |
 | Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **278/278** |
-| Επόμενη εκκρεμότητα | **L23** — fail-closed peer guard · μετά **E64** (LOW) (`error_list.md`) |
+| Επόμενη εκκρεμότητα | **E64** (LOW) — `createUserDocumentIfNeeded` πριν το E5 gate (`error_list.md`) |
 
 ## Κεφάλαια
 
@@ -72,14 +72,15 @@
 | 40 | 2026-11-25 | 36 | [E15/L6: νεκρός κώδικας & συγχρονισμός](oldsessions/40-session-36-e15-l6-dead-code-cleanup.md) | Διαγραφή `message_service`/`biometric_gate`/`recurring_notifications_service` + αχρησιμοποίητης `OfflineBanner`· αφαίρεση `onSyncComplete` (no-op caller: μετρητής ποτέ τροφοδοτημένος)· `MyApp` → `StatelessWidget`· 107 αρχεία στο `lib/`· 260/260 tests, analyze 0/0/0, device tests ✅· χωρίς version bump· E15/E62 FIXED, E61 INFO |
 | 41 | 2026-11-26 | 36b | [E61 κλείσιμο & συγχρονισμός docs](oldsessions/41-session-36b-e61-close-docs-consistency.md) | E61 → 🚫 WON'T FIX (0 αναφορές sync μηνύματος στον κώδικα· απόφαση 36)· ουρά: E5, L23 (E15/L6 βγήκε)· DESIGN §1.2 `pub outdated` μετρημένο (47/26), L7 χωρίς «77», §8.3, §10.2 snapshot 626/79/26,9 MB· 41 κεφάλαια· χωρίς αλλαγή κώδικα/έκδοσης |
 | 42 | 2026-11-26 | 37 | [E5: ντετερμινιστικά IDs onboarding](oldsessions/42-session-37-e5-deterministic-ids.md) | `onboarding_defaults.dart` με σταθερά IDs (14/95)· server-truth gate 2 επιπέδων (`Source.server` + timeout 8s + `OnboardingOfflineException`, καμία εγγραφή offline)· guards κατά overwrite· `cat-transfer` σταθερό (E63)· E64 LOW· 18 tests → **278/278**, analyze 0/0/0, apk ✅· device tests POCO X3 (fresh/idempotent/offline/resume/cleanup)· v2.3.11+18 |
+| 43 | 2026-11-26 | 38 | [L23: read-only έλεγχος & κλείσιμο](oldsessions/43-session-38-l23-closed-readonly-audit.md) | Read-only admin ανάγνωση **όλων** των δεδομένων: 6 χρήστες, 2.312 κινήσεις, 146 transfer legs, 73 groups → **0** σπασμένα/ημιτελή ζεύγη· L23 → 🚫 WON'T FIX (υπερβολή)· ουρά: μόνο E64· DESIGN §11 + README version sync· καμία αλλαγή κώδικα/έκδοσης |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **42** (01–42) |
+| Κεφάλαια στον φάκελο | **43** (01–43) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **2139** |
+| Σύνολο γραμμών κεφαλαίων | **2194** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 
