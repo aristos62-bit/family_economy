@@ -1,6 +1,6 @@
 # Session 39 (2026-11-26) — E64: server-truth user document
 
-> **Κεφάλαιο 44/44** · **Ημερομηνία:** 2026-11-26 · **Σχετικά:** E64, commit `(νέο)`
+> **Κεφάλαιο 44/44** · **Ημερομηνία:** 2026-11-26 · **Σχετικά:** E64, E65, commit `464a8d2`
 
 ### Πλαίσιο
 
@@ -31,13 +31,21 @@
 - `flutter build apk --debug` → ✅ (βλ. Device tests)
 - Device tests POCO X3 (`2.3.12+19`) → βλ. παρακάτω
 
-### Device tests (POCO X3 — `9593c01e`)
+### Device tests (POCO X3 — `9593c01e`, `2.3.12+19`)
 
-- (συμπληρώνεται μετά τα device tests)
+| # | Σενάριο | Αποτέλεσμα |
+|---|---|---|
+| D1 | Online login `demo@yahoo.com` (logout → login) | ✅ Home σε ~1.2s (cache hit)· έκδοση `2.3.12 (build 19)` επιβεβαιωμένη |
+| D2 | Warm-cache offline launch (airplane mode) | ✅ Home + OFFLINE badge· δεδομένα από cache |
+| D3 | Offline + διαγραφή `databases/firestore.*` (`run-as`) | ⚠️ `StartupErrorView` από `BiometricSettingsService.load` (`unavailable`) — **E65** (pre-existing, fail-closed)· το E64 ensure έκανε skip χωρίς εγγραφή/poll |
+| D4 | Online relaunch μετά το D3 | ✅ Τα δεδομένα αποκαταστάθηκαν πλήρως (server → cache) |
+
+- Screenshots: `device test/screenshots/e64_00…e64_15_*` (launch, settings/version, logout, login, offline warm, offline cold, online restore).
+- Καθαρισμός: airplane mode OFF, demo logged in, **καμία νέα εγγραφή/δεδομένα δοκιμής**· το Firestore cache ξαναχτίστηκε από τον server.
 
 ### Εκκρεμότητες
 
-- **Καμία ανοιχτή** στη «Σειρά εκκρεμοτήτων».
+- **E65** (LOW) — νέο εύρημα από το D3: offline + κενό cache → fail-closed στο `BiometricSettingsService.load` (χρειάζεται απόφαση).
 - **E55**, **E60** — ℹ️ INFO, εκτός σειράς.
 
 ### Backups
@@ -46,4 +54,5 @@
 
 ### Κλείσιμο session
 
-- Commit: **`(νέο)`** — `feat(auth): E64 server-truth user document (no poll, no offline writes)` · push.
+- Commit: **`464a8d2`** — `feat(auth): E64 server-truth user document (no poll, no offline writes)` · push OK (`11a790f..464a8d2`).
+- Device tests: βλ. πίνακα παραπάνω· νέο **E65** (LOW).

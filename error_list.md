@@ -9,9 +9,9 @@
 
 | # | Ενέργεια | ID |
 |---|---|---|
-| — | Καμία ανοιχτή εκκρεμότητα | — |
+| 1 | AppStart offline + κενό Firestore cache: fail-closed στο `BiometricSettingsService.load` — LOW | E65 |
 
-> **E5** ✅ διορθώθηκε 26/11/2026 (`2.3.11+18`): σταθερά ids onboarding + server-truth gate + καμία εγγραφή offline (λεπτομέρειες παρακάτω). **E63** ✅ διορθώθηκε μαζί του (σταθερό `cat-transfer`). **E64** ✅ διορθώθηκε 26/11/2026 (`2.3.12+19`): server-truth `ensureUserDocument`, καμία εγγραφή offline, χωρίς poll.
+> **E5** ✅ διορθώθηκε 26/11/2026 (`2.3.11+18`): σταθερά ids onboarding + server-truth gate + καμία εγγραφή offline (λεπτομέρειες παρακάτω). **E63** ✅ διορθώθηκε μαζί του (σταθερό `cat-transfer`). **E64** ✅ διορθώθηκε 26/11/2026 (`2.3.12+19`): server-truth `ensureUserDocument`, καμία εγγραφή offline, χωρίς poll. **E65** 🔵 νέο, LOW (εύρημα device test D3).
 
 > **L18** ✅ διορθώθηκε 25/11/2026 (`2.3.8+15`) — το «Δοκιμή ξανά» ξανατρέχει την αρχικοποίηση (λεπτομέρειες: `DESIGN.md` §4.4, §11 L18). **Hardening `2.3.9+16`:** timeout 20s, disabled κουμπί όσο τρέχει, debug log σε αποτυχία/λήξη.
 > **E58/E59** ✅ διορθώθηκαν 25/11/2026 (`2.3.10+17`): όλη η εκκίνηση (theme/notifications/connectivity) μπήκε σε δοχείο σφάλματος με per-step timeouts και η άδεια ειδοποιήσεων ζητείται μετά το πρώτο frame· το `Phoenix` + `flutter_phoenix` αφαιρέθηκαν.
@@ -102,6 +102,7 @@
 | E62 | `DESIGN.md` §5.5: «186 άμεσα SnackBar σε 28 αρχεία» έναντι μέτρησης 25/11/2026 | — | ✅ FIXED | 2026-11-25 |
 | E63 | Διπλή κατηγορία «Μεταφορά» από 2 συσκευές: `_getOrCreateTransferCategory` έγραφε τυχαίο uuid | F5 | ✅ FIXED | 2026-11-26 |
 | E64 | `createUserDocumentIfNeeded` τρέχει πριν το E5 gate: offline `set` + poll ~7.5s πριν την είσοδο | F5 | ✅ FIXED | 2026-11-26 |
+| E65 | AppStart offline + κενό Firestore cache: το `BiometricSettingsService.load` πετάει `unavailable` → `StartupErrorView` (fail-closed) | — | 🔵 OPEN (LOW) | 2026-11-26 |
 
 ### Λεπτομέρειες
 
@@ -144,6 +145,13 @@
   - Κατάργηση poll και της διπλής ανάγνωσης (`getUserDocument`).
 - Tests: `user_doc_policy_test.dart` (14) → σύνολο **292/292**· `flutter analyze` 0/0/0.
 - Δεν απαιτείται migration· επηρεάζει μόνο τη ροή εισόδου.
+
+**E65 — AppStart offline + κενό cache: fail-closed στο βιομετρικό (OPEN, LOW)**
+- Device test D3 (POCO X3, `2.3.12+19`): airplane mode ON + διαγραφή `databases/firestore.*` μέσω `run-as` → εκκίνηση → `StartupErrorView` «Απαιτείται ταυτοποίηση» με `[cloud_firestore/unavailable] Failed to get document because the client is offline.`
+- Αιτία: μετά το E64 ensure (`skippedOffline`, καμία εγγραφή), το `BiometricSettingsService.load(uid)` (`biometric_settings_service.dart:41-51`) κάνει default `get()` στο **ίδιο** user doc· με άδειο cache + offline πετάει και η εξαίρεση φτάνει στο generic catch του `AppStart`.
+- **Δεν είναι regression του E64:** πριν το E64 η ίδια ροή σταματούσε νωρίτερα στο `getUserDocument` με το ίδιο σφάλμα. Το fail-closed είναι ασφαλές (δεν παρακάμπτεται το βιομετρικό gate), αλλά δεν επιτρέπει είσοδο.
+- Πιθανές κατευθύνσεις (χρειάζεται απόφαση): (α) χρήση των πεδίων `fingerprint_enabled` / `biometric_mode` / `biometric_remember` από το `ensured.data` (ίδιο doc, **0 επιπλέον reads**) όταν υπάρχει· (β) τοπικό cache βιομετρικών settings· (γ) βελτίωση του μηνύματος/ροής όταν το doc δεν είναι διαθέσιμο. Απλό try/catch με defaults **απορρίπτεται** — θα παρέκαμπτε το βιομετρικό gate.
+- Αποτέλεσμα D3: καμία εγγραφή, κανένα poll· με online επανεκκίνηση τα δεδομένα αποκαταστάθηκαν πλήρως.
 
 **E6 — Soft-deleted account (WON'T FIX)**
 - Ο έλεγχος `accounts.limit(1)` δεν φιλτράρει `deleted` — **σκόπιμα**: αν λείπει το user doc αλλά μένουν accounts, η φραγή εμποδίζει διπλό default.
