@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:family_economy/core/data/schema.dart';
 import 'package:family_economy/core/data/schema_service.dart';
+import 'package:family_economy/core/data/user_doc_policy.dart';
 import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/biometric_auth_service.dart';
 import 'package:family_economy/core/services/biometric_settings_service.dart';
@@ -88,8 +89,28 @@ class _AppStartState extends State<AppStart> {
       final userData = ensured.data;
       final currency = (userData?['default_currency'] as String?) ?? 'EUR';
       DebugConfig.print('🔑 Loaded user document for uid=$uid with default currency=$currency');
-      // 2) Load biometric settings
-      final bio = await BiometricSettingsService.instance.load(uid);
+
+      // 2) E65: βιομετρικές ρυθμίσεις από το doc που ήδη διαβάστηκε
+      // (0 επιπλέον reads). Αν το doc δεν είναι διαθέσιμο, δεν μπορούμε να
+      // επαληθεύσουμε το βιομετρικό gate → fail-closed με καθαρό μήνυμα.
+      if (userData == null) {
+        if (ensured.outcome == UserDocOutcome.skippedOffline) {
+          throw Exception(
+            'Χωρίς σύνδεση δεν είναι δυνατός ο έλεγχος ασφαλείας. '
+            'Συνδεθείτε στο internet και πατήστε «Ξανά».',
+          );
+        }
+        throw Exception(
+          'Δεν ήταν δυνατή η ανάγνωση των ρυθμίσεων ασφαλείας. '
+          'Δοκιμάστε ξανά.',
+        );
+      }
+
+      final bio = BiometricSettings(
+        enabled: (userData['fingerprint_enabled'] as bool?) ?? false,
+        mode: (userData['biometric_mode'] as String?) ?? 'always',
+        remember: (userData['biometric_remember'] as bool?) ?? false,
+      );
 
       // 3) Gate: if enabled + always -> ask biometric now
       if (bio.enabled && bio.mode == 'always') {
@@ -171,7 +192,7 @@ class _AppStartState extends State<AppStart> {
       DebugConfig.print('❌ AppStart error: $e');
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = e.toString().replaceFirst('Exception: ', '');
         _loading = false;
       });
       AccessibilityService.announceError(

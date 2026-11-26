@@ -60,7 +60,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Gradle / AGP / Kotlin | **9.5.0 / 9.3.1 / 2.4.20** (βλ. §2.1) |
 | Visual Studio | Community **2026 18.1.1** · Windows SDK **10.0.26100.0** — ✅ Windows release build επιβεβαιωμένο 24/11/2026· ⚠️ με **2022 17.10.1** + SDK 10.0.22621.0 αποτυγχάνει (§2.5, §11 L33) |
-| App version | **`2.3.12+19`** (`pubspec.yaml`, επαληθεύτηκε 26/11/2026) |
+| App version | **`2.3.13+20`** (`pubspec.yaml`, επαληθεύτηκε 26/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -128,17 +128,17 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.12+19)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.13+20)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.3.12 · BUILD_NO=19   (από pubspec, STEP 0)
-         ├── APK      FamilyBudget_v2.3.12.apk
+   └── build_and_setup_final.bat  APP_VER=2.3.13 · BUILD_NO=20   (από pubspec, STEP 0)
+         ├── APK      FamilyBudget_v2.3.13.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.3.12.exe   (FileVersion 2.3.12.19)
+               └── FamilyBudgetSetup_v2.3.13.exe   (FileVersion 2.3.13.20)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -151,7 +151,7 @@ pubspec.yaml  (version: 2.3.12+19)        ← ΜΟΝΟ εδώ αλλάζει η 
 | **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.12 (build 19)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.13 (build 20)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -419,18 +419,18 @@ lib/
 
 | # | Βήμα | Γραμμή |
 |---|---|---|
-| 1 | `FirebaseAuth.instance.currentUser` → αν `null` → `LoginRegisterPage` | 67–75 |
-| 2 | Φόρτωση user document (E64: cache → server → create, χωρίς poll) → `default_currency` (default `EUR`) | 80–89 |
-| 3 | `BiometricSettingsService.instance.load(uid)` | 92 |
-| 4 | Αν `enabled && mode == 'always'` → `BiometricAuthService.authenticate()`· σε αποτυχία → exception → `StartupErrorView` | 95–105 |
-| 5 | **E4 gate:** `SchemaService.checkAndMigrate(...)` με το doc των γραμμών 80–89 (**0 νέα reads**) | 111–115 (μέθοδος 185–199) |
-| 6 | `_runOnboardingIfNeeded` — resume διακοπέντος onboarding | 121, 205–229 |
-| 7 | `ScheduledTransactionsService.checkAndExecutePendingTransactions(uid)` | 124, 241–267 |
-| 8 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` | 128–158 |
+| 1 | `FirebaseAuth.instance.currentUser` → αν `null` → `LoginRegisterPage` | 68–76 |
+| 2 | Φόρτωση user document (E64: cache → server → create, χωρίς poll) → `default_currency` (default `EUR`) | 81–91 |
+| 3 | **E65:** βιομετρικές ρυθμίσεις από το **ίδιο** doc (0 επιπλέον reads)· αν λείπει (offline + κενό cache) → fail-closed με καθαρό μήνυμα | 93–113 |
+| 4 | Αν `enabled && mode == 'always'` → `BiometricAuthService.authenticate()`· σε αποτυχία → exception → `StartupErrorView` | 116–127 |
+| 5 | **E4 gate:** `SchemaService.checkAndMigrate(...)` με το doc των γραμμών 81–91 (**0 νέα reads**) | 132–136 (μέθοδος 206–220) |
+| 6 | `_runOnboardingIfNeeded` — resume διακοπέντος onboarding | 142, 226–250 |
+| 7 | `ScheduledTransactionsService.checkAndExecutePendingTransactions(uid)` | 145, 262–288 |
+| 8 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` | 149–179 |
 
 > Οι recurring ειδοποιήσεις παράγονται από το `NotificationsProvider` (§5.10)· το νεκρό `recurring_notifications_service.dart` **αφαιρέθηκε** 25/11/2026 (L6), μαζί με τα σχολιασμένα `generateAhead` εδώ και στο `login_page.dart`.
 
-> **Σειρά σημαντική:** το E4 gate τρέχει **μετά** το βιομετρικό και **πριν** τις scheduled transactions (που γράφουν). `SchemaBlockedException` → typed catch (159) → `StartupErrorView` (288) με «Ξανά» / «Αποσύνδεση». Από `2.3.12+19` το E64 ensure εκτελείται πριν το βιομετρικό· μπορεί να γράψει μόνο όταν ο server επιβεβαιώσει ότι λείπει το doc (E64).
+> **Σειρά σημαντική:** το E4 gate τρέχει **μετά** το βιομετρικό και **πριν** τις scheduled transactions (που γράφουν). `SchemaBlockedException` → typed catch (180) → `StartupErrorView` (310) με «Ξανά» / «Αποσύνδεση». Από `2.3.12+19` το E64 ensure εκτελείται πριν το βιομετρικό· μπορεί να γράψει μόνο όταν ο server επιβεβαιώσει ότι λείπει το doc (E64). Από `2.3.13+20` το βιομετρικό διαβάζεται από το **ίδιο** doc (E65, 0 επιπλέον reads)· αν το doc δεν είναι διαθέσιμο (offline + κενό cache), η είσοδος μπλοκάρει fail-closed με σαφές μήνυμα — το βιομετρικό gate δεν παρακάμπτεται.
 
 ### 4.4 `MyApp` / `ErrorApp`
 
@@ -837,6 +837,7 @@ schema_version (int), schema_updated_at (Timestamp)
 - `ConnectivityService` (2s debounce) → ενημέρωση ένδειξης `OFFLINE` (`OfflineAppBarChip`)· κανένα μήνυμα συγχρονισμού (E15· το E61 έκλεισε ως 🚫 WON'T FIX).
 - **Onboarding (E5, `2.3.11+18`): εξαίρεση από το offline-first.** Το `OnboardingService` διαβάζει πρώτα το root doc με `Source.server` (timeout 8s) και γράφει **μόνο** αν ο server επιβεβαιώσει `onboarding_completed: false`. Offline: καμία εγγραφή, ορατό μήνυμα (overlay + SnackBar) και η είσοδος συνεχίζει· η επανάληψη γίνεται στην επόμενη εκκίνηση (`AppStart`). Το `login_page`/`AppStart` κάνουν και fast gate με `ConnectivityService.isConfirmedOffline` πριν περιμένουν τον server.
 - **User document (E64, `2.3.12+19`):** το `AuthService.ensureUserDocument` ακολουθεί cache → server (`Source.server`, timeout 8s) → create. Offline ή timeout: **καμία εγγραφή**· η είσοδος συνεχίζει με τα διαθέσιμα δεδομένα. Καταργήθηκαν το poll 15×500ms και η διπλή δημιουργία σε `login_page`/`AppStart`.
+- **Βιομετρικό gate (E65, `2.3.13+20`):** το `AppStart` παίρνει `fingerprint_enabled` / `biometric_mode` / `biometric_remember` από το doc του E64 (**0 επιπλέον reads**) αντί για δεύτερο `get()`. Αν το doc δεν είναι διαθέσιμο (offline + κενό cache), η είσοδος μπλοκάρει **fail-closed** με σαφές ελληνικό μήνυμα· δεν χρησιμοποιούνται defaults, για να μην παρακαμφθεί το βιομετρικό.
 
 ### 8.4 Συμβάσεις ονοματοδοσίας
 

@@ -21,10 +21,10 @@
 
 | | |
 |---|---|
-| Έκδοση | **2.3.12+19** |
-| Τελευταίο κεφάλαιο | **44** — E64: server-truth user document (2026-11-26) |
+| Έκδοση | **2.3.13+20** |
+| Τελευταίο κεφάλαιο | **45** — E65: βιομετρικό από το doc του E64 (2026-11-26) |
 | Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **292/292** |
-| Επόμενη εκκρεμότητα | **E65** (LOW) — AppStart offline + κενό cache: fail-closed στο βιομετρικό (`error_list.md`) |
+| Επόμενη εκκρεμότητα | **Καμία** — η «Σειρά εκκρεμοτήτων» είναι κενή (`error_list.md`) |
 
 ## Κεφάλαια
 
@@ -74,14 +74,15 @@
 | 42 | 2026-11-26 | 37 | [E5: ντετερμινιστικά IDs onboarding](oldsessions/42-session-37-e5-deterministic-ids.md) | `onboarding_defaults.dart` με σταθερά IDs (14/95)· server-truth gate 2 επιπέδων (`Source.server` + timeout 8s + `OnboardingOfflineException`, καμία εγγραφή offline)· guards κατά overwrite· `cat-transfer` σταθερό (E63)· E64 LOW· 18 tests → **278/278**, analyze 0/0/0, apk ✅· device tests POCO X3 (fresh/idempotent/offline/resume/cleanup)· v2.3.11+18 |
 | 43 | 2026-11-26 | 38 | [L23: read-only έλεγχος & κλείσιμο](oldsessions/43-session-38-l23-closed-readonly-audit.md) | Read-only admin ανάγνωση **όλων** των δεδομένων: 6 χρήστες, 2.312 κινήσεις, 146 transfer legs, 73 groups → **0** σπασμένα/ημιτελή ζεύγη· L23 → 🚫 WON'T FIX (υπερβολή)· ουρά: μόνο E64· DESIGN §11 + README version sync· καμία αλλαγή κώδικα/έκδοσης |
 | 44 | 2026-11-26 | 39 | [E64: server-truth user document](oldsessions/44-session-39-e64-server-truth-user-doc.md) | `ensureUserDocument`: cache → server (timeout 8s) → create μόνο με server-confirmed missing· κανένα poll, καμία εγγραφή offline· νέο `user_doc_policy.dart` + 14 tests → **292/292**, analyze 0/0/0, apk ✅· device tests POCO X3 (D1 online login ~1.2s, D2 offline warm cache ✅, D3 κενό cache offline → E65 fail-closed)· v2.3.12+19· E64 FIXED |
+| 45 | 2026-11-26 | 39b | [E65: βιομετρικό από το doc του E64](oldsessions/45-session-39b-e65-biometric-from-user-doc.md) | Αφαίρεση δεύτερου `get()`· `fingerprint_enabled`/`biometric_mode`/`biometric_remember` από το `ensured.data` (**0 επιπλέον reads**)· offline + κενό cache → fail-closed με καθαρό ελληνικό μήνυμα (χωρίς bypass)· analyze 0/0/0, **292/292**, apk ✅· device tests POCO X3 (D3 καθαρό μήνυμα ✅, D4 online restore ✅)· v2.3.13+20· E65 FIXED |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **44** (01–44) |
+| Κεφάλαια στον φάκελο | **45** (01–45) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **2258** |
+| Σύνολο γραμμών κεφαλαίων | **2302** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 
