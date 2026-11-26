@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:family_economy/core/data/schema_service.dart';
 import 'package:family_economy/core/services/auth_service.dart';
+import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/services/onboarding_service.dart';
 import 'package:family_economy/presentation/screens/home/home_page.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
@@ -67,6 +68,31 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
       _onboardingProgress = progress;
       _onboardingMessage = message;
     });
+  }
+
+  /// E5 gate (επίπεδο 1): γρήγορος έλεγχος πριν περιμένουμε τον server.
+  /// Είναι interface-level, γι' αυτό το service κάνει και server check.
+  bool _isConfirmedOffline() {
+    try {
+      return context.read<ConnectivityService>().isConfirmedOffline;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// E5/2Α: ορατό μήνυμα offline — καμία εγγραφή, η είσοδος συνεχίζει.
+  void _showOnboardingOfflineNotice() {
+    if (!mounted) return;
+    setState(
+      () => _onboardingMessage = OnboardingOfflineException.userMessage,
+    );
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(OnboardingOfflineException.userMessage),
+        duration: const Duration(seconds: 8),
+      ),
+    );
+    AccessibilityService.announcePolite(OnboardingOfflineException.userMessage);
   }
 
   Future<void> _submit() async {
@@ -146,15 +172,24 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         });
 
         final onboardingService = OnboardingService();
-        try {
-          await onboardingService.checkAndRunOnboarding(
-            uid,
-            onProgress: _onOnboardingProgress,
-          );
-        } catch (e) {
-          // Το onboarding δεν μπλοκάρει την είσοδο: το flag μένει `false` και
-          // η αποκατάσταση ξαναγίνεται στο επόμενο άνοιγμα (AppStart gate).
-          DebugConfig.print('⚠️ Onboarding failed (continuing): $e');
+        if (_isConfirmedOffline()) {
+          // E5 gate (επίπεδο 1): offline → καμία εγγραφή, ορατό μήνυμα.
+          _showOnboardingOfflineNotice();
+        } else {
+          try {
+            await onboardingService.checkAndRunOnboarding(
+              uid,
+              onProgress: _onOnboardingProgress,
+            );
+          } on OnboardingOfflineException {
+            // E5 gate (επίπεδο 2): ο server δεν επιβεβαίωσε → καμία εγγραφή.
+            // Το flag μένει `false` και η αποκατάσταση ξαναγίνεται στο
+            // επόμενο άνοιγμα (AppStart gate).
+            _showOnboardingOfflineNotice();
+          } catch (e) {
+            // Το onboarding δεν μπλοκάρει την είσοδο.
+            DebugConfig.print('⚠️ Onboarding failed (continuing): $e');
+          }
         }
 
         // Μικρή παύση ώστε ο χρήστης να δει το 100%

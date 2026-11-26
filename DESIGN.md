@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 260 tests
+flutter test                       # 278 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -60,7 +60,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Gradle / AGP / Kotlin | **9.5.0 / 9.3.1 / 2.4.20** (βλ. §2.1) |
 | Visual Studio | Community **2026 18.1.1** · Windows SDK **10.0.26100.0** — ✅ Windows release build επιβεβαιωμένο 24/11/2026· ⚠️ με **2022 17.10.1** + SDK 10.0.22621.0 αποτυγχάνει (§2.5, §11 L33) |
-| App version | **`2.3.10+17`** (`pubspec.yaml`, επαληθεύτηκε 25/11/2026) |
+| App version | **`2.3.11+18`** (`pubspec.yaml`, επαληθεύτηκε 26/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -128,17 +128,17 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.10+17)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.11+18)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.3.10 · BUILD_NO=17   (από pubspec, STEP 0)
-         ├── APK      FamilyBudget_v2.3.10.apk
+   └── build_and_setup_final.bat  APP_VER=2.3.11 · BUILD_NO=18   (από pubspec, STEP 0)
+         ├── APK      FamilyBudget_v2.3.11.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.3.10.exe   (FileVersion 2.3.10.17)
+               └── FamilyBudgetSetup_v2.3.11.exe   (FileVersion 2.3.11.18)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -151,7 +151,7 @@ pubspec.yaml  (version: 2.3.10+17)        ← ΜΟΝΟ εδώ αλλάζει η 
 | **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.10 (build 17)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.11 (build 18)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -260,7 +260,7 @@ pubspec.yaml  (version: 2.3.10+17)        ← ΜΟΝΟ εδώ αλλάζει η 
 | `flutter build windows --debug` | ❌ LNK2019/LNK1120 — **μόνο με VS 2022** 17.10.1 + SDK 10.0.22621.0 (βλ. §11 L33) |
 | `flutter build windows --release` | ✅ `√ Built build\windows\x64\runner\Release\family_economy.exe` — **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026, επιβεβαιωμένο· το ❌ ισχύει μόνο με VS 2022) |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ **260/260** |
+| `flutter test` | ✅ **278/278** |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -268,16 +268,16 @@ pubspec.yaml  (version: 2.3.10+17)        ← ΜΟΝΟ εδώ αλλάζει η 
 
 ## 3. Δομή repo & `lib/`
 
-### 3.1 Μετρήσεις (25/11/2026)
+### 3.1 Μετρήσεις (26/11/2026)
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **107** (κανένα `*.backup` στο τρέχον clone· μετά την αφαίρεση 4 νεκρών αρχείων, 25/11/2026) |
+| Dart αρχεία στο `lib/` | **108** (κανένα `*.backup` στο τρέχον clone· +1 `onboarding_defaults.dart` για E5) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 17 αρχεία · **260** `test()`/`testWidgets()` |
+| Tests | 18 αρχεία · **278** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -293,6 +293,7 @@ lib/
     data/
       schema.dart                              # Έκδοση δεδομένων: σταθερές, parser, καθαρή απόφαση (χωρίς Firebase)
       schema_service.dart                      # Gate + migrations + εγγραφή έκδοσης (timeout + cache verify)
+      onboarding_defaults.dart                 # E5: σταθερά onboarding ids + 14 κατηγορίες / 95 υποκατηγορίες (καθαρό Dart)
     services/
       auth_service.dart                        # Firebase Auth API
       biometric_auth_service.dart              # LocalAuth API
@@ -685,6 +686,8 @@ categories:    uuid, user_id, name, type, icon_index, color, is_system, hidden,
 subcategories: uuid, user_id, category_id, name, icon_index, ...
 ```
 
+> **E5:** τα docs που δημιουργεί το first-time onboarding έχουν **σταθερά** ids — `cat-income-1…6`, `cat-expense-1…8`, `sub-1…n` ανά γονέα, default λογαριασμός `default-account` και ειδική κατηγορία μεταφοράς `cat-transfer` (`lib/core/data/onboarding_defaults.dart`). Έτσι δύο συσκευές που τρέχουν onboarding με stale cache γράφουν το **ίδιο** document αντί για διπλότυπα. Τα υπόλοιπα docs της εφαρμογής παραμένουν uuid v4 / auto-id.
+
 **budgets**
 
 ```
@@ -831,6 +834,7 @@ schema_version (int), schema_updated_at (Timestamp)
 - Τοπική αλλαγή state → ενημέρωση UI → Firestore write στο background.
 - `Settings(persistenceEnabled: true, cacheSizeUnlimited)` → offline writes επιτρέπονται.
 - `ConnectivityService` (2s debounce) → ενημέρωση ένδειξης `OFFLINE` (`OfflineAppBarChip`)· κανένα μήνυμα συγχρονισμού (E15· το E61 έκλεισε ως 🚫 WON'T FIX).
+- **Onboarding (E5, `2.3.11+18`): εξαίρεση από το offline-first.** Το `OnboardingService` διαβάζει πρώτα το root doc με `Source.server` (timeout 8s) και γράφει **μόνο** αν ο server επιβεβαιώσει `onboarding_completed: false`. Offline: καμία εγγραφή, ορατό μήνυμα (overlay + SnackBar) και η είσοδος συνεχίζει· η επανάληψη γίνεται στην επόμενη εκκίνηση (`AppStart`). Το `login_page`/`AppStart` κάνουν και fast gate με `ConnectivityService.isConfirmedOffline` πριν περιμένουν τον server.
 
 ### 8.4 Συμβάσεις ονοματοδοσίας
 
@@ -838,7 +842,7 @@ schema_version (int), schema_updated_at (Timestamp)
 |---|---|---|
 | Firestore πεδία | `snake_case` | `initial_balance`, `is_scheduled` |
 | Dart κλάσεις/μέλη | `camelCase` / `PascalCase` | `BudgetModel`, `calculateSpentAmount` |
-| Document id | `uuid` (παράγεται με `package:uuid`) | `transactions/{uuid}` |
+| Document id | `uuid` (παράγεται με `package:uuid`) — **εξαίρεση E5:** σταθερά ids στα default docs του onboarding | `transactions/{uuid}`, `accounts/default-account`, `categories/cat-income-1` |
 | Συσχετίσεις | uuid strings, όχι DocumentReference | `account_id`, `category_id` |
 
 ### 8.5 Logging
@@ -886,11 +890,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (260 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (278 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 260/260 |
+| `flutter test` | ✅ 278/278 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 > Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
@@ -908,6 +912,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `widget_test.dart` | 4 | `ErrorApp`: μήνυμα σφάλματος, αποτυχημένη επανάληψη (νέο σφάλμα + μετρητής), guard/disabled διπλού πατήματος, λήξη χρόνου επανάληψης (L18) |
 | `prepare_startup_test.dart` | 5 | E58: σειρά βημάτων, timeout theme, αποτυχία notifications, διάδοση σφάλματος connectivity, επαναχρησιμοποίηση instance στο retry |
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
+| `onboarding_defaults_test.dart` | 18 | E5: σταθερά ids (`default-account`, `cat-*`, `sub-*`), πλήθη 6+8 κατηγοριών / 24+71 υποκατηγοριών, μοναδικότητα, μη κενά ονόματα, sequential icons, χρώματα |
 | `startup_error_view_test.dart` | 6 | Κείμενα, ενέργειες, λεπτομέρειες, `primaryEnabled=false`, `textScale 1.45` χωρίς overflow |
 | `account_delete_guard_test.dart` | 41 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) + `targetIsVisible` αρχειοθετημένου στόχου (E32) + πεδία budgets στο πλάνο (L26) |
 | `account_budget_usage_test.dart` | 13 | Μέτρηση όλων των μη διαγραμμένων budgets (L26): soft-deleted, legacy χωρίς `is_active`/`deleted`, «Όλοι», άλλος λογαριασμός, ανενεργά, trim, κενά |
@@ -922,7 +927,7 @@ schema_version (int), schema_updated_at (Timestamp)
 - Καμία δοκιμή σε providers με Firestore (κανένα mock/fake).
 - Καμία δοκιμή σε notifications, scheduled transactions, biometrics.
 - Καμία UI/integration δοκιμή ροών (login, entry, transfers, exports).
-- Καμία δοκιμή σε oil module, tags, onboarding.
+- Καμία δοκιμή σε oil module, tags. Τα **default δεδομένα** onboarding καλύπτονται από `onboarding_defaults_test.dart` (καθαρό Dart)· η ίδια η ροή Firestore/offline του onboarding παραμένει σε device tests.
 - Καμία δοκιμή στο **I/O** του cleanup (καλύπτεται μόνο ο καθαρός κανόνας + device test).
 - Καμία δοκιμή στις αναφορές περιόδου/tags (E28 — καλύπτεται μόνο με device test).
 

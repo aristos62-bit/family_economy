@@ -7,6 +7,7 @@ import 'package:family_economy/core/data/schema_service.dart';
 import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/biometric_auth_service.dart';
 import 'package:family_economy/core/services/biometric_settings_service.dart';
+import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/widgets/startup_error_view.dart';
 
@@ -210,12 +211,31 @@ class _AppStartState extends State<AppStart> {
     final completed = (userData?['onboarding_completed'] as bool?) ?? true;
     if (completed) return;
 
+    // E5 gate (επίπεδο 1): offline → καμία εγγραφή, επανάληψη στην επόμενη
+    // εκκίνηση. Αποφεύγει και την αναμονή του server timeout.
+    if (_isConfirmedOffline()) {
+      DebugConfig.print('📴 Onboarding resume skipped (offline)');
+      return;
+    }
+
     DebugConfig.print('🔁 Onboarding incomplete — resuming for uid=$uid');
     try {
       await OnboardingService().checkAndRunOnboarding(uid);
       DebugConfig.print('✅ Onboarding resumed and completed for uid=$uid');
+    } on OnboardingOfflineException {
+      // E5 gate (επίπεδο 2): ο server δεν επιβεβαίωσε — καμία εγγραφή.
+      DebugConfig.print('📴 Onboarding resume skipped (offline)');
     } catch (e) {
       DebugConfig.print('⚠️ Onboarding resume failed (app continues): $e');
+    }
+  }
+
+  /// E5: γρήγορος έλεγχος σύνδεσης πριν το server-truth gate του service.
+  bool _isConfirmedOffline() {
+    try {
+      return context.read<ConnectivityService>().isConfirmedOffline;
+    } catch (_) {
+      return false;
     }
   }
 

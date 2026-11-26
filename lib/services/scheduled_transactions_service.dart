@@ -7,6 +7,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
+import 'package:family_economy/core/data/onboarding_defaults.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/services/notifications_service.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
@@ -783,8 +784,8 @@ class ScheduledTransactionsService {
         return query.docs.first.id;
       }
 
-      // Create transfer category
-      final categoryUuid = _uuid.v4();
+      // E5: σταθερό id → δύο συσκευές γράφουν το ίδιο document (χωρίς διπλότυπα).
+      final categoryUuid = OnboardingDefaults.transferCategoryId;
       final now = DateTime.now();
 
       await _firestore
@@ -805,7 +806,7 @@ class ScheduledTransactionsService {
             'updated_at': Timestamp.fromDate(now),
             'last_modified_device_id': '',
             'deleted': false,
-          });
+          }, SetOptions(merge: true));
 
       DebugConfig.print('✅ Transfer category created: $categoryUuid');
       return categoryUuid;

@@ -9,8 +9,10 @@
 
 | # | Ενέργεια | ID |
 |---|---|---|
-| 1 | Απόφαση: ντετερμινιστικά IDs στο onboarding για ασφάλεια σε offline multi-device | E5 |
-| 2 | Θωράκιση μη ταυτοποιήσιμου peer (fail-closed) — αμυντικό κενό, όχι επισκευή | L23 |
+| 1 | Θωράκιση μη ταυτοποιήσιμου peer (fail-closed) — αμυντικό κενό, όχι επισκευή | L23 |
+| 2 | `createUserDocumentIfNeeded` πριν το E5 gate (offline write + poll) — LOW | E64 |
+
+> **E5** ✅ διορθώθηκε 26/11/2026 (`2.3.11+18`): σταθερά ids onboarding + server-truth gate + καμία εγγραφή offline (λεπτομέρειες παρακάτω). **E63** ✅ διορθώθηκε μαζί του (σταθερό `cat-transfer`). **E64** 🔵 νέο, LOW (δεν μπλοκάρει).
 
 > **L18** ✅ διορθώθηκε 25/11/2026 (`2.3.8+15`) — το «Δοκιμή ξανά» ξανατρέχει την αρχικοποίηση (λεπτομέρειες: `DESIGN.md` §4.4, §11 L18). **Hardening `2.3.9+16`:** timeout 20s, disabled κουμπί όσο τρέχει, debug log σε αποτυχία/λήξη.
 > **E58/E59** ✅ διορθώθηκαν 25/11/2026 (`2.3.10+17`): όλη η εκκίνηση (theme/notifications/connectivity) μπήκε σε δοχείο σφάλματος με per-step timeouts και η άδεια ειδοποιήσεων ζητείται μετά το πρώτο frame· το `Phoenix` + `flutter_phoenix` αφαιρέθηκαν.
@@ -41,7 +43,7 @@
 | E2 | Αν λείπει το user doc, schema/onboarding διαβάζουν κενό → μπλοκάρει η ροή | F2 | ✅ FIXED | 2026-11-20 |
 | E3 | Σφάλμα στο onboarding μπλοκάρει το login | F3 | ✅ FIXED | 2026-11-20 |
 | E4 | Resume μετά από kill αφήνει μισοτελειωμένη κατηγορία (92/95 subcategories) | F8 | ✅ FIXED | 2026-11-20 |
-| E5 | Offline onboarding σε 2 συσκευές → διπλότυπα (τυχαία doc IDs) | F5 | ⏸ DEFERRED | 2026-11-20 |
+| E5 | Offline onboarding σε 2 συσκευές → διπλότυπα (τυχαία doc IDs) | F5 | ✅ FIXED | 2026-11-26 |
 | E6 | Soft-deleted λογαριασμός «μπλοκάρει» τον default | F4 | 🚫 WON'T FIX | 2026-11-20 |
 | E7 | Διαγραφή όλων των λογαριασμών → 0 ενεργοί λογαριασμοί | — | ✅ FIXED | 2026-11-20 |
 | E8 | Restore app data δεν επαναφέρει session (Keystore) | — | ℹ️ INFO | 2026-11-20 |
@@ -99,6 +101,8 @@
 | E60 | `DebugConfig._debug = false` σταθερό → `DebugConfig.print/startup` δεν τυπώνουν τίποτα, σε κανένα build (και τα logs του L18 hardening) | — | ℹ️ INFO | 2026-11-25 |
 | E61 | Αφαιρέθηκε το `MessageService` χωρίς αντικαταστάτη· η αρχική ιδέα «offline → θα συγχρονιστεί» και το κεντρικό μήνυμα συγχρονισμού δεν υλοποιήθηκαν ποτέ | — | 🚫 WON'T FIX | 2026-11-26 |
 | E62 | `DESIGN.md` §5.5: «186 άμεσα SnackBar σε 28 αρχεία» έναντι μέτρησης 25/11/2026 | — | ✅ FIXED | 2026-11-25 |
+| E63 | Διπλή κατηγορία «Μεταφορά» από 2 συσκευές: `_getOrCreateTransferCategory` έγραφε τυχαίο uuid | F5 | ✅ FIXED | 2026-11-26 |
+| E64 | `createUserDocumentIfNeeded` τρέχει πριν το E5 gate: offline `set` + poll ~7.5s πριν την είσοδο | F5 | 🔵 OPEN (LOW) | 2026-11-26 |
 
 ### Λεπτομέρειες
 
@@ -115,10 +119,25 @@
 - Επαλήθευση στη συσκευή: 95/95, «Μισθοί» 5/5, μηδέν διπλότυπα.
 - Commit: `1df699a` · στοιχεία: `device test/README.md`.
 
-**E5 — Offline multi-device (DEFERRED)**
-- Δύο συσκευές με `onboarding_completed=false` (η μία με offline cache) γράφουν διαφορετικά docs → 2 accounts, 28 categories, ~190 subcategories.
-- **Δεν** διορθώνεται με `runTransaction`/batch: απαιτεί server (σπάει το offline-first) και δεν κάνει conflict detection σε διαφορετικά IDs.
-- Προτεινόμενη λύση όταν αποφασιστεί: ντετερμινιστικά IDs (`default-account`, `cat-income-1…6`, `cat-expense-1…8`, `sub-1…n`) → idempotent `set()`. Αφορά μόνο νέους χρήστες, χωρίς migration.
+**E5 — Offline multi-device (FIXED 26/11/2026, `2.3.11+18`)**
+- Πρόβλημα: δύο συσκευές με `onboarding_completed=false` (η μία με offline cache) έγραφαν διαφορετικά docs → 2 accounts, 28 categories, ~190 subcategories.
+- Δεν λύνεται με `runTransaction`/batch: απαιτεί server (σπάει το offline-first) και δεν κάνει conflict detection σε διαφορετικά IDs.
+- Λύση (v4): 
+  - **Σταθερά ids** από `lib/core/data/onboarding_defaults.dart` (καθαρό Dart): `default-account`, `cat-income-1…6`, `cat-expense-1…8`, `sub-1…n` ανά γονέα → idempotent `set(..., merge:true)`.
+  - **Server-truth gate 2 επιπέδων:** `login_page`/`AppStart` ελέγχουν πρώτα `ConnectivityService.isConfirmedOffline` (fast fail)· το `OnboardingService` διαβάζει το root doc **και** όλες τις κατηγορίες/υποκατηγορίες με `Source.server` + timeout 8s.
+  - **Καμία εγγραφή offline:** `OnboardingOfflineException` → ορατό μήνυμα (overlay + SnackBar) και η είσοδος συνεχίζει· επανάληψη στην επόμενη εκκίνηση.
+  - **Guards κατά overwrite:** αν το σταθερό id χρησιμοποιείται ήδη από άλλη (μετονομασμένη) κατηγορία/υποκατηγορία, το onboarding χρησιμοποιεί νέο uuid αντί να πατήσει το υπάρχον doc.
+- Tests: `onboarding_defaults_test.dart` (18) → σύνολο **278/278**· `flutter analyze` 0/0/0.
+- Χωρίς migration· αφορά μόνο νέους χρήστες και onboarding που ξανατρέχει.
+
+**E63 — Διπλή «Μεταφορά» (FIXED 26/11/2026, `2.3.11+18`)**
+- `_getOrCreateTransferCategory` σε `transactions_actions_service.dart:1133` και `scheduled_transactions_service.dart:787` έγραφε τυχαίο uuid σε κάθε συσκευή → 2 system categories `type=transfer`.
+- Λύση: σταθερό `OnboardingDefaults.transferCategoryId` (`cat-transfer`) + `SetOptions(merge:true)`. Ο υπάρχων query (`type=transfer`, `is_system=true`) παραμένει πρώτος, άρα legacy docs συνεχίζουν να βρίσκονται.
+
+**E64 — `createUserDocumentIfNeeded` πριν το gate (OPEN, LOW)**
+- Το `login_page.dart:117-120` καλεί `createUserDocumentIfNeeded` **πριν** το onboarding gate. Η μέθοδος κάνει cache-first `get()`, `set(merge:true)` και poll έως ~7.5s.
+- Offline: η εγγραφή μπαίνει στην ουρά και η poll καθυστερεί την είσοδο. Το doc id είναι `user.uid` (σταθερό) → **κανένας κίνδυνος διπλότυπων**· μόνο UX/καθαρότητα.
+- Επόμενη ενέργεια (όταν αποφασιστεί): server-truth/skip όταν `isConfirmedOffline` ή αφαίρεση του poll. Δεν μπλοκάρει το E5.
 
 **E6 — Soft-deleted account (WON'T FIX)**
 - Ο έλεγχος `accounts.limit(1)` δεν φιλτράρει `deleted` — **σκόπιμα**: αν λείπει το user doc αλλά μένουν accounts, η φραγή εμποδίζει διπλό default.

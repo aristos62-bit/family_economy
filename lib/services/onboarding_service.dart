@@ -4,8 +4,11 @@
 // Ρόλος: First-time initialization με default data
 // ============================================================
 
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
+import 'package:family_economy/core/data/onboarding_defaults.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 
 typedef OnboardingProgressCallback = void Function(
@@ -13,37 +16,68 @@ typedef OnboardingProgressCallback = void Function(
     String message,
     );
 
+/// E5/2Α: Το onboarding δεν γράφει τίποτα χωρίς επιβεβαιωμένη σύνδεση.
+/// Το μήνυμα είναι ορατό στον χρήστη και η είσοδος συνεχίζει κανονικά.
+class OnboardingOfflineException implements Exception {
+  static const String userMessage =
+      'Χωρίς σύνδεση στο internet δεν μπορούν να δημιουργηθούν τα βασικά '
+      'δεδομένα. Θα δημιουργηθούν αυτόματα στην επόμενη σύνδεση.';
+
+  const OnboardingOfflineException();
+
+  @override
+  String toString() => userMessage;
+}
+
+/// E5: snapshot μιας κατηγορίας όπως διαβάστηκε από τον server.
+class _CategorySnapshot {
+  final String categoryId;
+  final Set<String> subNames;
+  final Set<String> subIds;
+
+  const _CategorySnapshot({
+    required this.categoryId,
+    required this.subNames,
+    required this.subIds,
+  });
+}
+
 class OnboardingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Uuid _uuid = const Uuid();
+
+  /// Πόσο περιμένουμε τον server πριν θεωρήσουμε ότι είμαστε offline.
+  static const Duration _serverTimeout = Duration(seconds: 8);
 
   Future<void> checkAndRunOnboarding(
       String userId, {
         OnboardingProgressCallback? onProgress,
       }) async {
     try {
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      var userData = userDoc.data();
+      // E5 gate (επίπεδο 2): η αλήθεια είναι ΠΑΝΤΑ ο server. Αν δεν απαντήσει,
+      // δεν γίνεται καμία εγγραφή (OnboardingOfflineException).
+      var userData = await _readUserDataFromServer(userId);
 
       if (userData == null) {
         DebugConfig.print('⚠️ User document not found. Creating it now...');
 
-        // F6: Timestamp (όχι ISO string) — ίδιο τύπος με `auth_service.dart`.
+        // F6: Timestamp (όχι ISO string) — ίδιος τύπος με `auth_service.dart`.
         final now = Timestamp.now();
-        await _firestore.collection('users').doc(userId).set({
+        final initialData = <String, dynamic>{
           'default_currency': 'EUR',
           'onboarding_completed': false,
           'created_at': now,
           'updated_at': now,
-        }, SetOptions(merge: true));
-
-        final retryDoc = await _firestore.collection('users').doc(userId).get();
-        userData = retryDoc.data();
+        };
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .set(initialData, SetOptions(merge: true));
+        userData = initialData;
       }
 
       final onboardingCompleted =
-          (userData?['onboarding_completed'] as bool?) ?? false;
-
+          (userData['onboarding_completed'] as bool?) ?? false;
 
       if (onboardingCompleted) {
         DebugConfig.print('✅ Onboarding already completed - skipping');
@@ -65,21 +99,69 @@ class OnboardingService {
 
       DebugConfig.print('✅ Onboarding completed successfully!');
       onProgress?.call(1.0, 'Η βάση σας είναι έτοιμη!');
+    } on OnboardingOfflineException {
+      DebugConfig.print('📴 Onboarding skipped: no server confirmation');
+      rethrow;
     } catch (e) {
       DebugConfig.print('❌ Error in onboarding: $e');
       rethrow;
     }
   }
 
+  /// E5 gate: διαβάζει το user document **από τον server** με timeout.
+  /// Offline ή μη έγκυρη απάντηση → `OnboardingOfflineException` (καμία εγγραφή).
+  Future<Map<String, dynamic>?> _readUserDataFromServer(String userId) async {
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .get(const GetOptions(source: Source.server))
+          .timeout(_serverTimeout);
+      return doc.data();
+    } on TimeoutException {
+      throw const OnboardingOfflineException();
+    } on FirebaseException catch (e) {
+      if (_isOfflineCode(e.code)) {
+        throw const OnboardingOfflineException();
+      }
+      rethrow;
+    }
+  }
+
+  /// E5: query πάντα με `Source.server` (όχι stale cache) + timeout.
+  Future<QuerySnapshot<Map<String, dynamic>>> _serverQuery(
+    Query<Map<String, dynamic>> query,
+  ) async {
+    try {
+      return await query
+          .get(const GetOptions(source: Source.server))
+          .timeout(_serverTimeout);
+    } on TimeoutException {
+      throw const OnboardingOfflineException();
+    } on FirebaseException catch (e) {
+      if (_isOfflineCode(e.code)) {
+        throw const OnboardingOfflineException();
+      }
+      rethrow;
+    }
+  }
+
+  static bool _isOfflineCode(String? code) {
+    return code == 'unavailable' ||
+        code == 'deadline-exceeded' ||
+        code == 'network-request-failed';
+  }
+
   Future<void> _createDefaultAccount(String userId) async {
-    // ✅ Idempotency: αν υπάρχει ήδη έστω ένας λογαριασμός, μη δημιουργήσεις
-    // δεύτερο (onboarding που κόπηκε μετά τη δημιουργία του λογαριασμού).
-    final existingAccounts = await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('accounts')
-        .limit(1)
-        .get();
+    // ✅ Idempotency από τον server: αν υπάρχει ήδη έστω ένας λογαριασμός
+    // (legacy random id ή διακοπέν onboarding), μη δημιουργήσεις δεύτερο.
+    final existingAccounts = await _serverQuery(
+      _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('accounts')
+          .limit(1),
+    );
 
     if (existingAccounts.docs.isNotEmpty) {
       DebugConfig.print('✅ Default account already exists — skipping');
@@ -87,13 +169,13 @@ class OnboardingService {
     }
 
     final now = DateTime.now();
-    final accountUuid = _uuid.v4();
 
+    // E5: σταθερό id → δύο συσκευές γράφουν το ίδιο document.
     await _firestore
         .collection('users')
         .doc(userId)
         .collection('accounts')
-        .doc(accountUuid)
+        .doc(OnboardingDefaults.defaultAccountId)
         .set({
       'user_id': userId,
       'name': 'Κύριος Λογαριασμός',
@@ -108,31 +190,37 @@ class OnboardingService {
       'created_at': Timestamp.fromDate(now),
       'updated_at': Timestamp.fromDate(now),
       'deleted': false,
-    });
+    }, SetOptions(merge: true));
 
     DebugConfig.print('✅ Default account created');
   }
 
-  /// ✅ Idempotency: επιστρέφει map `type|name` → (categoryId, {υπάρχοντα
-  /// subcategory names}), ώστε το onboarding που ξανατρέχει (μετά από διακοπή)
-  /// να μη δημιουργεί διπλές κατηγορίες ΚΑΙ να συμπληρώνει τα subcategories
-  /// που έλειψαν από μια μισοτελειωμένη κατηγορία.
-  Future<Map<String, MapEntry<String, Set<String>>>> _existingCategoryState(
+  /// ✅ E5: idempotency από τον server — map `type|name` → snapshot με το
+  /// υπάρχον category id και τα υπάρχοντα subcategory names/ids. Έτσι το
+  /// onboarding που ξανατρέχει (ή δεύτερη συσκευή) δεν δημιουργεί διπλές
+  /// κατηγορίες και δεν πατάει μετονομασμένα documents.
+  Future<Map<String, _CategorySnapshot>> _existingCategoryState(
       String userId) async {
-    final snap = await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('categories')
-        .get();
+    final snap = await _serverQuery(
+      _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('categories'),
+    );
 
-    final result = <String, MapEntry<String, Set<String>>>{};
+    final result = <String, _CategorySnapshot>{};
     for (final doc in snap.docs) {
       final data = doc.data();
-      final subs = await doc.reference.collection('subcategories').get();
-      result['${data['type']}|${data['name']}'] = MapEntry(doc.id, {
-        for (final s in subs.docs)
-          if (s.data()['name'] is String) s.data()['name'] as String,
-      });
+      final subs =
+          await _serverQuery(doc.reference.collection('subcategories'));
+      result['${data['type']}|${data['name']}'] = _CategorySnapshot(
+        categoryId: doc.id,
+        subNames: {
+          for (final s in subs.docs)
+            if (s.data()['name'] is String) s.data()['name'] as String,
+        },
+        subIds: {for (final s in subs.docs) s.id},
+      );
     }
     return result;
   }
@@ -143,72 +231,24 @@ class OnboardingService {
       }) async {
     final now = DateTime.now();
     final existingState = await _existingCategoryState(userId);
+    final usedCategoryIds = {
+      for (final snapshot in existingState.values) snapshot.categoryId,
+    };
 
     // ============================================================
     // INCOME: Categories + ALL Subcategories
     // ============================================================
 
     final incomeCategories = [
-      {
-        'name': 'Μισθοί',
-        'icon_index': 0,
-        'subcategories': [
-          {'name': 'Εργασία', 'icon_index': 0},
-          {'name': 'Εργασία 2', 'icon_index': 1},
-          {'name': 'Υπερωρίες', 'icon_index': 2},
-          {'name': 'Bonus', 'icon_index': 3},
-          {'name': 'Εκτός Έδρας', 'icon_index': 4},
-        ],
-      },
-      {
-        'name': 'Συντάξεις',
-        'icon_index': 1,
-        'subcategories': [
-          {'name': 'Σύνταξη', 'icon_index': 5},
-          {'name': 'Επικουρική', 'icon_index': 6},
-          {'name': 'Αναπηρική', 'icon_index': 7},
-          {'name': 'Έκτακτα', 'icon_index': 8},
-          {'name': 'Επιδόματα', 'icon_index': 9},
-        ],
-      },
-      {
-        'name': 'Επιχείρηση',
-        'icon_index': 2,
-        'subcategories': [
-          {'name': 'Έσοδα Επιχείρησης', 'icon_index': 10},
-          {'name': 'Δίδακτρα', 'icon_index': 11},
-          {'name': 'Μεροκάματα', 'icon_index': 12},
-          {'name': 'Προκαταβολές', 'icon_index': 13},
-        ],
-      },
-      {
-        'name': 'Άλλα Έσοδα',
-        'icon_index': 3,
-        'subcategories': [
-          {'name': 'Ενοίκια', 'icon_index': 14},
-          {'name': 'Τόκοι', 'icon_index': 15},
-          {'name': 'Βοηθήματα', 'icon_index': 16},
-          {'name': 'Δάνεια', 'icon_index': 17},
-          {'name': 'Μετοχές', 'icon_index': 18},
-          {'name': 'Crypto', 'icon_index': 19},
-          {'name': 'Επιστροφές', 'icon_index': 20},
-        ],
-      },
-      {
-        'name': 'Μετρητά',
-        'icon_index': 4,
-        'subcategories': [
-          {'name': 'Χωρίς Υποκατηγορία', 'icon_index': 21},
-        ],
-      },
-      {
-        'name': 'Επιδόματα',
-        'icon_index': 5,
-        'subcategories': [
-          {'name': 'Δημοσίου', 'icon_index': 22},
-          {'name': 'Αναπηρικά', 'icon_index': 23},
-        ],
-      },
+      for (final category in OnboardingDefaults.incomeCategories)
+        {
+          'name': category.name,
+          'icon_index': category.iconIndex,
+          'subcategories': [
+            for (final sub in category.subcategories)
+              {'name': sub.name, 'icon_index': sub.iconIndex},
+          ],
+        },
     ];
 
     final incomeTotalCats = incomeCategories.length;
@@ -217,8 +257,15 @@ class OnboardingService {
       onProgress?.call(0.30 + (incomeIdx / incomeTotalCats) * 0.30, "Κατηγορία εσόδων: ${cat['name']}");
 
       final state = existingState['income|${cat['name']}'];
-      final existingSubNames = state?.value ?? const <String>{};
-      final categoryUuid = state?.key ?? _uuid.v4();
+      final existingSubNames = state?.subNames ?? const <String>{};
+      // E5: σταθερό id. Αν το id χρησιμοποιείται ήδη από άλλη (πιθανώς
+      // μετονομασμένη) κατηγορία, δεν την πατάμε — νέο uuid.
+      final deterministicCategoryId =
+          OnboardingDefaults.categoryId('income', incomeIdx);
+      final categoryUuid = state?.categoryId ??
+          (usedCategoryIds.contains(deterministicCategoryId)
+              ? _uuid.v4()
+              : deterministicCategoryId);
 
       if (state == null) {
         await _firestore
@@ -245,15 +292,20 @@ class OnboardingService {
       }
 
       final subcats = (cat['subcategories'] as List);
-      int subOrder = 1;
 
-      for (final sc in subcats) {
+      for (int subIdx = 0; subIdx < subcats.length; subIdx++) {
+        final sc = subcats[subIdx];
         final subName = sc['name'] as String;
         if (existingSubNames.contains(subName)) {
-          subOrder++;
           continue;
         }
-        final subcategoryUuid = _uuid.v4();
+        // E5: σταθερό id. Αν το id ανήκει ήδη σε άλλο (πιθανώς
+        // μετονομασμένο) document, δεν το πατάμε — νέο uuid.
+        final deterministicSubId = OnboardingDefaults.subcategoryId(subIdx);
+        final subcategoryUuid =
+            (state?.subIds.contains(deterministicSubId) ?? false)
+                ? _uuid.v4()
+                : deterministicSubId;
 
         await _firestore
             .collection('users')
@@ -270,7 +322,7 @@ class OnboardingService {
           'color': '#81C784',
           'is_system': false,
           'hidden': false,
-          'display_order': subOrder++,
+          'display_order': subIdx + 1,
           'created_at': Timestamp.fromDate(now),
           'updated_at': Timestamp.fromDate(now),
           'deleted': false,
@@ -285,125 +337,15 @@ class OnboardingService {
     // ============================================================
 
     final expenseCategories = [
-      {
-        'name': 'Διατροφή',
-        'icon_index': 0,
-        'subcategories': [
-          {'name': 'Χωρίς Κατηγορία', 'icon_index': 0},
-          {'name': 'Σούπερ Μάρκετ', 'icon_index': 1},
-          {'name': 'Πολυκαταστήματα', 'icon_index': 2},
-          {'name': 'Delivery', 'icon_index': 3},
-          {'name': 'Εστιατόρια', 'icon_index': 4},
-          {'name': 'Αρτοποιεία', 'icon_index': 5},
-          {'name': 'Ζαχαροπλαστεία', 'icon_index': 6},
-          {'name': 'Κρεοπωλεία', 'icon_index': 7},
-          {'name': 'Ιχθυοπωλεία', 'icon_index': 8},
-          {'name': 'Κάβες', 'icon_index': 9},
-          {'name': 'Παραγωγοί', 'icon_index': 10},
-          {'name': 'Άλλο', 'icon_index': 11},
-        ],
-      },
-      {
-        'name': 'Στέγαση',
-        'icon_index': 1,
-        'subcategories': [
-          {'name': 'Χωρίς Κατηγορία', 'icon_index': 12},
-          {'name': 'Ασφάλεια', 'icon_index': 13},
-          {'name': 'Ενοίκιο', 'icon_index': 14},
-          {'name': 'Θέρμανση', 'icon_index': 15},
-          {'name': 'Καθαριότητα', 'icon_index': 16},
-          {'name': 'Κοινόχρηστα', 'icon_index': 17},
-          {'name': 'ΔΕΚΟ', 'icon_index': 18},
-          {'name': 'Συνδρομές', 'icon_index': 19},
-          {'name': 'Συντήρηση', 'icon_index': 20},
-          {'name': 'Τηλεφωνία / Internet', 'icon_index': 21},
-          {'name': 'Δόσεις', 'icon_index': 22},
-          {'name': 'Άλλο', 'icon_index': 23},
-        ],
-      },
-      {
-        'name': 'Μεταφορές',
-        'icon_index': 2,
-        'subcategories': [
-          {'name': 'Χωρίς Κατηγορία', 'icon_index': 24},
-          {'name': 'Καύσιμα', 'icon_index': 25},
-          {'name': 'Service', 'icon_index': 26},
-          {'name': 'Ασφάλειες', 'icon_index': 27},
-          {'name': 'Εισιτήρια', 'icon_index': 28},
-          {'name': 'Ενοικίαση', 'icon_index': 29},
-          {'name': 'ΚΤΕΟ', 'icon_index': 30},
-          {'name': 'Κλήσεις', 'icon_index': 31},
-          {'name': 'Στάθμευση', 'icon_index': 32},
-          {'name': 'Ταξιδιωτικά', 'icon_index': 33},
-          {'name': 'Τέλη', 'icon_index': 34},
-          {'name': 'Άλλο', 'icon_index': 35},
-        ],
-      },
-      {
-        'name': 'Υγεία',
-        'icon_index': 3,
-        'subcategories': [
-          {'name': 'Χωρίς Κατηγορία', 'icon_index': 36},
-          {'name': 'Θεραπείες', 'icon_index': 37},
-          {'name': 'Γιατροί', 'icon_index': 38},
-          {'name': 'Εργαστήρια', 'icon_index': 39},
-          {'name': 'Προϊόντα Υγείας', 'icon_index': 40},
-          {'name': 'Ατομική Υγιεινή', 'icon_index': 41},
-          {'name': 'Υγειονομικό Υλικό', 'icon_index': 42},
-          {'name': 'Οικιακές Υπηρεσίες', 'icon_index': 43},
-          {'name': 'Φάρμακα', 'icon_index': 44},
-          {'name': 'Άλλο', 'icon_index': 45},
-        ],
-      },
-      {
-        'name': 'Παιδιά',
-        'icon_index': 4,
-        'subcategories': [
-          {'name': 'Χωρίς Κατηγορία', 'icon_index': 46},
-          {'name': 'Εκπαίδευση', 'icon_index': 47},
-          {'name': 'Δραστηριότητες', 'icon_index': 48},
-          {'name': 'Ιδιωτική εκπαίδευση', 'icon_index': 49},
-          {'name': 'Παιδική φροντίδα', 'icon_index': 50},
-          {'name': 'Σχολικά είδη', 'icon_index': 51},
-          {'name': 'Χαρτζιλίκι', 'icon_index': 52},
-          {'name': 'Άλλο', 'icon_index': 53},
-        ],
-      },
-      {
-        'name': 'Διασκέδαση',
-        'icon_index': 5,
-        'subcategories': [
-          {'name': 'Χωρίς Κατηγορία', 'icon_index': 54},
-          {'name': 'Έξοδοι', 'icon_index': 55},
-          {'name': 'Τύπος', 'icon_index': 56},
-          {'name': 'Δώρα', 'icon_index': 57},
-          {'name': 'Θεάματα', 'icon_index': 58},
-          {'name': 'Πολυκαταστήματα', 'icon_index': 59},
-          {'name': 'Άλλο', 'icon_index': 60},
-        ],
-      },
-      {
-        'name': 'Ένδυση',
-        'icon_index': 6,
-        'subcategories': [
-          {'name': 'Χωρίς Κατηγορία', 'icon_index': 61},
-          {'name': 'Ρούχα', 'icon_index': 62},
-          {'name': 'Υπόδηση', 'icon_index': 63},
-          {'name': 'Καθαριστήριο', 'icon_index': 64},
-          {'name': 'Άλλο', 'icon_index': 65},
-        ],
-      },
-      {
-        'name': 'Οικιακά',
-        'icon_index': 7,
-        'subcategories': [
-          {'name': 'Χωρίς Κατηγορία', 'icon_index': 66},
-          {'name': 'Είδη καθαρισμού', 'icon_index': 67},
-          {'name': 'Έπιπλα', 'icon_index': 68},
-          {'name': 'Εξοπλισμός', 'icon_index': 69},
-          {'name': 'Άλλο', 'icon_index': 70},
-        ],
-      },
+      for (final category in OnboardingDefaults.expenseCategories)
+        {
+          'name': category.name,
+          'icon_index': category.iconIndex,
+          'subcategories': [
+            for (final sub in category.subcategories)
+              {'name': sub.name, 'icon_index': sub.iconIndex},
+          ],
+        },
     ];
 
     final expenseTotalCats = expenseCategories.length;
@@ -412,8 +354,14 @@ class OnboardingService {
       onProgress?.call(0.60 + (expIdx / expenseTotalCats) * 0.37, "Κατηγορία εξόδων: ${cat['name']}");
 
       final state = existingState['expense|${cat['name']}'];
-      final existingSubNames = state?.value ?? const <String>{};
-      final categoryUuid = state?.key ?? _uuid.v4();
+      final existingSubNames = state?.subNames ?? const <String>{};
+      // E5: ίδιος guard με τα έσοδα (κατηγορία που μετονομάστηκε).
+      final deterministicCategoryId =
+          OnboardingDefaults.categoryId('expense', expIdx);
+      final categoryUuid = state?.categoryId ??
+          (usedCategoryIds.contains(deterministicCategoryId)
+              ? _uuid.v4()
+              : deterministicCategoryId);
 
       if (state == null) {
         await _firestore
@@ -440,15 +388,20 @@ class OnboardingService {
       }
 
       final subcats = (cat['subcategories'] as List);
-      int subOrder = 1;
 
-      for (final sc in subcats) {
+      for (int subIdx = 0; subIdx < subcats.length; subIdx++) {
+        final sc = subcats[subIdx];
         final subName = sc['name'] as String;
         if (existingSubNames.contains(subName)) {
-          subOrder++;
           continue;
         }
-        final subcategoryUuid = _uuid.v4();
+        // E5: σταθερό id. Αν το id ανήκει ήδη σε άλλο (πιθανώς
+        // μετονομασμένο) document, δεν το πατάμε — νέο uuid.
+        final deterministicSubId = OnboardingDefaults.subcategoryId(subIdx);
+        final subcategoryUuid =
+            (state?.subIds.contains(deterministicSubId) ?? false)
+                ? _uuid.v4()
+                : deterministicSubId;
 
         await _firestore
             .collection('users')
@@ -465,7 +418,7 @@ class OnboardingService {
           'color': '#E57373',
           'is_system': false,
           'hidden': false,
-          'display_order': subOrder++,
+          'display_order': subIdx + 1,
           'created_at': Timestamp.fromDate(now),
           'updated_at': Timestamp.fromDate(now),
           'deleted': false,
