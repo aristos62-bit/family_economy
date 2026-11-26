@@ -29,7 +29,7 @@
 > Τα **E22/E54** διορθώθηκαν ως **καθαρισμός νεκρού κώδικα + κείμενο διαλόγου** (έκδοση `2.3.7+14`, 23/11/2026).
 > Το **E56** διορθώθηκε με τη **migration σε `material_ui` 1.11.1** (70 imports + `GlobalMaterialLocalizations.delegates`, χωρίς version bump — 25/11/2026)· `flutter analyze` πλέον **0/0/0**.
 > Το **E57** διορθώθηκε με **self-healing ανάγνωση της περιόδου γραφημάτων** (`PeriodPrefs`: επιδιόρθωση CP437/CP1252 + επανεγγραφή, 13 tests — 25/11/2026).
-> **Εκτός σειράς (τεχνικό χρέος, χωρίς ορισμένη προτεραιότητα):** **E55**, **E60** — ℹ️ INFO · **E61** — 🚫 WON'T FIX (26/11/2026) · **L23** — 🚫 WON'T FIX / κλειστό (26/11/2026 — read-only έλεγχος: 0 ευρήματα).
+> **Εκτός σειράς (τεχνικό χρέος, χωρίς ορισμένη προτεραιότητα):** **E60** — ℹ️ INFO · **E61** — 🚫 WON'T FIX (26/11/2026) · **L23** — 🚫 WON'T FIX / κλειστό (26/11/2026 — read-only έλεγχος: 0 ευρήματα).
 > Το **E10** έκλεισε ως **μη εφαρμόσιμο** (η λειτουργία `MessageBubble`/`ChatMessagesList` αφαιρέθηκε από την εφαρμογή — 23/11/2026).
 > Τα **E58/E59** προέκυψαν από την ανάλυση του **L18** (25/11/2026) και ✅ διορθώθηκαν στην `2.3.10+17` (λεπτομέρειες παρακάτω· νέο **E60** ℹ️ INFO από τον ίδιο έλεγχο).
 > **L23** ✅ έκλεισε 26/11/2026 (🚫 WON'T FIX — κρίθηκε υπερβολή): read-only έλεγχος σε **όλα** τα δεδομένα (6 χρήστες, 2.312 κινήσεις, 146 transfer legs, 73 groups — μόνο GET) → **0** σπασμένα/ημιτελή ζεύγη μεταφοράς. Δεν χρειάζεται επισκευή δεδομένων ούτε fail-closed guard. Ισχύει: (α) ✅ deployed rules = repo rules (23/11/2026 — semantic diff 57=57).
@@ -92,7 +92,7 @@
 | E52 | Legacy budgets χωρίς `is_active`/`deleted` αόρατα (ίδια ρίζα με E51) | — | ℹ️ INFO | 2026-11-23 |
 | E53 | `BudgetModel.fromFirestore`: `amount as num` / `user_id as String` → legacy doc ρίχνει **όλο** τον listener | — | ℹ️ LOW | 2026-11-23 |
 | E54 | Διάλογος αρχειοθέτησης: «Οι **0** κινήσεις … διατηρούνται» όταν δεν υπάρχουν κινήσεις | — | ✅ FIXED | 2026-11-23 |
-| E55 | Windows artifact `assets/icons/subcategories/expense/desktop.ini` είναι **tracked** στο git (δεν ανήκει στο repo) | — | ℹ️ INFO | 2026-11-24 |
+| E55 | Windows artifact `assets/icons/subcategories/expense/desktop.ini` είναι **tracked** στο git (δεν ανήκει στο repo) | — | ✅ FIXED | 2026-11-26 |
 | E56 | 72 `info` deprecations: `package:flutter/material.dart` → Material ως ξεχωριστό πακέτο (`material_ui`) | — | ✅ FIXED | 2026-11-25 |
 | E57 | Χαλασμένη τιμή περιόδου γραφήματος στο SharedPreferences (`╬£╬«╬╜╬▒╧é` αντί `Μήνας` — UTF-8 bytes ως CP437) | — | ✅ FIXED | 2026-11-25 |
 | E58 | `ThemeProvider.initialize()` / `NotificationsService().initialize()` τρέχουν **έξω** από το `try` της εκκίνησης → αποτυχία = uncaught exception χωρίς οθόνη σφάλματος | — | ✅ FIXED | 2026-11-25 |
@@ -406,9 +406,9 @@
 - Όταν ο λογαριασμός έχει μόνο budgets (καμία κίνηση), ο διάλογος έγραφε «Οι **0** κινήσεις και το υπόλοιπο … διατηρούνται».
 - **✅ Διορθώθηκε 23/11/2026 (`2.3.7+14`):** `0` → «Καμία κίνηση· το υπόλοιπο … διατηρείται» (σωστός ενικός/πληθυντικός για 0/1/N).
 
-**E55 — Windows artifact στο git (INFO)**
-- Το `assets/icons/subcategories/expense/desktop.ini` είναι **tracked** (`git ls-files`), δημιουργήθηκε από τον Explorer σε Windows. Δεν επηρεάζει build ή runtime.
-- **Προτεινόμενη ενέργεια (δεν έγινε):** `git rm --cached "assets/icons/subcategories/expense/desktop.ini"` + γραμμή `desktop.ini` στο `.gitignore`. Απαιτεί έγκριση χρήστη (αλλαγή σε tracked αρχείο).
+**E55 — Windows artifact στο git (FIXED 26/11/2026)**
+- Το `assets/icons/subcategories/expense/desktop.ini` ήταν **tracked** (`git ls-files`), δημιουργήθηκε από τον Explorer σε Windows. Δεν επηρέαζε build ή runtime, αλλά επειδή το `pubspec.yaml` δηλώνει ολόκληρο τον φάκελο `assets/icons/subcategories/expense/`, το αρχείο **συμπεριλαμβανόταν στο APK**.
+- **✅ Διόρθωση:** `git rm` (αφαίρεση από index + δίσκο) + γραμμή `desktop.ini` στο `.gitignore` (αναγεννιέται από τον Explorer χωρίς να ξαναμπαίνει στο repo)· ενημέρωση `DESIGN.md` §3.1 (277 → 276 αρχεία). Καμία αλλαγή κώδικα/έκδοσης· backups: `backups/2026-11-26_e55/`.
 
 **E56 — 72 info deprecations: `material.dart` → `material_ui` (FIXED 25/11/2026)**
 - **Αίτιο:** από τη Flutter 3.47 το Material αποσπάστηκε από το SDK σε ξεχωριστό πακέτο· το `package:flutter/material.dart` είναι `@Deprecated` (→ `package:material_ui/material_ui.dart`). Κάθε import έβγαζε 1 info, μαζί με τους 2 deprecated localization delegates του `main.dart` = **72 info** (70 αρχεία).

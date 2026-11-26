@@ -107,7 +107,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | Path | Κατάσταση |
 |---|---|
 | `assets/fonts/` | ✅ 3 αρχεία NotoSans (Regular, Bold, Italic) — δηλωμένα στο `pubspec.yaml` (`fonts:`) |
-| `assets/icons/` | ✅ 277 αρχεία (accounts, categories/subcategories income/expense, default.*, app_icon.png) — περιλαμβάνει ένα `desktop.ini` |
+| `assets/icons/` | ✅ 276 αρχεία (accounts, categories/subcategories income/expense, default.*, app_icon.png) — χωρίς Windows artifacts (E55) |
 | `assets/images/` | ✅ Υπάρχει (άδειος φάκελος + `.gitkeep`)· δηλώνεται στο `pubspec.yaml` |
 
 Η γραμματοσειρά που εφαρμόζεται πραγματικά στο UI είναι **Roboto** (`TypographyUI.primaryFont` στο `core/theme/ui_tokens.dart`). Το NotoSans είναι δηλωμένο αλλά **δεν** χρησιμοποιείται από το theme.
