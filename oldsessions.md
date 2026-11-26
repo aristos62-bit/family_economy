@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | Έκδοση | **2.3.10+17** |
-| Τελευταίο κεφάλαιο | **40** — E15/L6: καθαρισμός νεκρού κώδικα & ειλικρινής συγχρονισμός (2026-11-25) |
+| Τελευταίο κεφάλαιο | **41** — E61 κλείσιμο & συγχρονισμός τεκμηρίωσης (2026-11-26) |
 | Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **260/260** |
 | Επόμενη εκκρεμότητα | **E5** — ντετερμινιστικά IDs στο onboarding (`error_list.md`) |
 
@@ -70,14 +70,15 @@
 | 38 | 2026-11-25 | 34b | [L18 hardening: timeout & disabled κουμπί](oldsessions/38-session-34b-l18-hardening.md) | Code review → 3 should-fix: `_retryTimeout` 20s με `ignore()`/`timeout()` + μήνυμα λήξης, `DebugConfig.print` σε αποτυχία/λήξη, `StartupErrorView.primaryEnabled` (default `true`, `AppStart` αμετάβλητο)→ 255/255 tests, analyze 0/0/0· v2.3.9+16 |
 | 39 | 2026-11-25 | 35 | [E58/E59: startup error container & νεκρό Phoenix](oldsessions/39-session-35-e58-e59-startup-phoenix.md) | `prepareStartup()` με per-step timeouts (theme 4s, notifications 6s, best-effort) + lazy `ConnectivityService ??=` μέσα στη guarded ροή + split άδειας ειδοποιήσεων (post-frame στο `SplashScreen`)· αφαίρεση `Phoenix` + `flutter_phoenix` (lock −8 γρ.)· 260/260 tests, analyze 0/0/0, APK/device ✅· v2.3.10+17· νέο E60 |
 | 40 | 2026-11-25 | 36 | [E15/L6: νεκρός κώδικας & συγχρονισμός](oldsessions/40-session-36-e15-l6-dead-code-cleanup.md) | Διαγραφή `message_service`/`biometric_gate`/`recurring_notifications_service` + αχρησιμοποίητης `OfflineBanner`· αφαίρεση `onSyncComplete` (no-op caller: μετρητής ποτέ τροφοδοτημένος)· `MyApp` → `StatelessWidget`· 107 αρχεία στο `lib/`· 260/260 tests, analyze 0/0/0, device tests ✅· χωρίς version bump· E15/E62 FIXED, E61 INFO |
+| 41 | 2026-11-26 | 36b | [E61 κλείσιμο & συγχρονισμός docs](oldsessions/41-session-36b-e61-close-docs-consistency.md) | E61 → 🚫 WON'T FIX (0 αναφορές sync μηνύματος στον κώδικα· απόφαση 36)· ουρά: E5, L23 (E15/L6 βγήκε)· DESIGN §1.2 `pub outdated` μετρημένο (47/26), L7 χωρίς «77», §8.3, §10.2 snapshot 626/79/26,9 MB· 41 κεφάλαια· χωρίς αλλαγή κώδικα/έκδοσης |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **40** (01–40) |
+| Κεφάλαια στον φάκελο | **41** (01–41) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **2030** |
+| Σύνολο γραμμών κεφαλαίων | **2083** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

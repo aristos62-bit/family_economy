@@ -1,7 +1,7 @@
 # Family Economy — DESIGN.md
 
 > **Μοναδική πηγή τεχνικής αλήθειας για το project.**
-> Τελευταία επαλήθευση: **24/11/2026** (Flutter 3.50.1 / Dart 3.14.0).
+> Τελευταία επαλήθευση: **26/11/2026** (Flutter 3.50.1 / Dart 3.14.0 — toolchain, πλήθη `lib/`/tests, `pub outdated`, snapshot repo).
 > Κάθε τιμή εδώ **μετρήθηκε** από κώδικα, config ή toolchain — δεν γράφτηκε από μνήμη.
 
 ---
@@ -49,7 +49,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 
 ## 1. Stack & εκδόσεις
 
-### 1.1 Toolchain (μετρημένο, 24/11/2026)
+### 1.1 Toolchain (Flutter/Dart/DevTools επαληθευμένα 26/11/2026· JDK/VS 24/11/2026)
 
 | Στοιχείο | Τιμή |
 |---|---|
@@ -89,7 +89,8 @@ git ls-files | Measure-Object      # τι είναι tracked
 | package_info_plus | `^9.0.1` | **9.0.1** |
 | flutter_lints (dev) | `^6.0.0` | 6.0.0 |
 
-`flutter pub get` → **75 πακέτα** έχουν νεότερες εκδόσεις εκτός constraints.
+`flutter pub outdated` (26/11/2026) → **47** upgradable (locked στο `pubspec.lock`) · **26** constrained σε παλαιότερη από τη resolvable έκδοση.
+Τα πλήθη **δεν** είναι σταθερά (αλλάζουν με κάθε publish) — βλ. κανόνα μέτρησης §0.3.
 
 ### 1.3 Πακέτα χωρίς (ή με ελάχιστη) χρήση
 
@@ -288,7 +289,7 @@ lib/
   firebase_options.dart         # Firebase config ανά πλατφόρμα (5 πλατφόρμες)
 
   core/
-    accessibility/accessibility_service.dart   # Semantics / screen reader (60 αρχεία το χρησιμοποιούν)
+    accessibility/accessibility_service.dart   # Semantics / screen reader (59 αρχεία το χρησιμοποιούν)
     data/
       schema.dart                              # Έκδοση δεδομένων: σταθερές, parser, καθαρή απόφαση (χωρίς Firebase)
       schema_service.dart                      # Gate + migrations + εγγραφή έκδοσης (timeout + cache verify)
@@ -458,13 +459,13 @@ lib/
 | Firestore | `users/{userId}/...` | ✅ |
 
 **Κανόνας που ισχύει ως πρόθεση, όχι ως πραγματικότητα:** «Firestore μόνο από Providers/Services».
-Μετρημένο: **74 άμεσες κλήσεις `FirebaseFirestore.instance` σε 31 αρχεία**
+Μετρημένο (26/11/2026): **70 άμεσες κλήσεις `FirebaseFirestore.instance` σε 30 αρχεία**
 
 | Στρώμα | Κλήσεις |
 |---|---|
 | `presentation/` | **36** (σε 14 αρχεία) |
 | `providers/` | 24 (σε 6 αρχεία) |
-| `services/` | 7 (σε 4 αρχεία) |
+| `services/` | 3 (σε 3 αρχεία) |
 | `core/` | 6 (σε 6 αρχεία) |
 | `main.dart` | 1 (σε 1 αρχείο) |
 
@@ -541,7 +542,7 @@ lib/
 ### 5.9 Connectivity & accessibility
 
 - `ConnectivityService`: μία φορά ανά διεργασία από `prepareStartup` (`main.dart:94-96`)· 2s debounce πριν επιβεβαιώσει επανασύνδεση· ενημερώνει τις οθόνες με `notifyListeners()` (`isOnline`/`isOffline`/`isConfirmedOffline`). Το `dispose()` δεν καλείται (`.value` provider — L36).
-- `AccessibilityService`: χρησιμοποιείται σε **60** αρχεία (semantics/ανακοινώσεις).
+- `AccessibilityService`: χρησιμοποιείται σε **59** αρχεία (semantics/ανακοινώσεις).
 - `AnnouncementOverlay` στο `MaterialApp.builder` (μαζί με `TextScaler` clamp 0.85–1.45).
 
 ### 5.10 Ειδοποιήσεις (local notifications)
@@ -829,7 +830,7 @@ schema_version (int), schema_updated_at (Timestamp)
 - `notifyListeners()` σε **δεκάδες** σημεία σε providers/UI.
 - Τοπική αλλαγή state → ενημέρωση UI → Firestore write στο background.
 - `Settings(persistenceEnabled: true, cacheSizeUnlimited)` → offline writes επιτρέπονται.
-- `ConnectivityService` (2s debounce) → ενημέρωση ένδειξης `OFFLINE` (`OfflineAppBarChip`)· κανένα μήνυμα συγχρονισμού (E15/E61).
+- `ConnectivityService` (2s debounce) → ενημέρωση ένδειξης `OFFLINE` (`OfflineAppBarChip`)· κανένα μήνυμα συγχρονισμού (E15· το E61 έκλεισε ως 🚫 WON'T FIX).
 
 ### 8.4 Συμβάσεις ονοματοδοσίας
 
@@ -874,7 +875,7 @@ schema_version (int), schema_updated_at (Timestamp)
 
 ### 8.10 Accessibility
 
-- `AccessibilityService` σε 60 αρχεία (semantics, ανακοινώσεις).
+- `AccessibilityService` σε 59 αρχεία (semantics, ανακοινώσεις).
 - `AnnouncementOverlay` τυλίγει όλο το app.
 
 ---
@@ -945,14 +946,14 @@ schema_version (int), schema_updated_at (Timestamp)
 | `backups/` | Τοπικά αντίγραφα — **ignored** (0 tracked) |
 | `Dependencies/VC_redist.x64.exe` | Εξάρτηση installer (17,7 MB) |
 
-### 10.2 Κατάσταση repository (24/11/2026, μετά το `77c303c`)
+### 10.2 Κατάσταση repository (26/11/2026, μετά το `3d88f87`)
 
 | Μέτρηση | Τιμή |
 |---|---|
-| Tracked αρχεία | **618** |
-| Commits | 60 |
+| Tracked αρχεία | **626** |
+| Commits | 79 |
 | Tags | **2** (`v2.0.1`, `v2.1.0`) |
-| Μέγεθος `.git` | **24,0 MB** |
+| Μέγεθος `.git` | **26,9 MB** |
 | `.gitignore` | 64 γραμμές (`/build/`, `/android/build/`, `build_logs/`, `InstallerOutput/`, `serviceAccountKey.json`, `node_modules/`, `backups/`, `*.backup`, …) |
 | CI/CD | ❌ κανένα |
 | Ιδιαιτερότητες | **Κανένα backup στο git** — `backups/` και `*.backup` είναι untracked/ignored (0 tracked) |
@@ -1004,13 +1005,13 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 
 | # | Περιορισμός | Στοιχείο |
 |---|---|---|
-| L1 | Το layering δεν επιβάλλεται: 74 άμεσες κλήσεις Firestore σε 31 αρχεία (36 σε UI) | §5.1 |
+| L1 | Το layering δεν επιβάλλεται: 70 άμεσες κλήσεις Firestore σε 30 αρχεία (36 σε UI) | §5.1 |
 | L2 | Τα υπόλοιπα γράφονται από **6** διαφορετικά αρχεία | §5.4 |
 | L3 | 5 συλλογές υπάρχουν στους κανόνες αλλά δεν χρησιμοποιούνται | §6.1 |
 | L4 | Κανόνες χωρίς validation πεδίων/ορίων | §7.2 |
 | L5 | Cascade διαγραφή **μόνο** για τα ζεύγη μεταφορών κατά τη διαγραφή λογαριασμού (E11)· καμία άλλη cascade δεδομένων χρήστη | §5.13 |
 | L6 | **✅ Διορθώθηκε 25/11/2026 (E15)** — ο νεκρός κώδικας (`biometric_gate`, `recurring_notifications_service`, `message_service`, η αχρησιμοποίητη `OfflineBanner`) **αφαιρέθηκε**: 0 imports/call sites. Η διαδρομή `recurring_notifications` δεν έχει πλέον ούτε rule ούτε client — αν ξαναχρειαστεί, χρειάζεται **και** rule | §3.3 |
-| L7 | 3 πακέτα με 0 χρήση + 77 outdated | §1.3 |
+| L7 | 3 πακέτα με 0 χρήση + πακέτα με νεότερες εκδόσεις εκτός constraints (πλήθη: §1.2) | §1.2, §1.3 |
 | L8 | iOS/macOS χωρίς `Podfile` → builds ανεπιβεβαίωτα | §2.3 |
 | L9 | Καμία CI (analyze/test/build χειροκίνητα) | §2.6 |
 | L10 | Android release υπογράφεται με **debug key**, minify/shrink off | §2.1 |
