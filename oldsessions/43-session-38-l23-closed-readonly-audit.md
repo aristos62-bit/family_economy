@@ -53,3 +53,9 @@
 - `backups/DESIGN_20261126_151838.bak`
 - `backups/README_20261126_151857.bak`
 - `backups/oldsessions_20261126_151838.bak`
+
+### Κλείσιμο session
+
+- Commit: **`212d036`** — `docs: close L23 after read-only audit (0 findings)` · push OK (`40c804b..212d036`).
+- Συσκευή (26/11/2026): επιστροφή σε `demo@yahoo.com` (uid `VsMa8…`) — επιβεβαίωση read-only (auth store + οθόνη), καμία αλλαγή δεδομένων.
+- Working tree: καθαρό· μένουν μόνο τα προϋπάρχοντα untracked (`device test/`, `family_economy_security_report.md`).
