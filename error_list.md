@@ -479,6 +479,7 @@
 - **Αποτέλεσμα (27/11/2026):** 89/89 sites → `AppMessenger`· **0** άμεσα `SnackBar(` στο `lib/`· `MessagePolicy` (3/3/5/6s, semantic χρώματα + contrast, πλάτος 560, `fromError`/`fromProvider` allowlist)· inline validation σε λογαριασμούς, κατηγορίες, tags, oil και notification· αφαίρεση 5 `hideCurrentSnackBar` και 6 διπλών `announce` δίπλα σε snackbar· guard v2 (D10, 5 tests). `flutter analyze` 0/0/0, **331/331** tests.
 - **Post-commit έλεγχος (27/11/2026):** βρήκε **E77–E83** — 2 regressions (E77, E78), raw σφάλματα μέσω providers/μεταβλητών (E79, E80), ελλιπές inline validation (E81), κενό του guard (E82) και άκυρο device test (E83). **Όλα διορθώθηκαν** 27/11/2026· τα docs με **E84**.
 - **Device test (27/11/2026):** ✅ νέο release `2.3.14+21` (89 MB) → POCO X3 (`9593c01e`, `versionCode=21`)· footer «Έκδοση 2.3.14 (build 21)»· E81 inline validation (κενό όνομα κατηγορίας, χωρίς αποθήκευση) ✅· επιβεβαιώθηκαν από τον χρήστη και οι ροές E77/E78/E79/E80.
+- **Commit:** `7ed135e` — E77–E84 + docs.
 - **Κατάσταση:** ✅ FIXED 27/11/2026.
 
 **E67 — L37: contrast helper με threshold (ℹ️ INFO 27/11/2026)**
