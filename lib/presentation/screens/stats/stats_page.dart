@@ -23,6 +23,8 @@ import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 
 import 'package:family_economy/providers/accounts_provider.dart';
 import 'package:family_economy/providers/categories_provider.dart';
@@ -244,49 +246,30 @@ class _StatsPageState extends State<StatsPage> {
     required Map<String, List<SubcategoryModel>> subsByCategory,
   }) async {
     if (_fromDate == null || _toDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Παρακαλώ επιλέξτε χρονικό διάστημα.'),
-          behavior: SnackBarBehavior.fixed,
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppMessenger.error(context, 'Παρακαλώ επιλέξτε χρονικό διάστημα.');
       return;
     }
 
     if (_movementType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Παρακαλώ επιλέξτε Έσοδα ή Έξοδα.'),
-          behavior: SnackBarBehavior.fixed,
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppMessenger.error(context, 'Παρακαλώ επιλέξτε Έσοδα ή Έξοδα.');
       return;
     }
 
     if (!_selectedAccounts.values.any((v) => v == true)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Παρακαλώ επιλέξτε τουλάχιστον έναν λογαριασμό.'),
-          behavior: SnackBarBehavior.fixed,
-          backgroundColor: Colors.orange,
-        ),
+      AppMessenger.warning(
+        context,
+        'Παρακαλώ επιλέξτε τουλάχιστον έναν λογαριασμό.',
       );
       return;
     }
 
     if (!_hasSelectedSubcategories(visibleCategories)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Παρακαλώ επιλέξτε τουλάχιστον μία υποκατηγορία.'),
-          behavior: SnackBarBehavior.fixed,
-          backgroundColor: Colors.orange,
-        ),
+      AppMessenger.warning(
+        context,
+        'Παρακαλώ επιλέξτε τουλάχιστον μία υποκατηγορία.',
       );
       return;
     }
-
     setState(() => _isGenerating = true);
 
     try {
@@ -352,15 +335,9 @@ class _StatsPageState extends State<StatsPage> {
 
         Future.delayed(Duration.zero, () {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Δεν βρέθηκαν κινήσεις για τα κριτήρια που επιλέξατε.',
-              ),
-              behavior: SnackBarBehavior.fixed,
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 3),
-            ),
+          AppMessenger.info(
+            context,
+            'Δεν βρέθηκαν κινήσεις για τα κριτήρια που επιλέξατε.',
           );
         });
 
@@ -418,12 +395,9 @@ class _StatsPageState extends State<StatsPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isGenerating = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Σφάλμα κατά τη δημιουργία report: $e'),
-          behavior: SnackBarBehavior.fixed,
-          backgroundColor: Colors.red,
-        ),
+      AppMessenger.error(
+        context,
+        MessagePolicy.fromError(e, action: 'δημιουργίας report'),
       );
     }
   }
@@ -555,7 +529,8 @@ class _StatsPageState extends State<StatsPage> {
                         ),
                       ),
                       Semantics(
-                        label: 'Γενικό σύνολο ${CurrencyFormatter.format(grandTotal.abs())}',
+                        label:
+                            'Γενικό σύνολο ${CurrencyFormatter.format(grandTotal.abs())}',
                         child: ExcludeSemantics(
                           child: Text(
                             CurrencyFormatter.format(grandTotal.abs()),
@@ -698,11 +673,9 @@ class _StatsPageState extends State<StatsPage> {
 
   Future<void> _exportToExcel() async {
     if (_lastReportRows.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Δεν υπάρχει διαθέσιμο report προς εξαγωγή.'),
-          behavior: SnackBarBehavior.fixed,
-        ),
+      AppMessenger.warning(
+        context,
+        'Δεν υπάρχει διαθέσιμο report προς εξαγωγή.',
       );
       return;
     }
@@ -810,13 +783,7 @@ class _StatsPageState extends State<StatsPage> {
       final bytes = excel.encode();
       if (bytes == null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Σφάλμα κατά τη δημιουργία του Excel.'),
-            behavior: SnackBarBehavior.fixed,
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppMessenger.error(context, 'Σφάλμα κατά τη δημιουργία του Excel.');
         return;
       }
 
@@ -834,29 +801,12 @@ class _StatsPageState extends State<StatsPage> {
       if (savePath == null) return;
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
-            children: [
-              ExcludeSemantics(
-                child: Icon(Icons.check_circle, color: Colors.white),
-              ),
-              SizedBox(width: 12),
-              Expanded(child: Text('Το Excel αποθηκεύτηκε επιτυχώς!')),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      AppMessenger.success(context, 'Το Excel αποθηκεύτηκε επιτυχώς!');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Σφάλμα εξαγωγής: $e'),
-          behavior: SnackBarBehavior.fixed,
-          backgroundColor: Colors.red,
-        ),
+      AppMessenger.error(
+        context,
+        MessagePolicy.fromError(e, action: 'εξαγωγής Excel'),
       );
     }
   }
@@ -865,11 +815,9 @@ class _StatsPageState extends State<StatsPage> {
 
   Future<void> _exportToPdf() async {
     if (_lastReportRows.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Δεν υπάρχει διαθέσιμο report προς εξαγωγή.'),
-          behavior: SnackBarBehavior.fixed,
-        ),
+      AppMessenger.warning(
+        context,
+        'Δεν υπάρχει διαθέσιμο report προς εξαγωγή.',
       );
       return;
     }
@@ -1062,26 +1010,12 @@ class _StatsPageState extends State<StatsPage> {
       if (savePath == null) return;
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(child: Text('Το PDF αποθηκεύτηκε επιτυχώς!')),
-            ],
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppMessenger.success(context, 'Το PDF αποθηκεύτηκε επιτυχώς!');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Σφάλμα PDF: $e'),
-          behavior: SnackBarBehavior.fixed,
-          backgroundColor: Colors.red,
-        ),
+      AppMessenger.error(
+        context,
+        MessagePolicy.fromError(e, action: 'εξαγωγής PDF'),
       );
     }
   }
@@ -1502,7 +1436,9 @@ class _StatsPageState extends State<StatsPage> {
                 controlAffinity: ListTileControlAffinity.leading,
                 title: Text(acc.name),
                 subtitle: Text(
-                  acc.isArchived ? '$balanceText · Αρχειοθετημένος' : balanceText,
+                  acc.isArchived
+                      ? '$balanceText · Αρχειοθετημένος'
+                      : balanceText,
                 ),
                 value: selected,
                 onChanged: (val) =>
@@ -1908,12 +1844,12 @@ class _StatsPageState extends State<StatsPage> {
                   ),
                 )
               : ExcludeSemantics(
-            child: Icon(
-              Icons.summarize,
-              size: 20,
-              color: canGenerate ? onPrimary : Colors.white,
-            ),
-          ),
+                  child: Icon(
+                    Icons.summarize,
+                    size: 20,
+                    color: canGenerate ? onPrimary : Colors.white,
+                  ),
+                ),
           label: Text(
             _isGenerating ? 'Δημιουργία αναφοράς...' : 'Δημιουργία Αναφοράς',
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),

@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:family_economy/presentation/screens/transactions/transaction_entry_state.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/utils/icon_mapper.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
 import 'package:family_economy/providers/categories_provider.dart';
@@ -626,42 +627,21 @@ class _SaveButton extends StatelessWidget {
             // VALIDATION
             // ============================================================
             if (state.amount == null || state.amount! <= 0) {
-              AccessibilityService.announceError('Συμπληρώστε το ποσό');
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  const SnackBar(
-                    content: Text('Παρακαλώ συμπληρώστε το ποσό'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+              AppMessenger.error(context, 'Παρακαλώ συμπληρώστε το ποσό');
               return;
             }
 
             // ✅ Validation για required επιλογές
             if (state.isTransfer && state.selectedTargetAccountUuid == null) {
-              AccessibilityService.announceError(
-                'Επιλέξτε λογαριασμό προορισμού',
+              AppMessenger.error(
+                context,
+                'Παρακαλώ επιλέξτε λογαριασμό προορισμού',
               );
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  const SnackBar(
-                    content: Text('Παρακαλώ επιλέξτε λογαριασμό προορισμού'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
               return;
             }
 
             if (!state.isTransfer && state.selectedCategoryUuid == null) {
-              AccessibilityService.announceError('Επιλέξτε κατηγορία');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Παρακαλώ επιλέξτε κατηγορία'),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              AppMessenger.error(context, 'Παρακαλώ επιλέξτε κατηγορία');
               return;
             }
             // ============================================================
@@ -670,13 +650,18 @@ class _SaveButton extends StatelessWidget {
             // (ή αμέσως, αν ο χρήστης επιλέξει «Άμεση» στο dialog)
             // ============================================================
             final nowForCheck = DateTime.now();
-            final isFutureDate = DateTime(
-              state.selectedDate.year,
-              state.selectedDate.month,
-              state.selectedDate.day,
-            ).isAfter(
-              DateTime(nowForCheck.year, nowForCheck.month, nowForCheck.day),
-            );
+            final isFutureDate =
+                DateTime(
+                  state.selectedDate.year,
+                  state.selectedDate.month,
+                  state.selectedDate.day,
+                ).isAfter(
+                  DateTime(
+                    nowForCheck.year,
+                    nowForCheck.month,
+                    nowForCheck.day,
+                  ),
+                );
             final accProvider = context.read<AccountsProvider>();
             final sourceAcc = accProvider.getAccountByUuid(
               state.selectedAccountUuid!,
@@ -688,15 +673,7 @@ class _SaveButton extends StatelessWidget {
 
               if ((state.isExpense || state.isTransfer) &&
                   !CurrencyFormatter.covers(currentBalance, amountToCheck)) {
-                AccessibilityService.announceError('Το υπόλοιπο δεν επαρκεί');
-                ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(
-                    const SnackBar(
-                      content: Text('Το υπόλοιπο δεν επαρκεί'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                AppMessenger.error(context, 'Το υπόλοιπο δεν επαρκεί');
                 return;
               }
             }
@@ -765,22 +742,10 @@ class _SaveButton extends StatelessWidget {
 
                 // 2) Snack άμεσα
                 if (context.mounted) {
-                  final brightness = Theme.of(context).brightness;
-                  final successColor = brightness == Brightness.light
-                      ? const Color(0xFF2E7D32)
-                      : const Color(0xFF81C784);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Η κίνηση προγραμματίστηκε για ${dateSnap.day}/${dateSnap.month}/${dateSnap.year}'
-                        '${ /* προαιρετικό */ ''}',
-                      ),
-                      backgroundColor: successColor,
-                      duration: const Duration(seconds: 3),
-                      behavior: SnackBarBehavior.floating,
-                      margin: const EdgeInsets.all(16),
-                    ),
+                  AppMessenger.success(
+                    context,
+                    'Η κίνηση προγραμματίστηκε για '
+                    '${dateSnap.day}/${dateSnap.month}/${dateSnap.year}',
                   );
                 }
 
@@ -835,15 +800,7 @@ class _SaveButton extends StatelessWidget {
                     sourceAccImm.currentBalance,
                     amountSnap.abs(),
                   )) {
-                AccessibilityService.announceError('Το υπόλοιπο δεν επαρκεί');
-                ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(
-                    const SnackBar(
-                      content: Text('Το υπόλοιπο δεν επαρκεί'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                AppMessenger.error(context, 'Το υπόλοιπο δεν επαρκεί');
                 return;
               }
             }
@@ -853,17 +810,7 @@ class _SaveButton extends StatelessWidget {
             // ============================================================
             DebugConfig.print('💾 Saving immediate transaction...');
             if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Η κίνηση αποθηκεύτηκε'),
-                backgroundColor: ColorsUI.getSuccess(
-                  Theme.of(context).brightness,
-                ),
-              ),
-            );
-
-            AccessibilityService.announceSuccess('Η κίνηση αποθηκεύτηκε');
-            if (!context.mounted) return;
+            AppMessenger.success(context, 'Η κίνηση αποθηκεύτηκε');
 
             // ✅ RESET UI ΑΜΕΣΩΣ
             DebugConfig.print('🔄 Resetting state after immediate save');
@@ -1081,7 +1028,11 @@ Future<ScheduleChoice?> _showScheduleTransactionDialog(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       ExcludeSemantics(
-                        child: Icon(Icons.calendar_today, color: typeColor, size: 20),
+                        child: Icon(
+                          Icons.calendar_today,
+                          color: typeColor,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -1188,9 +1139,7 @@ Future<ScheduleChoice?> _showScheduleTransactionDialog(
             DebugConfig.print('⚡ User clicked Immediate in schedule dialog');
             Navigator.pop(dialogContext, ScheduleChoice.immediate);
           },
-          icon: const ExcludeSemantics(
-            child: Icon(Icons.flash_on, size: 20),
-          ),
+          icon: const ExcludeSemantics(child: Icon(Icons.flash_on, size: 20)),
           label: const Text('Άμεση'),
         ),
 
@@ -1199,9 +1148,7 @@ Future<ScheduleChoice?> _showScheduleTransactionDialog(
             DebugConfig.print('📅 User clicked Schedule in schedule dialog');
             Navigator.pop(dialogContext, ScheduleChoice.scheduled);
           },
-          icon: const ExcludeSemantics(
-            child: Icon(Icons.schedule, size: 20),
-          ),
+          icon: const ExcludeSemantics(child: Icon(Icons.schedule, size: 20)),
           label: const Text('Προγραμματισμός'),
           style: ElevatedButton.styleFrom(
             backgroundColor: typeColor,
@@ -1246,7 +1193,10 @@ Widget _buildOption(
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(description, style: TextStyle(fontSize: 12, color: textColor)),
+                Text(
+                  description,
+                  style: TextStyle(fontSize: 12, color: textColor),
+                ),
               ],
             ),
           ),

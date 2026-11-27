@@ -2,8 +2,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/session/session_scope.dart';
+import 'package:family_economy/core/utils/debug_config.dart';
 
 class UserDetailsPage extends StatefulWidget {
   const UserDetailsPage({super.key});
@@ -72,9 +74,10 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
         });
       }
     } catch (e) {
+      DebugConfig.print('❌ user details load error: $e');
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Σφάλμα φόρτωσης: ${e.toString()}';
+        _errorMessage = 'Αποτυχία φόρτωσης στοιχείων χρήστη. Δοκιμάστε ξανά.';
         _isLoading = false;
       });
     }
@@ -89,10 +92,7 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
     });
 
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .update({
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
         'display_name': _displayNameController.text.trim(),
         'username': _usernameController.text.trim(),
         'preferred_language': _selectedLanguage,
@@ -102,19 +102,16 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Οι αλλαγές αποθηκεύτηκαν επιτυχώς'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppMessenger.success(context, 'Οι αλλαγές αποθηκεύτηκαν επιτυχώς');
 
       Navigator.of(context).maybePop();
     } catch (e) {
+      DebugConfig.print('❌ user details save error: $e');
       if (!mounted) return;
 
       setState(() {
-        _errorMessage = 'Αποτυχία αποθήκευσης: ${e.toString()}';
+        _errorMessage =
+            'Αποτυχία αποθήκευσης στοιχείων χρήστη. Δοκιμάστε ξανά.';
         _isSaving = false;
       });
 
@@ -125,9 +122,7 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Στοιχεία Χρήστη'),
-      ),
+      appBar: AppBar(title: const Text('Στοιχεία Χρήστη')),
       body: _isLoading
           ? _buildLoadingState()
           : _errorMessage != null
@@ -169,7 +164,11 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ExcludeSemantics(
-              child: Icon(Icons.error_outline, size: 48, color: Colors.red.shade700),
+              child: Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Colors.red.shade700,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -259,7 +258,9 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: _isSaving ? null : () => Navigator.of(context).maybePop(),
+                  onPressed: _isSaving
+                      ? null
+                      : () => Navigator.of(context).maybePop(),
                   child: const Text('Άκυρο'),
                 ),
               ),
@@ -270,15 +271,15 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
                   onPressed: _isSaving ? null : _saveChanges,
                   child: _isSaving
                       ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: ExcludeSemantics(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation(Colors.white),
-                      ),
-                    ),
-                  )
+                          height: 20,
+                          width: 20,
+                          child: ExcludeSemantics(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            ),
+                          ),
+                        )
                       : const Text('Αποθήκευση'),
                 ),
               ),
@@ -298,22 +299,15 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TypographyUI.labelLarge(context.brightness),
-        ),
+        Text(label, style: TypographyUI.labelLarge(context.brightness)),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: ExcludeSemantics(
-              child: Icon(icon, size: 20),
-            ),
+            prefixIcon: ExcludeSemantics(child: Icon(icon, size: 20)),
             filled: true,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       ],
@@ -330,23 +324,16 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TypographyUI.labelLarge(context.brightness),
-        ),
+        Text(label, style: TypographyUI.labelLarge(context.brightness)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           initialValue: value,
           items: items,
           onChanged: onChanged,
           decoration: InputDecoration(
-            prefixIcon: ExcludeSemantics(
-              child: Icon(icon, size: 20),
-            ),
+            prefixIcon: ExcludeSemantics(child: Icon(icon, size: 20)),
             filled: true,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       ],
@@ -363,15 +350,12 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
     final createdAt = asDate(_userData?['created_at']);
     final lastSync = asDate(_userData?['last_sync_at']);
 
-
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: context.cPrimary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: context.cPrimary.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: context.cPrimary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,14 +363,18 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
           Row(
             children: [
               ExcludeSemantics(
-                child: Icon(Icons.info_outline, size: 16, color: context.cPrimary),
+                child: Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: context.cPrimary,
+                ),
               ),
               const SizedBox(width: 8),
               Text(
                 'Πληροφορίες Λογαριασμού',
-                style: TypographyUI.labelMedium(context.brightness).copyWith(
-                  color: context.cPrimary,
-                ),
+                style: TypographyUI.labelMedium(
+                  context.brightness,
+                ).copyWith(color: context.cPrimary),
               ),
             ],
           ),

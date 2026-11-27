@@ -10,6 +10,7 @@ import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/services/scheduled_transactions_service.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
 
@@ -614,7 +615,11 @@ class _ScheduledTransactionCard extends StatelessWidget {
         title: Row(
           children: [
             ExcludeSemantics(
-              child: Icon(Icons.warning, color: ColorsUI.getWarning(brightness), size: 28),
+              child: Icon(
+                Icons.warning,
+                color: ColorsUI.getWarning(brightness),
+                size: 28,
+              ),
             ),
             const SizedBox(width: 12),
             const Expanded(child: Text('Ακύρωση Κίνησης')),
@@ -640,83 +645,13 @@ class _ScheduledTransactionCard extends StatelessWidget {
                 );
 
                 if (context.mounted) {
-                  final successColor = brightness == Brightness.light
-                      ? const Color(0xFF2E7D32)
-                      : const Color(0xFF81C784);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          const ExcludeSemantics(
-                            child: Icon(Icons.check_circle, color: Colors.white, size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Η κίνηση ακυρώθηκε επιτυχώς',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      backgroundColor: successColor,
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      margin: const EdgeInsets.all(16),
-                      elevation: 4,
-                    ),
-                  );
-
-                  AccessibilityService.announceSuccess('Η κίνηση ακυρώθηκε');
+                  AppMessenger.success(context, 'Η κίνηση ακυρώθηκε επιτυχώς');
                 }
               } catch (e) {
                 DebugConfig.print('❌ Error cancelling transaction: $e');
 
                 if (context.mounted) {
-                  final errorColor = brightness == Brightness.light
-                      ? const Color(0xFFC62828)
-                      : const Color(0xFFE57373);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          const ExcludeSemantics(
-                            child: Icon(Icons.error, color: Colors.white, size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Σφάλμα κατά την ακύρωση',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      backgroundColor: errorColor,
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      margin: const EdgeInsets.all(16),
-                      elevation: 4,
-                    ),
-                  );
-
-                  AccessibilityService.announceError('Σφάλμα κατά την ακύρωση');
+                  AppMessenger.error(context, 'Σφάλμα κατά την ακύρωση');
                 }
               }
             },

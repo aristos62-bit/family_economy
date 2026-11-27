@@ -12,6 +12,8 @@ import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/widgets/custom_text_field.dart';
 import 'package:family_economy/core/widgets/custom_currency_field.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 
 import 'package:family_economy/models/budget_model.dart';
 import 'package:family_economy/providers/accounts_provider.dart';
@@ -24,10 +26,7 @@ class InputBudgetPage extends StatefulWidget {
   /// ✅ EDIT mode: περνάς όλα τα budgets ενός group
   final List<BudgetModel>? existingBudgets;
 
-  const InputBudgetPage({
-    super.key,
-    this.existingBudgets,
-  });
+  const InputBudgetPage({super.key, this.existingBudgets});
 
   @override
   State<InputBudgetPage> createState() => _InputBudgetPageState();
@@ -185,7 +184,8 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
     final start = _startDate!;
     final end = _endDate!;
 
-    final rangeChanged = _listeningStart == null ||
+    final rangeChanged =
+        _listeningStart == null ||
         _listeningEnd == null ||
         _listeningStart != start ||
         _listeningEnd != end;
@@ -205,9 +205,9 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
   }
 
   double _calculateIncomeForPeriodFromProvider(
-      TransactionsProvider transactionsP,
-      CategoriesProvider categoriesP,
-      ) {
+    TransactionsProvider transactionsP,
+    CategoriesProvider categoriesP,
+  ) {
     // same rule as old sqlite:
     // - exclude transfers
     // - if _selectedAccountId != null → filter account
@@ -252,8 +252,9 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
       if (!mounted) return;
 
       final totalUsed = _getTotalUsed();
-      final newMsg =
-      totalUsed > accountIncome ? 'Υπέρβαση Συνολικού Ποσού Εσόδων Περιόδου' : null;
+      final newMsg = totalUsed > accountIncome
+          ? 'Υπέρβαση Συνολικού Ποσού Εσόδων Περιόδου'
+          : null;
 
       if (newMsg == _errorMessage) return;
 
@@ -268,9 +269,9 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
   // ============================================================
 
   List<PieChartSectionData> _buildPieChartSections(
-      double totalIncome, {
-        CategoriesProvider? categoriesP,
-      }) {
+    double totalIncome, {
+    CategoriesProvider? categoriesP,
+  }) {
     final bool isFiltered =
         _selectedCategoryFilter != null && _selectedCategoryFilter != '-1';
 
@@ -280,8 +281,9 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
     // Μάζεψε τα subcategory UUIDs της φιλτραρισμένης κατηγορίας
     final Set<String> allowedSubcatIds = {};
     if (isFiltered && categoriesP != null) {
-      final subcats =
-      categoriesP.getSubcategoriesForCategory(_selectedCategoryFilter!);
+      final subcats = categoriesP.getSubcategoriesForCategory(
+        _selectedCategoryFilter!,
+      );
       for (final sc in subcats) {
         allowedSubcatIds.add(sc.uuid);
       }
@@ -387,8 +389,9 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                 child: Text(
                   name,
                   style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.black.withValues(alpha: 0.85)),
+                    fontSize: 14,
+                    color: Colors.black.withValues(alpha: 0.85),
+                  ),
                 ),
               ),
               Text(
@@ -504,7 +507,8 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
       }
 
       // 2) EDIT MODE: delete old group first
-      if (widget.existingBudgets != null && widget.existingBudgets!.isNotEmpty) {
+      if (widget.existingBudgets != null &&
+          widget.existingBudgets!.isNotEmpty) {
         final oldUuids = widget.existingBudgets!.map((b) => b.uuid).toList();
         await budgetsP.deleteBudgetBatch(oldUuids);
       }
@@ -517,11 +521,9 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
     } catch (e) {
       DebugConfig.print('❌ InputBudget save error: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Σφάλμα αποθήκευσης: $e'),
-          backgroundColor: Colors.red,
-        ),
+      AppMessenger.error(
+        context,
+        MessagePolicy.fromError(e, action: 'αποθήκευσης προϋπολογισμού'),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -557,43 +559,41 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
     child: child,
   );
 
-
   Widget _buildDateField(
-      BuildContext context,
-      String label,
-      DateTime? date,
-      void Function(DateTime) onSelected,
-      VoidCallback onChanged,
-      ) =>
-      _buildCard(
-        context,
-        Semantics(
-          label: 'Επιλογή ημερομηνίας $label',
-          hint: 'Επιλέξτε ημερομηνία για το πεδίο $label',
-          button: true,
-          child: InkWell(
-            onTap: () async {
-              final d = await showDatePicker(
-                context: context,
-                initialDate: date ?? DateTime.now(),
-                firstDate: DateTime(2020),
-                lastDate: DateTime(2030),
-              );
-              if (d != null) {
-                onSelected(d);
-                setState(() {});
-                onChanged();
-              }
-            },
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-              ).copyWith(labelText: label),
-              child: Text(date == null ? 'Επιλέξτε' : _formatDateLabel(date)),
-            ),
-          ),
+    BuildContext context,
+    String label,
+    DateTime? date,
+    void Function(DateTime) onSelected,
+    VoidCallback onChanged,
+  ) => _buildCard(
+    context,
+    Semantics(
+      label: 'Επιλογή ημερομηνίας $label',
+      hint: 'Επιλέξτε ημερομηνία για το πεδίο $label',
+      button: true,
+      child: InkWell(
+        onTap: () async {
+          final d = await showDatePicker(
+            context: context,
+            initialDate: date ?? DateTime.now(),
+            firstDate: DateTime(2020),
+            lastDate: DateTime(2030),
+          );
+          if (d != null) {
+            onSelected(d);
+            setState(() {});
+            onChanged();
+          }
+        },
+        child: InputDecorator(
+          decoration: const InputDecoration(
+            border: InputBorder.none,
+          ).copyWith(labelText: label),
+          child: Text(date == null ? 'Επιλέξτε' : _formatDateLabel(date)),
         ),
-      );
+      ),
+    ),
+  );
 
   /// ------------------------------------------------------------
   ///  Euro TextField (ίδια λειτουργία καθαρισμού)
@@ -626,17 +626,19 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
 
   @override
   Widget build(BuildContext context) {
-
-    return Consumer4<AccountsProvider, CategoriesProvider, BudgetsProvider, TransactionsProvider>(
+    return Consumer4<
+      AccountsProvider,
+      CategoriesProvider,
+      BudgetsProvider,
+      TransactionsProvider
+    >(
       builder: (context, accountsP, categoriesP, budgetsP, transactionsP, _) {
         // 1) categories/accounts from providers
         // E16/E26: κρατά τον ήδη επιλεγμένο λογαριασμό ακόμη κι αν είναι
         // αρχειοθετημένος, ώστε το dropdown να μην έχει orphan `initialValue`.
         final accounts = accountsP.accounts
             .where(
-              (a) =>
-                  !a.deleted &&
-                  (a.isActive || a.uuid == _selectedAccountId),
+              (a) => !a.deleted && (a.isActive || a.uuid == _selectedAccountId),
             )
             .toList();
         final expenseCats = categoriesP.getCategoriesByType('expense');
@@ -648,19 +650,26 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
 
             // init controllers for categories/subcategories (once)
             for (final cat in expenseCats) {
-              _amountControllers.putIfAbsent(cat.uuid, () => TextEditingController());
+              _amountControllers.putIfAbsent(
+                cat.uuid,
+                () => TextEditingController(),
+              );
               _categoryAmounts.putIfAbsent(cat.uuid, () => 0.0);
               _categoryManual.putIfAbsent(cat.uuid, () => false);
 
               final subcats = categoriesP.getSubcategoriesForCategory(cat.uuid);
               for (final sc in subcats) {
-                _subAmountControllers.putIfAbsent(sc.uuid, () => TextEditingController());
+                _subAmountControllers.putIfAbsent(
+                  sc.uuid,
+                  () => TextEditingController(),
+                );
                 _subcategoryAmounts.putIfAbsent(sc.uuid, () => 0.0);
               }
             }
 
             // EDIT MODE: fill amounts from existingBudgets (only once)
-            if (widget.existingBudgets != null && widget.existingBudgets!.isNotEmpty) {
+            if (widget.existingBudgets != null &&
+                widget.existingBudgets!.isNotEmpty) {
               final rows = widget.existingBudgets!;
 
               _subcategoryAmounts.clear();
@@ -672,11 +681,14 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
 
                 if (b.budgetType == 'subcategory' && b.subcategoryId != null) {
                   _subcategoryAmounts[b.subcategoryId!] = b.amount;
-                  _subAmountControllers[b.subcategoryId!]?.text =
-                  b.amount > 0 ? b.amount.toStringAsFixed(2) : '';
+                  _subAmountControllers[b.subcategoryId!]?.text = b.amount > 0
+                      ? b.amount.toStringAsFixed(2)
+                      : '';
                 } else if (b.budgetType == 'category') {
                   _categoryAmounts[catId] = b.amount;
-                  _amountControllers[catId]?.text = b.amount > 0 ? b.amount.toStringAsFixed(2) : '';
+                  _amountControllers[catId]?.text = b.amount > 0
+                      ? b.amount.toStringAsFixed(2)
+                      : '';
                 }
               }
 
@@ -699,16 +711,20 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                   _categoryManual[catId] = false;
                   // Το ποσό της κατηγορίας είναι το άθροισμα των υποκατηγοριών
                   _categoryAmounts[catId] = subSum;
-                  _amountControllers[catId]?.text = subSum > 0 ? subSum.toStringAsFixed(2) : '';
+                  _amountControllers[catId]?.text = subSum > 0
+                      ? subSum.toStringAsFixed(2)
+                      : '';
                   if (subSum > 0) {
-                   // _expandedCategories.add(catId);
+                    // _expandedCategories.add(catId);
                   }
                 } else {
                   // Κατηγορία χωρίς υποκατηγορίες: χειροκίνητο ποσό
                   final parent = _categoryAmounts[catId] ?? 0.0;
                   _categoryManual[catId] = true;
                   _categoryAmounts[catId] = parent;
-                  _amountControllers[catId]?.text = parent > 0 ? parent.toStringAsFixed(2) : '';
+                  _amountControllers[catId]?.text = parent > 0
+                      ? parent.toStringAsFixed(2)
+                      : '';
                 }
               }
             }
@@ -724,9 +740,7 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
               label: 'Φόρτωση προϋπολογισμού. Παρακαλώ περιμένετε.',
               excludeSemantics: true,
               child: const Center(
-                child: ExcludeSemantics(
-                  child: CircularProgressIndicator(),
-                ),
+                child: ExcludeSemantics(child: CircularProgressIndicator()),
               ),
             ),
           );
@@ -736,10 +750,15 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
         _ensureTransactionsListener(transactionsP);
 
         // 4) Income (real-time)
-        final income = _calculateIncomeForPeriodFromProvider(transactionsP, categoriesP);
+        final income = _calculateIncomeForPeriodFromProvider(
+          transactionsP,
+          categoriesP,
+        );
 
         // 5) Only react when tx snapshot changes (avoid loops)
-        final txCount = transactionsP.getTransactionsForPeriod(_periodKey()).length;
+        final txCount = transactionsP
+            .getTransactionsForPeriod(_periodKey())
+            .length;
         if (txCount != _lastTxCount) {
           _lastTxCount = txCount;
 
@@ -757,21 +776,26 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
             final isWide = w >= 900;
             final horizontal = isWide ? 24.0 : 16.0;
 
-            final title = widget.existingBudgets != null ? 'Επεξεργασία Προϋπολογισμού' : 'Νέος Προϋπολογισμός';
+            final title = widget.existingBudgets != null
+                ? 'Επεξεργασία Προϋπολογισμού'
+                : 'Νέος Προϋπολογισμός';
 
             return Scaffold(
-                appBar: AppBar(
-                  backgroundColor: context.cPrimary,
-                  elevation: 0,
-                  iconTheme: IconThemeData(color: context.cOnPrimary),
-                  title: Text(
-                    title,
-                    style: context.titleMd.withColor(context.cOnPrimary),
-                  ),
-                  centerTitle: true,
+              appBar: AppBar(
+                backgroundColor: context.cPrimary,
+                elevation: 0,
+                iconTheme: IconThemeData(color: context.cOnPrimary),
+                title: Text(
+                  title,
+                  style: context.titleMd.withColor(context.cOnPrimary),
                 ),
-                body: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: horizontal, vertical: 24),
+                centerTitle: true,
+              ),
+              body: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontal,
+                  vertical: 24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -797,9 +821,20 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                             labelText: 'Περίοδος',
                             border: InputBorder.none,
                           ),
-                          items: const ['Μήνας', 'Εβδομάδα', 'Έτος', 'Προσαρμοσμένο']
-                              .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                              .toList(),
+                          items:
+                              const [
+                                    'Μήνας',
+                                    'Εβδομάδα',
+                                    'Έτος',
+                                    'Προσαρμοσμένο',
+                                  ]
+                                  .map(
+                                    (s) => DropdownMenuItem(
+                                      value: s,
+                                      child: Text(s),
+                                    ),
+                                  )
+                                  .toList(),
                           onChanged: (val) async {
                             if (val == null) return;
                             setState(() {
@@ -810,7 +845,9 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                                 _startDate = DateTime(now.year, now.month, 1);
                                 _endDate = DateTime(now.year, now.month + 1, 0);
                               } else if (val == 'Εβδομάδα') {
-                                final monday = now.subtract(Duration(days: now.weekday - 1));
+                                final monday = now.subtract(
+                                  Duration(days: now.weekday - 1),
+                                );
                                 _startDate = monday;
                                 _endDate = monday.add(const Duration(days: 6));
                               } else if (val == 'Έτος') {
@@ -835,8 +872,8 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                               context,
                               'Από',
                               _startDate,
-                                  (d) => setState(() => _startDate = d),
-                                  () {
+                              (d) => setState(() => _startDate = d),
+                              () {
                                 _ensureTransactionsListener(transactionsP);
                                 _checkTotalLimit(income);
                               },
@@ -848,8 +885,8 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                               context,
                               'Έως',
                               _endDate,
-                                  (d) => setState(() => _endDate = d),
-                                  () {
+                              (d) => setState(() => _endDate = d),
+                              () {
                                 _ensureTransactionsListener(transactionsP);
                                 _checkTotalLimit(income);
                               },
@@ -877,7 +914,7 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                               child: Text('όλοι οι Λογαριασμοί'),
                             ),
                             ...accounts.map(
-                                  (a) => DropdownMenuItem<String?>(
+                              (a) => DropdownMenuItem<String?>(
                                 value: a.uuid,
                                 child: Text(a.name),
                               ),
@@ -898,7 +935,10 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                         children: [
                           Expanded(
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: context.cSurface,
                                 borderRadius: BorderRadius.circular(8),
@@ -916,7 +956,8 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                           const SizedBox(width: 8),
                           Semantics(
                             label: 'Φίλτρο μόνο εσόδων',
-                            hint: 'Ενεργοποιήστε για να υπολογίζονται μόνο τα έσοδα της περιόδου',
+                            hint:
+                                'Ενεργοποιήστε για να υπολογίζονται μόνο τα έσοδα της περιόδου',
                             child: Switch(
                               value: _onlyIncome,
                               onChanged: (v) {
@@ -930,8 +971,10 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                     ),
 
                     if (income > 0 &&
-                        _buildPieChartSections(income, categoriesP: categoriesP)
-                            .isNotEmpty)
+                        _buildPieChartSections(
+                          income,
+                          categoriesP: categoriesP,
+                        ).isNotEmpty)
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -953,13 +996,16 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                               width: 150,
                               child: Semantics(
                                 label: 'Διάγραμμα προϋπολογισμού',
-                                hint: 'Εμφανίζει την κατανομή των ποσών ανά κατηγορία και το υπόλοιπο ποσό',
+                                hint:
+                                    'Εμφανίζει την κατανομή των ποσών ανά κατηγορία και το υπόλοιπο ποσό',
                                 excludeSemantics: true,
                                 child: ExcludeSemantics(
                                   child: PieChart(
                                     PieChartData(
-                                      sections:
-                                      _buildPieChartSections(income, categoriesP: categoriesP),
+                                      sections: _buildPieChartSections(
+                                        income,
+                                        categoriesP: categoriesP,
+                                      ),
                                       centerSpaceRadius: 10,
                                       sectionsSpace: 2,
                                     ),
@@ -990,7 +1036,10 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                           labelText: 'Φίλτρο Κατηγοριών',
                           labelStyle: TextStyle(color: context.cText2),
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
                         items: [
                           const DropdownMenuItem<String?>(
@@ -998,7 +1047,7 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                             child: Text('Όλες οι Κατηγορίες'),
                           ),
                           ...expenseCats.map(
-                                (cat) => DropdownMenuItem<String?>(
+                            (cat) => DropdownMenuItem<String?>(
                               value: cat.uuid,
                               child: Text(cat.name),
                             ),
@@ -1037,167 +1086,132 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                     // Categories list (filtered)
                     if (_selectedCategoryFilter != null)
                       ...(((_selectedCategoryFilter == '-1')
-                          ? expenseCats
-                          : expenseCats.where((c) => c.uuid == _selectedCategoryFilter))
+                              ? expenseCats
+                              : expenseCats.where(
+                                  (c) => c.uuid == _selectedCategoryFilter,
+                                ))
                           .map((cat) {
-                        final catId = cat.uuid;
-                        final subcats = categoriesP.getSubcategoriesForCategory(catId);
-                        final hasSubcats = subcats.isNotEmpty;
-                        final isExpanded = _expandedCategories.contains(catId);
+                            final catId = cat.uuid;
+                            final subcats = categoriesP
+                                .getSubcategoriesForCategory(catId);
+                            final hasSubcats = subcats.isNotEmpty;
+                            final isExpanded = _expandedCategories.contains(
+                              catId,
+                            );
 
-                        final subTotal = subcats.fold<double>(
-                          0.0,
-                              (total, s) => total + (_subcategoryAmounts[s.uuid] ?? 0.0),
-                        );
+                            final subTotal = subcats.fold<double>(
+                              0.0,
+                              (total, s) =>
+                                  total + (_subcategoryAmounts[s.uuid] ?? 0.0),
+                            );
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          decoration: BoxDecoration(
-                            color: context.cSurface,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                child: Semantics(
-                                  label: 'Κατηγορία ${cat.name}',
-                                  child: Row(
-                                    children: [
-                                      ExcludeSemantics(
-                                        child: Image.asset(
-                                          IconMapper.getIconPath(
-                                            'category',
-                                            cat.iconIndex,
-                                            categoryType: 'expense',
-                                          ),
-                                          width: 36,
-                                          height: 36,
-                                          errorBuilder: (_, _, _) => Icon(Icons.category, color: context.cText),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Text(
-                                          cat.name,
-                                          style: const TextStyle(fontSize: 16),
-                                        ),
-                                      ),
-                                        if (hasSubcats)
-                                          IconButton(
-                                            tooltip: isExpanded
-                                                ? 'Σύμπτυξη υποκατηγοριών για ${cat.name}'
-                                                : 'Ανάπτυξη υποκατηγοριών για ${cat.name}',
-                                            icon: ExcludeSemantics(
-                                              child: Icon(
-                                                isExpanded ? Icons.expand_less : Icons.expand_more,
-                                                color: Colors.grey[700],
-                                              ),
-                                            ),
-                                            onPressed: () {
-                                              setState(() {
-                                                if (isExpanded) {
-                                                  _expandedCategories.remove(catId);
-                                                } else {
-                                                  _expandedCategories.add(catId);
-                                                }
-                                              });
-                                            },
-                                          ),
-                                      SizedBox(
-                                        width: 110,
-                                        child: euroInputField(
-                                          context: context,
-                                          controller: _amountControllers[catId]!,
-                                          enabled: !hasSubcats || subTotal == 0.0,
-                                          onChanged: (amount) {
-                                            if (_isUpdatingFromSubcategory) return;
-
-                                            final v = amount ?? 0.0;
-                                            _categoryAmounts[catId] = v;
-
-                                            if (v > 0) {
-                                              _categoryManual[catId] = true;
-                                              for (final sc in subcats) {
-                                                _subcategoryAmounts[sc.uuid] = 0.0;
-                                                _subAmountControllers[sc.uuid]?.text = '';
-                                              }
-                                            } else {
-                                              _categoryManual[catId] = false;
-                                            }
-
-                                            setState(() {});
-                                            _checkTotalLimit(income);
-                                          },
-                                        ),
-                                      ),
-                                    ],
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              decoration: BoxDecoration(
+                                color: context.cSurface,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
                                   ),
-                                ),
+                                ],
                               ),
-
-                              if (isExpanded && hasSubcats)
-                                ...subcats.map((sub) {
-                                  final subId = sub.uuid;
-
-                                  return Container(
-                                    margin: const EdgeInsets.fromLTRB(56, 4, 16, 4),
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        left: BorderSide(color: Colors.grey[300]!, width: 2),
-                                      ),
+                              child: Column(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
                                     ),
                                     child: Semantics(
-                                      label: 'Υποκατηγορία ${sub.name}',
+                                      label: 'Κατηγορία ${cat.name}',
                                       child: Row(
                                         children: [
                                           ExcludeSemantics(
                                             child: Image.asset(
                                               IconMapper.getIconPath(
-                                                'subcategory',
-                                                sub.iconIndex,
+                                                'category',
+                                                cat.iconIndex,
                                                 categoryType: 'expense',
                                               ),
-                                              width: 28,
-                                              height: 28,
-                                              errorBuilder: (_, _, _) => Icon(Icons.label, color: context.cText),
+                                              width: 36,
+                                              height: 36,
+                                              errorBuilder: (_, _, _) => Icon(
+                                                Icons.category,
+                                                color: context.cText,
+                                              ),
                                             ),
                                           ),
-                                          const SizedBox(width: 12),
+                                          const SizedBox(width: 16),
                                           Expanded(
-                                            child: Text(sub.name, style: const TextStyle(fontSize: 15)),
+                                            child: Text(
+                                              cat.name,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                              ),
+                                            ),
                                           ),
-                                          const SizedBox(width: 12),
+                                          if (hasSubcats)
+                                            IconButton(
+                                              tooltip: isExpanded
+                                                  ? 'Σύμπτυξη υποκατηγοριών για ${cat.name}'
+                                                  : 'Ανάπτυξη υποκατηγοριών για ${cat.name}',
+                                              icon: ExcludeSemantics(
+                                                child: Icon(
+                                                  isExpanded
+                                                      ? Icons.expand_less
+                                                      : Icons.expand_more,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                              onPressed: () {
+                                                setState(() {
+                                                  if (isExpanded) {
+                                                    _expandedCategories.remove(
+                                                      catId,
+                                                    );
+                                                  } else {
+                                                    _expandedCategories.add(
+                                                      catId,
+                                                    );
+                                                  }
+                                                });
+                                              },
+                                            ),
                                           SizedBox(
-                                            width: 100,
+                                            width: 110,
                                             child: euroInputField(
                                               context: context,
-                                              controller: _subAmountControllers[subId]!,
-                                              enabled: !(_categoryManual[catId] ?? false),
+                                              controller:
+                                                  _amountControllers[catId]!,
+                                              enabled:
+                                                  !hasSubcats ||
+                                                  subTotal == 0.0,
                                               onChanged: (amount) {
-                                                final v = amount ?? 0.0;
-                                                _subcategoryAmounts[subId] = v;
-
-                                                _categoryManual[catId] = false;
-
-                                                double sum = 0.0;
-                                                for (final sc in subcats) {
-                                                  sum += _subcategoryAmounts[sc.uuid] ?? 0.0;
+                                                if (_isUpdatingFromSubcategory) {
+                                                  return;
                                                 }
 
-                                                _categoryAmounts[catId] = sum;
+                                                final v = amount ?? 0.0;
+                                                _categoryAmounts[catId] = v;
 
-                                                _isUpdatingFromSubcategory = true;
-                                                _amountControllers[catId]?.text = sum > 0 ? sum.toStringAsFixed(2) : '';
-                                                _isUpdatingFromSubcategory = false;
+                                                if (v > 0) {
+                                                  _categoryManual[catId] = true;
+                                                  for (final sc in subcats) {
+                                                    _subcategoryAmounts[sc
+                                                            .uuid] =
+                                                        0.0;
+                                                    _subAmountControllers[sc
+                                                                .uuid]
+                                                            ?.text =
+                                                        '';
+                                                  }
+                                                } else {
+                                                  _categoryManual[catId] =
+                                                      false;
+                                                }
 
                                                 setState(() {});
                                                 _checkTotalLimit(income);
@@ -1207,25 +1221,124 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                                         ],
                                       ),
                                     ),
-                                  );
-                                }),
-
-                              if (isExpanded && subTotal > 0)
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Text(
-                                    'Άθροισμα υποκατηγοριών: ${CurrencyFormatter.format(subTotal)}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: Colors.blue[800],
-                                    ),
                                   ),
-                                ),
-                            ],
-                          ),
-                        );
-                      })),
+
+                                  if (isExpanded && hasSubcats)
+                                    ...subcats.map((sub) {
+                                      final subId = sub.uuid;
+
+                                      return Container(
+                                        margin: const EdgeInsets.fromLTRB(
+                                          56,
+                                          4,
+                                          16,
+                                          4,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          border: Border(
+                                            left: BorderSide(
+                                              color: Colors.grey[300]!,
+                                              width: 2,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Semantics(
+                                          label: 'Υποκατηγορία ${sub.name}',
+                                          child: Row(
+                                            children: [
+                                              ExcludeSemantics(
+                                                child: Image.asset(
+                                                  IconMapper.getIconPath(
+                                                    'subcategory',
+                                                    sub.iconIndex,
+                                                    categoryType: 'expense',
+                                                  ),
+                                                  width: 28,
+                                                  height: 28,
+                                                  errorBuilder: (_, _, _) =>
+                                                      Icon(
+                                                        Icons.label,
+                                                        color: context.cText,
+                                                      ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  sub.name,
+                                                  style: const TextStyle(
+                                                    fontSize: 15,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              SizedBox(
+                                                width: 100,
+                                                child: euroInputField(
+                                                  context: context,
+                                                  controller:
+                                                      _subAmountControllers[subId]!,
+                                                  enabled:
+                                                      !(_categoryManual[catId] ??
+                                                          false),
+                                                  onChanged: (amount) {
+                                                    final v = amount ?? 0.0;
+                                                    _subcategoryAmounts[subId] =
+                                                        v;
+
+                                                    _categoryManual[catId] =
+                                                        false;
+
+                                                    double sum = 0.0;
+                                                    for (final sc in subcats) {
+                                                      sum +=
+                                                          _subcategoryAmounts[sc
+                                                              .uuid] ??
+                                                          0.0;
+                                                    }
+
+                                                    _categoryAmounts[catId] =
+                                                        sum;
+
+                                                    _isUpdatingFromSubcategory =
+                                                        true;
+                                                    _amountControllers[catId]
+                                                        ?.text = sum > 0
+                                                        ? sum.toStringAsFixed(2)
+                                                        : '';
+                                                    _isUpdatingFromSubcategory =
+                                                        false;
+
+                                                    setState(() {});
+                                                    _checkTotalLimit(income);
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }),
+
+                                  if (isExpanded && subTotal > 0)
+                                    Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Text(
+                                        'Άθροισμα υποκατηγοριών: ${CurrencyFormatter.format(subTotal)}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: Colors.blue[800],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          })),
 
                     const SizedBox(height: 40),
 
@@ -1234,7 +1347,8 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                         Expanded(
                           child: Semantics(
                             label: 'Ακύρωση',
-                            hint: 'Επιστρέφει χωρίς αποθήκευση του προϋπολογισμού',
+                            hint:
+                                'Επιστρέφει χωρίς αποθήκευση του προϋπολογισμού',
                             button: true,
                             child: ElevatedButton(
                               onPressed: () => Navigator.pop(context),
@@ -1250,35 +1364,37 @@ class _InputBudgetPageState extends State<InputBudgetPage> {
                         Expanded(
                           child: Semantics(
                             label: 'Αποθήκευση προϋπολογισμού',
-                            hint: 'Αποθηκεύει τον προϋπολογισμό και επιστρέφει στην προηγούμενη οθόνη',
+                            hint:
+                                'Αποθηκεύει τον προϋπολογισμό και επιστρέφει στην προηγούμενη οθόνη',
                             button: true,
                             child: ElevatedButton(
                               onPressed: _isSubmitting
                                   ? null
                                   : () => _saveBudget(
-                                budgetsP: budgetsP,
-                                categoriesP: categoriesP,
-                              ),
+                                      budgetsP: budgetsP,
+                                      categoriesP: categoriesP,
+                                    ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF51D275),
                                 foregroundColor: Colors.black,
                               ),
                               child: _isSubmitting
                                   ? Semantics(
-                                liveRegion: true,
-                                label: 'Αποθήκευση σε εξέλιξη. Παρακαλώ περιμένετε.',
-                                excludeSemantics: true,
-                                child: const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: ExcludeSemantics(
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                ),
-                              )
+                                      liveRegion: true,
+                                      label:
+                                          'Αποθήκευση σε εξέλιξη. Παρακαλώ περιμένετε.',
+                                      excludeSemantics: true,
+                                      child: const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: ExcludeSemantics(
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      ),
+                                    )
                                   : const Text('Αποθήκευση'),
                             ),
                           ),

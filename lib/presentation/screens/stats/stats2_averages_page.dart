@@ -27,6 +27,8 @@ import 'package:provider/provider.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 
 import 'package:family_economy/providers/categories_provider.dart';
 import 'package:family_economy/providers/transactions_provider.dart';
@@ -321,11 +323,13 @@ class _Stats2AveragesPageState extends State<Stats2AveragesPage> {
       if (savePath == null) return;
       if (!mounted) return;
 
-      AccessibilityService.announcePolite('Το Excel αποθηκεύτηκε επιτυχώς.');
       _showSnack('Το Excel αποθηκεύτηκε επιτυχώς!', isError: false);
     } catch (e) {
       if (!mounted) return;
-      _showSnack('Σφάλμα εξαγωγής Excel: $e', isError: true);
+      _showSnack(
+        MessagePolicy.fromError(e, action: 'εξαγωγής Excel'),
+        isError: true,
+      );
     }
   }
 
@@ -601,35 +605,24 @@ class _Stats2AveragesPageState extends State<Stats2AveragesPage> {
       if (savePath == null) return;
       if (!mounted) return;
 
-      AccessibilityService.announcePolite('Το PDF αποθηκεύτηκε επιτυχώς.');
       _showSnack('Το PDF αποθηκεύτηκε επιτυχώς!', isError: false);
     } catch (e) {
       if (!mounted) return;
-      _showSnack('Σφάλμα εξαγωγής PDF: $e', isError: true);
+      _showSnack(
+        MessagePolicy.fromError(e, action: 'εξαγωγής PDF'),
+        isError: true,
+      );
     }
   }
 
   // ── SnackBar helper ───────────────────────────
   void _showSnack(String msg, {required bool isError}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            ExcludeSemantics(
-              child: Icon(
-                isError ? Icons.error_outline : Icons.check_circle,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(child: Text(msg)),
-          ],
-        ),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    if (isError) {
+      AppMessenger.error(context, msg);
+    } else {
+      AppMessenger.success(context, msg);
+    }
   }
 
   // ------------------ BUILD ------------------

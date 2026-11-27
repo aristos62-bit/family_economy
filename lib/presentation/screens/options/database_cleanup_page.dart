@@ -12,11 +12,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/services/database_cleanup_service.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/utils/database_cleanup_policy.dart';
+import 'package:family_economy/core/utils/debug_config.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 import 'package:family_economy/core/widgets/offline_appbar_chip.dart';
 
 class DatabaseCleanupPage extends StatefulWidget {
@@ -575,9 +578,12 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
             : 'Θα διαγραφούν ${preview.totalCount} εγγραφές',
       );
     } catch (e) {
+      DebugConfig.print('❌ cleanup preview error: $e');
       if (!mounted) return;
       setState(() => _isRunning = false);
-      _showError('Σφάλμα προεπισκόπησης: $e');
+      _showError(
+        MessagePolicy.fromError(e, action: 'προεπισκόπησης καθαρισμού'),
+      );
     }
   }
 
@@ -595,9 +601,12 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
     try {
       fresh = await _service().previewCleanup(_options());
     } catch (e) {
+      DebugConfig.print('❌ fresh preview error: $e');
       if (!mounted) return;
       setState(() => _isRunning = false);
-      _showError('Σφάλμα προεπισκόπησης: $e');
+      _showError(
+        MessagePolicy.fromError(e, action: 'προεπισκόπησης καθαρισμού'),
+      );
       return;
     }
 
@@ -628,9 +637,10 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
 
       _showResultDialog(report);
     } catch (e) {
+      DebugConfig.print('❌ cleanup error: $e');
       if (!mounted) return;
       setState(() => _isRunning = false);
-      _showError('Σφάλμα καθαρισμού: $e');
+      _showError(MessagePolicy.fromError(e, action: 'καθαρισμού βάσης'));
     }
   }
 
@@ -667,10 +677,7 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
               ),
             if (preview.budgetsCount > 0)
               Text(
-                CleanupPolicy.countLine(
-                  'Προϋπολογισμοί',
-                  preview.budgetsCount,
-                ),
+                CleanupPolicy.countLine('Προϋπολογισμοί', preview.budgetsCount),
               ),
             if (preview.transactionsCount > 0)
               Text(
@@ -737,45 +744,21 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
     final lines = <Widget>[
       if (report.notificationsDeleted > 0)
         Text(
-          CleanupPolicy.countLine(
-            'Υπενθυμίσεις',
-            report.notificationsDeleted,
-          ),
+          CleanupPolicy.countLine('Υπενθυμίσεις', report.notificationsDeleted),
         ),
       if (report.budgetsDeleted > 0)
-        Text(
-          CleanupPolicy.countLine(
-            'Προϋπολογισμοί',
-            report.budgetsDeleted,
-          ),
-        ),
+        Text(CleanupPolicy.countLine('Προϋπολογισμοί', report.budgetsDeleted)),
       if (report.transactionsDeleted > 0)
-        Text(
-          CleanupPolicy.countLine(
-            'Συναλλαγές',
-            report.transactionsDeleted,
-          ),
-        ),
+        Text(CleanupPolicy.countLine('Συναλλαγές', report.transactionsDeleted)),
       if (report.categoriesDeleted > 0)
-        Text(
-          CleanupPolicy.countLine(
-            'Κατηγορίες',
-            report.categoriesDeleted,
-          ),
-        ),
+        Text(CleanupPolicy.countLine('Κατηγορίες', report.categoriesDeleted)),
       if (report.subcategoriesDeleted > 0)
         Text(
-          CleanupPolicy.countLine(
-            'Υποκατηγορίες',
-            report.subcategoriesDeleted,
-          ),
+          CleanupPolicy.countLine('Υποκατηγορίες', report.subcategoriesDeleted),
         ),
       if (report.oilTankDeleted > 0)
         Text(
-          CleanupPolicy.countLine(
-            'Δεξαμενή Πετρελαίου',
-            report.oilTankDeleted,
-          ),
+          CleanupPolicy.countLine('Δεξαμενή Πετρελαίου', report.oilTankDeleted),
         ),
     ];
 
@@ -802,10 +785,7 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
                         '${_durationText(report.duration)}.'
                   : CleanupPolicy.partialNothingDeleted,
             ),
-            if (lines.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              ...lines,
-            ],
+            if (lines.isNotEmpty) ...[const SizedBox(height: 16), ...lines],
             if (isPartial) ...[
               const SizedBox(height: 16),
               const Text(
@@ -843,38 +823,10 @@ class _DatabaseCleanupPageState extends State<DatabaseCleanupPage> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const ExcludeSemantics(
-              child: Icon(Icons.error, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 5),
-      ),
-    );
+    AppMessenger.error(context, message);
   }
 
   void _showInfo(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const ExcludeSemantics(
-              child: Icon(Icons.info_outline, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: context.cPrimary,
-        duration: const Duration(seconds: 4),
-      ),
-    );
+    AppMessenger.info(context, message);
   }
 }

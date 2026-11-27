@@ -276,6 +276,13 @@ class ColorsUI {
     return math.pow((c + 0.055) / 1.055, 2.4).toDouble();
   }
 
+  /// Λόγος αντίθεσης WCAG (1–21) μεταξύ [foreground] και [background].
+  ///
+  /// Χρήσιμο για έλεγχο 4.5:1· δεν αλλάζει τη συμπεριφορά του
+  /// [getAccessibleTextColor] (βλ. E67).
+  static double contrastRatio(Color foreground, Color background) =>
+      _calculateContrastRatio(foreground, background);
+
   static Color getAccessibleTextColor(Color background) {
     final luminance = _getRelativeLuminance(background);
     return luminance > 0.5 ? textPrimaryLight : textPrimaryDark;

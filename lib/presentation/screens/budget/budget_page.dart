@@ -18,6 +18,8 @@ import 'package:family_economy/core/utils/icon_mapper.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 
 import 'package:family_economy/models/budget_model.dart';
 import 'package:family_economy/providers/accounts_provider.dart';
@@ -66,9 +68,14 @@ class _BudgetPageState extends State<BudgetPage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       final now = DateTime.now();
-      if (_lastResumed != null && now.difference(_lastResumed!) < const Duration(seconds: 2)) return;
+      if (_lastResumed != null &&
+          now.difference(_lastResumed!) < const Duration(seconds: 2)) {
+        return;
+      }
       _lastResumed = now;
-      DebugConfig.print('📱 BudgetPage: app resumed — invalidating hash for recalc');
+      DebugConfig.print(
+        '📱 BudgetPage: app resumed — invalidating hash for recalc',
+      );
       _lastTxHash = '';
     }
   }
@@ -282,26 +289,21 @@ class _BudgetPageState extends State<BudgetPage> with WidgetsBindingObserver {
 
       final uuids = allGroupBudgets.map((e) => e.uuid).toList();
 
-      debugPrint('[DELETE] Διαγραφή ${uuids.length} budgets (category + subcategory)');
+      debugPrint(
+        '[DELETE] Διαγραφή ${uuids.length} budgets (category + subcategory)',
+      );
 
       // ✅ Δείξε άμεσα feedback (δουλεύει και σε offline)
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ο προϋπολογισμός διαγράφηκε'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppMessenger.success(context, 'Ο προϋπολογισμός διαγράφηκε');
 
       // ✅ Το await μπορεί να καθυστερήσει σε offline μέχρι να γυρίσει το internet
       await budgetsProvider.deleteBudgetBatch(uuids);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Σφάλμα διαγραφής: $e'),
-          backgroundColor: Colors.red,
-        ),
+      AppMessenger.error(
+        context,
+        MessagePolicy.fromError(e, action: 'διαγραφής προϋπολογισμού'),
       );
     }
   }
@@ -536,11 +538,15 @@ class _BudgetPageState extends State<BudgetPage> with WidgetsBindingObserver {
       // DEBUG - ΑΦΑΙΡΕΣΕ ΜΕΤΑ
       debugPrint('[MOVE] groupBudgets (visible): ${groupBudgets.length}');
       for (final b in groupBudgets) {
-        debugPrint('  [visible] uuid=${b.budgetUuid} cat=${b.categoryName} sub=${b.subcategoryId} amount=${b.amount}');
+        debugPrint(
+          '  [visible] uuid=${b.budgetUuid} cat=${b.categoryName} sub=${b.subcategoryId} amount=${b.amount}',
+        );
       }
       debugPrint('[MOVE] allGroupBudgets (queried): ${allGroupBudgets.length}');
       for (final b in allGroupBudgets) {
-        debugPrint('  [all] uuid=${b.uuid} type=${b.budgetType} cat=${b.categoryId} sub=${b.subcategoryId} amount=${b.amount}');
+        debugPrint(
+          '  [all] uuid=${b.uuid} type=${b.budgetType} cat=${b.categoryId} sub=${b.subcategoryId} amount=${b.amount}',
+        );
       }
 
       await budgetsProvider.updateBudgetDates(
@@ -550,19 +556,15 @@ class _BudgetPageState extends State<BudgetPage> with WidgetsBindingObserver {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ο προϋπολογισμός μετακινήθηκε στο νέο διάστημα'),
-          backgroundColor: Colors.green,
-        ),
+      AppMessenger.success(
+        context,
+        'Ο προϋπολογισμός μετακινήθηκε στο νέο διάστημα',
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Σφάλμα μετακίνησης: $e'),
-          backgroundColor: Colors.red,
-        ),
+      AppMessenger.error(
+        context,
+        MessagePolicy.fromError(e, action: 'μετακίνησης προϋπολογισμού'),
       );
     }
   }
@@ -638,7 +640,9 @@ class _BudgetPageState extends State<BudgetPage> with WidgetsBindingObserver {
         _loadScheduled = false;
         if (!mounted) return;
 
-        DebugConfig.print('📅 BudgetPage: loading BUDGETS_PAGE period $minStart → $maxEnd');
+        DebugConfig.print(
+          '📅 BudgetPage: loading BUDGETS_PAGE period $minStart → $maxEnd',
+        );
         transactionsP.loadPeriod('BUDGETS_PAGE', minStart, maxEnd);
       });
     }
@@ -653,12 +657,16 @@ class _BudgetPageState extends State<BudgetPage> with WidgetsBindingObserver {
     }
 
     if (_lastTxHash.isEmpty && budgetsP.isSpentCachePopulated) {
-      DebugConfig.print('🔄 BudgetPage: first load, cache populated — skip recalc');
+      DebugConfig.print(
+        '🔄 BudgetPage: first load, cache populated — skip recalc',
+      );
       _lastTxHash = txHash;
       return;
     }
 
-    DebugConfig.print('🔄 BudgetPage: tx hash changed — scheduling in-memory recalc (${allTxs.length} txs, ${budgetsP.budgets.length} budgets)');
+    DebugConfig.print(
+      '🔄 BudgetPage: tx hash changed — scheduling in-memory recalc (${allTxs.length} txs, ${budgetsP.budgets.length} budgets)',
+    );
     _lastTxHash = txHash;
 
     _recalcDebounce?.cancel();
@@ -668,7 +676,10 @@ class _BudgetPageState extends State<BudgetPage> with WidgetsBindingObserver {
         for (final cat in categoriesP.allCategories) {
           categoryTypes[cat.uuid] = cat.type;
         }
-        budgetsP.calculateSpentAmountsFromCache(allTxs, categoryTypes: categoryTypes);
+        budgetsP.calculateSpentAmountsFromCache(
+          allTxs,
+          categoryTypes: categoryTypes,
+        );
       } catch (e) {
         DebugConfig.print('⚠️ BudgetPage spent recalculation error: $e');
       }
@@ -969,7 +980,11 @@ class _BudgetPageState extends State<BudgetPage> with WidgetsBindingObserver {
                                       final amount = b.amount;
                                       final spent = b.spentAmount;
                                       final pct = (spent / amount).clamp(0, 1);
-                                      final overspent = CurrencyFormatter.isOverspent(spent, amount);
+                                      final overspent =
+                                          CurrencyFormatter.isOverspent(
+                                            spent,
+                                            amount,
+                                          );
                                       final double progress = pct
                                           .clamp(0.0, 1.0)
                                           .toDouble();

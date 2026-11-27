@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/presentation/screens/transactions/transaction_entry_page.dart';
@@ -63,7 +64,7 @@ class _HomePageState extends State<HomePage> {
     // ✅ Timer για scheduled transactions check
     _scheduledCheckTimer = Timer.periodic(
       const Duration(hours: 1),
-          (_) => _checkScheduledTransactions(),
+      (_) => _checkScheduledTransactions(),
     );
 
     // ✅ ΠΡΟΣΘΗΚΗ: Κλήση για startup executions check
@@ -85,7 +86,9 @@ class _HomePageState extends State<HomePage> {
 
       // Check if there were executions on app start
       final count = ScheduledTransactionsService.lastExecutedCount;
-      DebugConfig.print('🚀 Startup check: Last executed scheduled transactions count=$count');
+      DebugConfig.print(
+        '🚀 Startup check: Last executed scheduled transactions count=$count',
+      );
       if (count > 0) {
         // Reset the counter
         ScheduledTransactionsService.lastExecutedCount = 0;
@@ -110,10 +113,13 @@ class _HomePageState extends State<HomePage> {
       DebugConfig.print('⏰ Periodic check: Checking scheduled transactions...');
 
       final scheduledService = ScheduledTransactionsService();
-      final executed = await scheduledService.checkAndExecutePendingTransactions(userId);
+      final executed = await scheduledService
+          .checkAndExecutePendingTransactions(userId);
 
       if (executed.isNotEmpty) {
-        DebugConfig.print('✅ Periodic check: Executed ${executed.length} scheduled transactions');
+        DebugConfig.print(
+          '✅ Periodic check: Executed ${executed.length} scheduled transactions',
+        );
 
         if (mounted) {
           _showScheduledTransactionsNotification(executed.length);
@@ -128,36 +134,16 @@ class _HomePageState extends State<HomePage> {
   void _showScheduledTransactionsNotification(int count) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            ExcludeSemantics(
-              child: const Icon(Icons.event_available, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                count == 1
-                    ? 'Εκτελέστηκε 1 προγραμματισμένη κίνηση'
-                    : 'Εκτελέστηκαν $count προγραμματισμένες κινήσεις',
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.blue,
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'ΟΚ',
-          textColor: Colors.white,
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          },
-        ),
-      ),
+    AppMessenger.info(
+      context,
+      count == 1
+          ? 'Εκτελέστηκε 1 προγραμματισμένη κίνηση'
+          : 'Εκτελέστηκαν $count προγραμματισμένες κινήσεις',
+      actionLabel: 'ΟΚ',
+      onAction: () {},
     );
   }
+
   // ============================================================
   // ΑΠΟΤΥΧΗΜΕΝΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΕΝΕΣ ΚΙΝΗΣΕΙΣ (ανεπαρκές υπόλοιπο)
   // ============================================================
@@ -184,10 +170,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _showFailedScheduledDialog(
-      ScheduledTransactionsService service,
-      String userId,
-      Map<String, dynamic> tx,
-      ) async {
+    ScheduledTransactionsService service,
+    String userId,
+    Map<String, dynamic> tx,
+  ) async {
     final type = tx['type'] as String;
     final amount = tx['amount'] as double;
     final date = tx['date'] as DateTime;
@@ -250,10 +236,7 @@ class _HomePageState extends State<HomePage> {
         if (choice == 'delete') {
           await service.cancelScheduledTransaction(userId, uuid);
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Η κίνηση διαγράφηκε')),
-          );
-          AccessibilityService.announcePolite('Η κίνηση διαγράφηκε');
+          AppMessenger.success(context, 'Η κίνηση διαγράφηκε');
           return;
         }
 
@@ -278,10 +261,8 @@ class _HomePageState extends State<HomePage> {
           if (!mounted) return;
 
           final newDateStr = '${picked.day}/${picked.month}/${picked.year}';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Η κίνηση προγραμματίστηκε για $newDateStr')),
-          );
-          AccessibilityService.announcePolite(
+          AppMessenger.success(
+            context,
             'Η κίνηση προγραμματίστηκε για $newDateStr',
           );
           return;
@@ -289,13 +270,7 @@ class _HomePageState extends State<HomePage> {
       } catch (e) {
         DebugConfig.print('❌ Failed scheduled action error: $e');
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Η ενέργεια απέτυχε. Δοκιμάστε ξανά.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        AccessibilityService.announceError('Η ενέργεια απέτυχε. Δοκιμάστε ξανά.');
+        AppMessenger.error(context, 'Η ενέργεια απέτυχε. Δοκιμάστε ξανά.');
         // Χωρίς return: ο διάλογος εμφανίζεται ξανά μέχρι να γίνει επιτυχής επιλογή
       }
     }
@@ -303,7 +278,9 @@ class _HomePageState extends State<HomePage> {
 
   void _onTabTap(int index) {
     if (index >= _icons.length) return;
-    if (index == _selectedIndex) return; // ✅ αν είμαστε ήδη εκεί, μην κάνεις τίποτα
+    if (index == _selectedIndex) {
+      return; // ✅ αν είμαστε ήδη εκεί, μην κάνεις τίποτα
+    }
 
     // ✅ Κρατάμε το jump (tap) αλλά ΔΕΝ κάνουμε setState εδώ
     _pageController.jumpToPage(index);
@@ -319,7 +296,6 @@ class _HomePageState extends State<HomePage> {
 
     AccessibilityService.announcePolite('Άνοιξε: ${_tabNames[index]}');
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -346,7 +322,6 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
 
-
       // ✅ Smooth swipe με BouncingScrollPhysics
       body: PageView(
         controller: _pageController,
@@ -362,7 +337,7 @@ class _HomePageState extends State<HomePage> {
             end: Alignment.bottomRight,
             colors: [
               Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.secondary.withValues(alpha:0.88),
+              Theme.of(context).colorScheme.secondary.withValues(alpha: 0.88),
             ],
           ),
         ),
@@ -372,7 +347,9 @@ class _HomePageState extends State<HomePage> {
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.transparent,
           selectedItemColor: Theme.of(context).colorScheme.onPrimary,
-          unselectedItemColor: Theme.of(context).colorScheme.onPrimary.withValues(alpha:0.6),
+          unselectedItemColor: Theme.of(
+            context,
+          ).colorScheme.onPrimary.withValues(alpha: 0.6),
           showSelectedLabels: false,
           showUnselectedLabels: false,
           iconSize: 28,
@@ -388,5 +365,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
-

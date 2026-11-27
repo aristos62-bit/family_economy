@@ -13,6 +13,7 @@ import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
+import 'package:family_economy/core/utils/debug_config.dart';
 
 class DeleteAccountPage extends StatefulWidget {
   const DeleteAccountPage({super.key});
@@ -77,7 +78,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
         title: const Text('Επιβεβαίωση'),
         content: const Text(
           'Είστε σίγουροι ότι θέλετε να διαγράψετε τον λογαριασμό σας;\n\n'
-              'Η ενέργεια είναι μη αναστρέψιμη.',
+          'Η ενέργεια είναι μη αναστρέψιμη.',
         ),
         actions: [
           TextButton(
@@ -107,7 +108,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
         ),
         content: const Text(
           'Τελευταία προειδοποίηση:\n'
-              'Αν πατήσετε "Διαγραφή", ο λογαριασμός θα διαγραφεί οριστικά.',
+          'Αν πατήσετε "Διαγραφή", ο λογαριασμός θα διαγραφεί οριστικά.',
         ),
         actions: [
           TextButton(
@@ -141,13 +142,10 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
 
     try {
       // ✅ (1) Σημείωσε τον χρήστη ως deleted στη Firestore (ασφαλές και γρήγορο)
-      await FirebaseFirestore.instance.collection('users').doc(userId).set(
-        {
-          'deleted': true,
-          'deleted_at': DateTime.now().toUtc().toIso8601String(),
-        },
-        SetOptions(merge: true),
-      );
+      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+        'deleted': true,
+        'deleted_at': DateTime.now().toUtc().toIso8601String(),
+      }, SetOptions(merge: true));
 
       // ✅ (2) Προσπάθησε να διαγράψεις τον Auth user
       if (user != null) {
@@ -185,13 +183,18 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
           ),
         );
       } else {
-        AccessibilityService.announceError('Σφάλμα διαγραφής: ${e.code}');
+        DebugConfig.print('❌ delete account error: ${e.code}');
+        AccessibilityService.announceError(
+          'Αποτυχία διαγραφής λογαριασμού. Δοκιμάστε ξανά.',
+        );
 
         await showDialog(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Σφάλμα'),
-            content: Text('Αποτυχία διαγραφής λογαριασμού: ${e.code}'),
+            content: const Text(
+              'Αποτυχία διαγραφής λογαριασμού. Δοκιμάστε ξανά.',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
@@ -202,15 +205,20 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
         );
       }
     } catch (e) {
+      DebugConfig.print('❌ delete account error: $e');
       if (!mounted) return;
 
-      AccessibilityService.announceError('Σφάλμα διαγραφής: $e');
+      AccessibilityService.announceError(
+        'Αποτυχία διαγραφής λογαριασμού. Δοκιμάστε ξανά.',
+      );
 
       await showDialog(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Σφάλμα'),
-          content: Text('Αποτυχία διαγραφής λογαριασμού: $e'),
+          content: const Text(
+            'Αποτυχία διαγραφής λογαριασμού. Δοκιμάστε ξανά.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
@@ -227,9 +235,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Διαγραφή Λογαριασμού'),
-      ),
+      appBar: AppBar(title: const Text('Διαγραφή Λογαριασμού')),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -248,15 +254,12 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                     children: [
                       Semantics(
                         header: true,
-                        child: Text(
-                          'Προσοχή',
-                          style: context.h2,
-                        ),
+                        child: Text('Προσοχή', style: context.h2),
                       ),
                       const SizedBox(height: 10),
                       Text(
                         'Η διαγραφή λογαριασμού είναι μη αναστρέψιμη.\n'
-                            'Θα χαθούν τα δεδομένα πρόσβασης και ο λογαριασμός δεν θα μπορεί να επανέλθει.',
+                        'Θα χαθούν τα δεδομένα πρόσβασης και ο λογαριασμός δεν θα μπορεί να επανέλθει.',
                         style: context.bodyMd.copyWith(color: context.cText2),
                       ),
                       const SizedBox(height: 20),
@@ -271,8 +274,12 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                               Row(
                                 children: [
                                   ExcludeSemantics(
-                                    child: Icon(Icons.warning_rounded,
-                                        color: ColorsUI.getError(context.brightness)),
+                                    child: Icon(
+                                      Icons.warning_rounded,
+                                      color: ColorsUI.getError(
+                                        context.brightness,
+                                      ),
+                                    ),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
@@ -288,29 +295,39 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                               const SizedBox(height: 14),
 
                               ElevatedButton(
-                                onPressed: _isDeleting ? null : _startDeleteFlow,
+                                onPressed: _isDeleting
+                                    ? null
+                                    : _startDeleteFlow,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: ColorsUI.getError(context.brightness),
+                                  backgroundColor: ColorsUI.getError(
+                                    context.brightness,
+                                  ),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
                                 ),
                                 child: _isDeleting
                                     ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: ExcludeSemantics(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation(Colors.white),
-                                    ),
-                                  ),
-                                )
+                                        height: 20,
+                                        width: 20,
+                                        child: ExcludeSemantics(
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation(
+                                              Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      )
                                     : const Text('Διαγραφή Λογαριασμού'),
                               ),
                               const SizedBox(height: 10),
 
                               OutlinedButton(
-                                onPressed: _isDeleting ? null : () => Navigator.of(context).maybePop(),
+                                onPressed: _isDeleting
+                                    ? null
+                                    : () => Navigator.of(context).maybePop(),
                                 child: const Text('Άκυρο'),
                               ),
                             ],

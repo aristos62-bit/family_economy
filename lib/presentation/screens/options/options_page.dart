@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:family_economy/core/data/schema.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/providers/theme_provider.dart';
 import 'package:family_economy/providers/accounts_provider.dart';
@@ -35,7 +36,6 @@ import 'package:family_economy/presentation/screens/tags/tags_management_page.da
 import 'package:family_economy/presentation/screens/stats/tag_stats_page.dart';
 import 'package:family_economy/providers/tags_provider.dart';
 import 'package:family_economy/presentation/screens/options/unit_converter_page.dart';
-
 
 class OptionsPage extends StatefulWidget {
   const OptionsPage({super.key});
@@ -111,605 +111,649 @@ class _OptionsPageState extends State<OptionsPage> {
             final maxWidth = _getMaxWidth(constraints.maxWidth);
 
             return ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxWidth),
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: _getHorizontalPadding(constraints.maxWidth),
-                    vertical: 1.0,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Page Title
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8.0,
-                          vertical: 12.0,
-                        ),
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: _getHorizontalPadding(constraints.maxWidth),
+                  vertical: 1.0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Page Title
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0,
+                        vertical: 12.0,
                       ),
+                    ),
 
-                      const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                      // ✅ ΤΡΟΠΟΠΟΙΗΜΕΝΗ ΚΑΡΤΕΛΑ: Διαχείριση Κατηγοριών (Standalone, όχι expandable)
-                      _CategoryManagementCard(onTap: _handleCategoryManagement),
+                    // ✅ ΤΡΟΠΟΠΟΙΗΜΕΝΗ ΚΑΡΤΕΛΑ: Διαχείριση Κατηγοριών (Standalone, όχι expandable)
+                    _CategoryManagementCard(onTap: _handleCategoryManagement),
 
-                      const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                      // ✅ Διαχείριση Tags
-                      _TagsManagementCard(),
+                    // ✅ Διαχείριση Tags
+                    _TagsManagementCard(),
 
-                      const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                      // 2. Tools Card (Εργαλεία)
-                      _ExpandableCard(
-                        title: 'Εργαλεία',
-                        icon: Icons.build_rounded,
-                        isExpanded: _isToolsExpanded,
-                        onToggle: () {
-                          setState(() => _isToolsExpanded = !_isToolsExpanded);
-                          AccessibilityService.announcePolite(
-                            _isToolsExpanded
-                                ? 'Άνοιξε η καρτέλα Εργαλεία'
-                                : 'Έκλεισε η καρτέλα Εργαλεία',
-                          );
-                        },
-                        children: [
-                          _ThemeSwitchTile(),
-                          AccessibilityService.accessibleButton(
-                            label: 'Αριθμομηχανή',
-                            hint: 'Άνοιγμα βοηθητικής αριθμομηχανής',
-                            onPressed: () {
-                              HelperCalculator.open(
-                                context,
-                                announceOpened: 'Άνοιξε αριθμομηχανή',
-                                onResult: (value) {
-                                  AccessibilityService.announcePolite(
-                                    'Τελικό αποτέλεσμα $value',
-                                  );
-                                },
-                              );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                                vertical: 12.0,
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8.0),
-                                    decoration: BoxDecoration(
-                                      color: context.cPrimary.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8.0),
+                    // 2. Tools Card (Εργαλεία)
+                    _ExpandableCard(
+                      title: 'Εργαλεία',
+                      icon: Icons.build_rounded,
+                      isExpanded: _isToolsExpanded,
+                      onToggle: () {
+                        setState(() => _isToolsExpanded = !_isToolsExpanded);
+                        AccessibilityService.announcePolite(
+                          _isToolsExpanded
+                              ? 'Άνοιξε η καρτέλα Εργαλεία'
+                              : 'Έκλεισε η καρτέλα Εργαλεία',
+                        );
+                      },
+                      children: [
+                        _ThemeSwitchTile(),
+                        AccessibilityService.accessibleButton(
+                          label: 'Αριθμομηχανή',
+                          hint: 'Άνοιγμα βοηθητικής αριθμομηχανής',
+                          onPressed: () {
+                            HelperCalculator.open(
+                              context,
+                              announceOpened: 'Άνοιξε αριθμομηχανή',
+                              onResult: (value) {
+                                AccessibilityService.announcePolite(
+                                  'Τελικό αποτέλεσμα $value',
+                                );
+                              },
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 12.0,
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8.0),
+                                  decoration: BoxDecoration(
+                                    color: context.cPrimary.withValues(
+                                      alpha: 0.1,
                                     ),
+                                    borderRadius: BorderRadius.circular(8.0),
+                                  ),
+                                  child: Icon(
+                                    Icons.calculate_rounded,
+                                    size: 20,
+                                    color: context.cPrimary,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Αριθμομηχανή',
+                                        style: context.bodyMd,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Γρήγοροι υπολογισμοί',
+                                        style: context.bodySm.copyWith(
+                                          color: context.cText2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 20,
+                                  color: context.cText2.withValues(alpha: 0.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        _PlaceholderOption(
+                          icon: Icons.local_gas_station_rounded,
+                          title: 'Δεξαμενή Πετρελαίου',
+                          subtitle: 'Παρακολούθηση ποσότητας πετρελαίου',
+                          onTap: () {
+                            final session = context.session;
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SessionScope(
+                                  session: session,
+                                  child: const OilPage(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+
+                        // ✅ ΝΕΟ
+                        _PlaceholderOption(
+                          icon: Icons.currency_exchange_rounded,
+                          title: 'Μετατροπέας Μονάδων',
+                          subtitle: 'Μήκος · Βάρος · Υγρά · Νομίσματα',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const ConverterPage(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // 3. Statistics Card (Στατιστικά)
+                    _ExpandableCard(
+                      title: 'Στατιστικά',
+                      icon: Icons.analytics_rounded,
+                      isExpanded: _isStatsExpanded,
+                      onToggle: () {
+                        setState(() => _isStatsExpanded = !_isStatsExpanded);
+                        AccessibilityService.announcePolite(
+                          _isStatsExpanded
+                              ? 'Άνοιξε η καρτέλα Στατιστικά'
+                              : 'Έκλεισε η καρτέλα Στατιστικά',
+                        );
+                      },
+                      children: [
+                        _PlaceholderOption(
+                          icon: Icons.pie_chart_rounded,
+                          title: 'Ανάλυση Εσόδων Εξόδων',
+                          subtitle: 'Κατανομή Εσόδων Εξόδων ανά κατηγορία',
+                          onTap: () {
+                            final session = context.session;
+                            final userId = session.userId;
+
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SessionScope(
+                                  session: session,
+                                  child: MultiProvider(
+                                    providers: [
+                                      ChangeNotifierProvider(
+                                        create: (_) =>
+                                            AccountsProvider(userId: userId),
+                                      ),
+                                      ChangeNotifierProvider(
+                                        create: (_) =>
+                                            CategoriesProvider(userId: userId),
+                                      ),
+                                      ChangeNotifierProvider(
+                                        create: (_) => TransactionsProvider(
+                                          userId: userId,
+                                        ),
+                                      ),
+                                      ChangeNotifierProvider(
+                                        create: (_) =>
+                                            TagsProvider(userId: userId),
+                                      ),
+                                    ],
+                                    child: const StatsPage(),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+
+                        _PlaceholderOption(
+                          icon: Icons.trending_up_rounded,
+                          title: 'Μέσοι Όροι',
+                          subtitle: 'Προβολή Μέσων Όρων',
+                          onTap: () {
+                            final session = context.session;
+                            final userId = session.userId;
+
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SessionScope(
+                                  session: session,
+                                  child: MultiProvider(
+                                    providers: [
+                                      ChangeNotifierProvider(
+                                        create: (_) =>
+                                            AccountsProvider(userId: userId),
+                                      ),
+                                      ChangeNotifierProvider(
+                                        create: (_) =>
+                                            CategoriesProvider(userId: userId),
+                                      ),
+                                      ChangeNotifierProvider(
+                                        create: (_) => TransactionsProvider(
+                                          userId: userId,
+                                        ),
+                                      ),
+                                    ],
+                                    child: const Stats2AveragesPage(),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+
+                        // ✅ ΝΕΟ: Συνολα ανά Μήνα
+                        _PlaceholderOption(
+                          icon: Icons.table_chart_rounded,
+                          title: 'Σύνολα ανα Μήνα',
+                          subtitle: 'Σύγκριση Εσόδων / Εξόδων ανά μήνα έτους',
+                          onTap: () {
+                            final session = context.session;
+                            final userId = session.userId;
+
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SessionScope(
+                                  session: session,
+                                  child: MultiProvider(
+                                    providers: [
+                                      ChangeNotifierProvider(
+                                        create: (_) =>
+                                            CategoriesProvider(userId: userId),
+                                      ),
+                                      ChangeNotifierProvider(
+                                        create: (_) => TransactionsProvider(
+                                          userId: userId,
+                                        ),
+                                      ),
+                                    ],
+                                    child: const Stats3Page(),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        // ✅ ΝΕΟ: Στόχος Εξοικονόμησης
+                        _PlaceholderOption(
+                          icon: Icons.savings_rounded,
+                          title: 'Στόχος Εξοικονόμησης',
+                          subtitle:
+                              'Πρόβλεψη ανά κατηγορία για επίτευξη στόχου',
+                          onTap: () {
+                            final session = context.session;
+                            final userId = session.userId;
+
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SessionScope(
+                                  session: session,
+                                  child: MultiProvider(
+                                    providers: [
+                                      ChangeNotifierProvider(
+                                        create: (_) =>
+                                            CategoriesProvider(userId: userId),
+                                      ),
+                                      ChangeNotifierProvider(
+                                        create: (_) => ConnectivityService(),
+                                      ),
+                                    ],
+                                    child: const Stats4BudgetPage(),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        // ✅ ΝΕΟ: Στατιστικά από Tags
+                        _PlaceholderOption(
+                          icon: Icons.label_rounded,
+                          title: 'Στατιστικά από Tags',
+                          subtitle: 'Αναφορά κινήσεων φιλτραρισμένη ανά Tags',
+                          onTap: () {
+                            final session = context.session;
+                            final userId = session.userId;
+
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SessionScope(
+                                  session: session,
+                                  child: MultiProvider(
+                                    providers: [
+                                      ChangeNotifierProvider(
+                                        create: (_) =>
+                                            AccountsProvider(userId: userId),
+                                      ),
+                                      ChangeNotifierProvider(
+                                        create: (_) =>
+                                            CategoriesProvider(userId: userId),
+                                      ),
+                                      ChangeNotifierProvider(
+                                        create: (_) => TransactionsProvider(
+                                          userId: userId,
+                                        ),
+                                      ),
+                                      ChangeNotifierProvider(
+                                        create: (_) =>
+                                            TagsProvider(userId: userId),
+                                      ),
+                                      ChangeNotifierProvider(
+                                        create: (_) => ConnectivityService(),
+                                      ),
+                                    ],
+                                    child: const TagStatsPage(),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        // _PlaceholderOption(
+                        //   icon: Icons.file_download_rounded,
+                        //   title: 'Εξαγωγή Αναφορών',
+                        //   subtitle: 'Λήψη αναφορών σε PDF/Excel',
+                        // ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // ✅ 4. Database Maintenance Card (Συντήρηση Βάσης)
+                    _ExpandableCard(
+                      title: 'Συντήρηση Βάσης',
+                      icon: Icons.cleaning_services_rounded,
+                      isExpanded: _isDatabaseExpanded,
+                      onToggle: () {
+                        setState(
+                          () => _isDatabaseExpanded = !_isDatabaseExpanded,
+                        );
+                        AccessibilityService.announcePolite(
+                          _isDatabaseExpanded
+                              ? 'Άνοιξε η καρτέλα Συντήρηση Βάσης'
+                              : 'Έκλεισε η καρτέλα Συντήρηση Βάσης',
+                        );
+                      },
+                      children: [
+                        _PlaceholderOption(
+                          icon: Icons.delete_sweep_rounded,
+                          title: 'Καθαρισμός Δεδομένων',
+                          subtitle:
+                              'Διαγραφή παλιών υπενθυμίσεων, προϋπολογισμών, συναλλαγών',
+                          onTap: () {
+                            final session = context.session;
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SessionScope(
+                                  session: session,
+                                  child: const DatabaseCleanupPage(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // 5. Account Card (Λογαριασμός)
+                    _ExpandableCard(
+                      title: 'Λογαριασμός',
+                      icon: Icons.account_circle_rounded,
+                      isExpanded: _isAccountExpanded,
+                      onToggle: () {
+                        setState(
+                          () => _isAccountExpanded = !_isAccountExpanded,
+                        );
+                        AccessibilityService.announcePolite(
+                          _isAccountExpanded
+                              ? 'Άνοιξε η καρτέλα Λογαριασμός'
+                              : 'Έκλεισε η καρτέλα Λογαριασμός',
+                        );
+                      },
+                      children: [
+                        _UserDetailsOption(userId: userId),
+                        AccessibilityService.accessibleButton(
+                          label: 'Αλλαγή Κωδικού',
+                          hint:
+                              'Άνοιγμα σελίδας αλλαγής κωδικού. Απαιτείται σύνδεση στο internet.',
+                          onPressed: () {
+                            final isOnline = context
+                                .read<ConnectivityService>()
+                                .isOnline;
+
+                            if (!isOnline) {
+                              AccessibilityService.announceError(
+                                'Δεν υπάρχει σύνδεση στο internet',
+                              );
+
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Χωρίς σύνδεση'),
+                                  content: const Text(
+                                    'Για λόγους ασφαλείας, η αλλαγή κωδικού απαιτεί ενεργή σύνδεση στο internet.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('OK'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return;
+                            }
+
+                            final session = context.session;
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SessionScope(
+                                  session: session,
+                                  child: const ChangePasswordPage(),
+                                ),
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 12.0,
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8.0),
+                                  decoration: BoxDecoration(
+                                    color: context.cPrimary.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8.0),
+                                  ),
+                                  child: ExcludeSemantics(
                                     child: Icon(
-                                      Icons.calculate_rounded,
+                                      Icons.lock_rounded,
                                       size: 20,
                                       color: context.cPrimary,
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Αριθμομηχανή',
-                                          style: context.bodyMd,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Αλλαγή Κωδικού',
+                                        style: context.bodyMd,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Ενημέρωση κωδικού πρόσβασης',
+                                        style: context.bodySm.copyWith(
+                                          color: context.cText2,
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Γρήγοροι υπολογισμοί',
-                                          style: context.bodySm.copyWith(
-                                            color: context.cText2,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
-                                  Icon(
+                                ),
+                                ExcludeSemantics(
+                                  child: Icon(
                                     Icons.chevron_right_rounded,
                                     size: 20,
                                     color: context.cText2.withValues(
                                       alpha: 0.5,
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
+                        ),
 
-                          const SizedBox(height: 8),
+                        const _BiometricOptionTile(),
+                        AccessibilityService.accessibleButton(
+                          label: 'Διαγραφή Λογαριασμού',
+                          hint:
+                              'Απαιτείται σύνδεση στο internet. Πατήστε για άνοιγμα.',
+                          onPressed: () async {
+                            final isOnline = context
+                                .read<ConnectivityService>()
+                                .isOnline;
 
-                          _PlaceholderOption(
-                            icon: Icons.local_gas_station_rounded,
-                            title: 'Δεξαμενή Πετρελαίου',
-                            subtitle: 'Παρακολούθηση ποσότητας πετρελαίου',
-                            onTap: () {
-                              final session = context.session;
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SessionScope(
-                                    session: session,
-                                    child: const OilPage(),
+                            if (!isOnline) {
+                              AccessibilityService.announceError(
+                                'Δεν υπάρχει σύνδεση στο internet',
+                              );
+
+                              showDialog(
+                                context: context,
+                                builder: (dialogContext) => AlertDialog(
+                                  title: const Text('Χωρίς σύνδεση'),
+                                  content: const Text(
+                                    'Για λόγους ασφαλείας, η διαγραφή λογαριασμού απαιτεί ενεργή σύνδεση στο internet.',
                                   ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(dialogContext).pop(),
+                                      child: const Text('OK'),
+                                    ),
+                                  ],
                                 ),
                               );
-                            },
-                          ),
+                              return;
+                            }
 
-                          // ✅ ΝΕΟ
-                          _PlaceholderOption(
-                            icon: Icons.currency_exchange_rounded,
-                            title: 'Μετατροπέας Μονάδων',
-                            subtitle: 'Μήκος · Βάρος · Υγρά · Νομίσματα',
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const ConverterPage(),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                            final session = context.session;
 
-
-                      const SizedBox(height: 12),
-
-                      // 3. Statistics Card (Στατιστικά)
-                      _ExpandableCard(
-                        title: 'Στατιστικά',
-                        icon: Icons.analytics_rounded,
-                        isExpanded: _isStatsExpanded,
-                        onToggle: () {
-                          setState(() => _isStatsExpanded = !_isStatsExpanded);
-                          AccessibilityService.announcePolite(
-                            _isStatsExpanded
-                                ? 'Άνοιξε η καρτέλα Στατιστικά'
-                                : 'Έκλεισε η καρτέλα Στατιστικά',
-                          );
-                        },
-                        children: [
-                          _PlaceholderOption(
-                            icon: Icons.pie_chart_rounded,
-                            title: 'Ανάλυση Εσόδων Εξόδων',
-                            subtitle: 'Κατανομή Εσόδων Εξόδων ανά κατηγορία',
-                            onTap: () {
-                              final session = context.session;
-                              final userId = session.userId;
-
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SessionScope(
-                                    session: session,
-                                    child: MultiProvider(
-                                      providers: [
-                                        ChangeNotifierProvider(create: (_) => AccountsProvider(userId: userId)),
-                                        ChangeNotifierProvider(create: (_) => CategoriesProvider(userId: userId)),
-                                        ChangeNotifierProvider(create: (_) => TransactionsProvider(userId: userId)),
-                                        ChangeNotifierProvider(create: (_) => TagsProvider(userId: userId)),
-                                      ],
-                                      child: const StatsPage(),
+                            final result = await Navigator.of(context)
+                                .push<bool>(
+                                  MaterialPageRoute(
+                                    builder: (_) => SessionScope(
+                                      session: session,
+                                      child: const DeleteAccountPage(),
                                     ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-
-                          _PlaceholderOption(
-                            icon: Icons.trending_up_rounded,
-                            title: 'Μέσοι Όροι',
-                            subtitle: 'Προβολή Μέσων Όρων',
-                            onTap: () {
-                              final session = context.session;
-                              final userId = session.userId;
-
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SessionScope(
-                                    session: session,
-                                    child: MultiProvider(
-                                      providers: [
-                                        ChangeNotifierProvider(create: (_) => AccountsProvider(userId: userId)),
-                                        ChangeNotifierProvider(create: (_) => CategoriesProvider(userId: userId)),
-                                        ChangeNotifierProvider(create: (_) => TransactionsProvider(userId: userId)),
-                                      ],
-                                      child: const Stats2AveragesPage(),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-
-                          // ✅ ΝΕΟ: Συνολα ανά Μήνα
-                          _PlaceholderOption(
-                            icon: Icons.table_chart_rounded,
-                            title: 'Σύνολα ανα Μήνα',
-                            subtitle: 'Σύγκριση Εσόδων / Εξόδων ανά μήνα έτους',
-                            onTap: () {
-                              final session = context.session;
-                              final userId  = session.userId;
-
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SessionScope(
-                                    session: session,
-                                    child: MultiProvider(
-                                      providers: [
-                                        ChangeNotifierProvider(
-                                          create: (_) => CategoriesProvider(userId: userId),
-                                        ),
-                                        ChangeNotifierProvider(
-                                          create: (_) => TransactionsProvider(userId: userId),
-                                        ),
-                                      ],
-                                      child: const Stats3Page(),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          // ✅ ΝΕΟ: Στόχος Εξοικονόμησης
-                          _PlaceholderOption(
-                            icon: Icons.savings_rounded,
-                            title: 'Στόχος Εξοικονόμησης',
-                            subtitle: 'Πρόβλεψη ανά κατηγορία για επίτευξη στόχου',
-                            onTap: () {
-                              final session = context.session;
-                              final userId  = session.userId;
-
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SessionScope(
-                                    session: session,
-                                    child: MultiProvider(
-                                      providers: [
-                                        ChangeNotifierProvider(
-                                          create: (_) => CategoriesProvider(userId: userId),
-                                        ),
-                                        ChangeNotifierProvider(
-                                          create: (_) => ConnectivityService(),
-                                        ),
-                                      ],
-                                      child: const Stats4BudgetPage(),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          // ✅ ΝΕΟ: Στατιστικά από Tags
-                          _PlaceholderOption(
-                            icon: Icons.label_rounded,
-                            title: 'Στατιστικά από Tags',
-                            subtitle: 'Αναφορά κινήσεων φιλτραρισμένη ανά Tags',
-                            onTap: () {
-                              final session = context.session;
-                              final userId  = session.userId;
-
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SessionScope(
-                                    session: session,
-                                    child: MultiProvider(
-                                      providers: [
-                                        ChangeNotifierProvider(
-                                          create: (_) => AccountsProvider(userId: userId),
-                                        ),
-                                        ChangeNotifierProvider(
-                                          create: (_) => CategoriesProvider(userId: userId),
-                                        ),
-                                        ChangeNotifierProvider(
-                                          create: (_) => TransactionsProvider(userId: userId),
-                                        ),
-                                        ChangeNotifierProvider(
-                                          create: (_) => TagsProvider(userId: userId),
-                                        ),
-                                        ChangeNotifierProvider(
-                                          create: (_) => ConnectivityService(),
-                                        ),
-                                      ],
-                                      child: const TagStatsPage(),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          // _PlaceholderOption(
-                          //   icon: Icons.file_download_rounded,
-                          //   title: 'Εξαγωγή Αναφορών',
-                          //   subtitle: 'Λήψη αναφορών σε PDF/Excel',
-                          // ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // ✅ 4. Database Maintenance Card (Συντήρηση Βάσης)
-                      _ExpandableCard(
-                        title: 'Συντήρηση Βάσης',
-                        icon: Icons.cleaning_services_rounded,
-                        isExpanded: _isDatabaseExpanded,
-                        onToggle: () {
-                          setState(() => _isDatabaseExpanded = !_isDatabaseExpanded);
-                          AccessibilityService.announcePolite(
-                            _isDatabaseExpanded
-                                ? 'Άνοιξε η καρτέλα Συντήρηση Βάσης'
-                                : 'Έκλεισε η καρτέλα Συντήρηση Βάσης',
-                          );
-                        },
-                        children: [
-                          _PlaceholderOption(
-                            icon: Icons.delete_sweep_rounded,
-                            title: 'Καθαρισμός Δεδομένων',
-                            subtitle: 'Διαγραφή παλιών υπενθυμίσεων, προϋπολογισμών, συναλλαγών',
-                            onTap: () {
-                              final session = context.session;
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SessionScope(
-                                    session: session,
-                                    child: const DatabaseCleanupPage(),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // 5. Account Card (Λογαριασμός)
-                      _ExpandableCard(
-                        title: 'Λογαριασμός',
-                        icon: Icons.account_circle_rounded,
-                        isExpanded: _isAccountExpanded,
-                        onToggle: () {
-                          setState(
-                            () => _isAccountExpanded = !_isAccountExpanded,
-                          );
-                          AccessibilityService.announcePolite(
-                            _isAccountExpanded
-                                ? 'Άνοιξε η καρτέλα Λογαριασμός'
-                                : 'Έκλεισε η καρτέλα Λογαριασμός',
-                          );
-                        },
-                        children: [
-                          _UserDetailsOption(userId: userId),
-                          AccessibilityService.accessibleButton(
-                            label: 'Αλλαγή Κωδικού',
-                            hint:
-                                'Άνοιγμα σελίδας αλλαγής κωδικού. Απαιτείται σύνδεση στο internet.',
-                            onPressed: () {
-                              final isOnline = context
-                                  .read<ConnectivityService>()
-                                  .isOnline;
-
-                              if (!isOnline) {
-                                AccessibilityService.announceError(
-                                  'Δεν υπάρχει σύνδεση στο internet',
                                 );
 
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text('Χωρίς σύνδεση'),
-                                    content: const Text(
-                                      'Για λόγους ασφαλείας, η αλλαγή κωδικού απαιτεί ενεργή σύνδεση στο internet.',
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('OK'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                return;
-                              }
+                            // ✅ αν η σελίδα γύρισε true (διαγράφηκε), εδώ ΔΕΝ κάνουμε τίποτα ακόμα.
+                            // Το "πήγαινε στο Login" θα το βάλουμε στο επόμενο βήμα για να είναι καθαρό.
+                            if (result == true && context.mounted) {
+                              // ✅ Σταματάμε άμεσα οποιαδήποτε Firestore πρόσβαση από providers/screens
+                              await FirebaseAuth.instance.signOut();
 
-                              final session = context.session;
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SessionScope(
-                                    session: session,
-                                    child: const ChangePasswordPage(),
-                                  ),
-                                ),
+                              if (!context.mounted) return;
+
+                              AccessibilityService.announceSuccess(
+                                'Ο λογαριασμός διαγράφηκε',
                               );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                                vertical: 12.0,
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8.0),
-                                    decoration: BoxDecoration(
-                                      color: context.cPrimary.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8.0),
-                                    ),
-                                    child: ExcludeSemantics(
-                                      child: Icon(
-                                        Icons.lock_rounded,
-                                        size: 20,
-                                        color: context.cPrimary,
-                                      ),
-                                    ),
+
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginRegisterPage(),
+                                ),
+                                (route) => false,
+                              );
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 12.0,
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8.0),
+                                  decoration: BoxDecoration(
+                                    color: ColorsUI.getError(
+                                      context.brightness,
+                                    ).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8.0),
                                   ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Αλλαγή Κωδικού',
-                                          style: context.bodyMd,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Ενημέρωση κωδικού πρόσβασης',
-                                          style: context.bodySm.copyWith(
-                                            color: context.cText2,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  ExcludeSemantics(
+                                  child: ExcludeSemantics(
                                     child: Icon(
-                                      Icons.chevron_right_rounded,
+                                      Icons.delete_forever_rounded,
                                       size: 20,
-                                      color: context.cText2.withValues(alpha: 0.5),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const _BiometricOptionTile(),
-                          AccessibilityService.accessibleButton(
-                            label: 'Διαγραφή Λογαριασμού',
-                            hint:
-                                'Απαιτείται σύνδεση στο internet. Πατήστε για άνοιγμα.',
-                            onPressed: () async {
-                              final isOnline = context
-                                  .read<ConnectivityService>()
-                                  .isOnline;
-
-                              if (!isOnline) {
-                                AccessibilityService.announceError(
-                                  'Δεν υπάρχει σύνδεση στο internet',
-                                );
-
-                                showDialog(
-                                  context: context,
-                                  builder: (dialogContext) => AlertDialog(
-                                    title: const Text('Χωρίς σύνδεση'),
-                                    content: const Text(
-                                      'Για λόγους ασφαλείας, η διαγραφή λογαριασμού απαιτεί ενεργή σύνδεση στο internet.',
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(dialogContext).pop(),
-                                        child: const Text('OK'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                return;
-                              }
-
-                              final session = context.session;
-
-                              final result = await Navigator.of(context)
-                                  .push<bool>(
-                                    MaterialPageRoute(
-                                      builder: (_) => SessionScope(
-                                        session: session,
-                                        child: const DeleteAccountPage(),
-                                      ),
-                                    ),
-                                  );
-
-                              // ✅ αν η σελίδα γύρισε true (διαγράφηκε), εδώ ΔΕΝ κάνουμε τίποτα ακόμα.
-                              // Το "πήγαινε στο Login" θα το βάλουμε στο επόμενο βήμα για να είναι καθαρό.
-                              if (result == true && context.mounted) {
-                                // ✅ Σταματάμε άμεσα οποιαδήποτε Firestore πρόσβαση από providers/screens
-                                await FirebaseAuth.instance.signOut();
-
-                                if (!context.mounted) return;
-
-                                AccessibilityService.announceSuccess('Ο λογαριασμός διαγράφηκε');
-
-                                Navigator.of(context).pushAndRemoveUntil(
-                                  MaterialPageRoute(builder: (_) => const LoginRegisterPage()),
-                                      (route) => false,
-                                );
-                              }
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                                vertical: 12.0,
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8.0),
-                                    decoration: BoxDecoration(
                                       color: ColorsUI.getError(
                                         context.brightness,
-                                      ).withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(8.0),
-                                    ),
-                                    child: ExcludeSemantics(
-                                      child: Icon(
-                                        Icons.delete_forever_rounded,
-                                        size: 20,
-                                        color: ColorsUI.getError(context.brightness),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Διαγραφή Λογαριασμού',
-                                          style: context.bodyMd,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Διαγραφή Λογαριασμού',
+                                        style: context.bodyMd,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Οριστική διαγραφή του λογαριασμού',
+                                        style: context.bodySm.copyWith(
+                                          color: context.cText2,
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Οριστική διαγραφή του λογαριασμού',
-                                          style: context.bodySm.copyWith(
-                                            color: context.cText2,
-                                          ),
-                                        ),
-                                      ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ExcludeSemantics(
+                                  child: Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 20,
+                                    color: context.cText2.withValues(
+                                      alpha: 0.5,
                                     ),
                                   ),
-                                  ExcludeSemantics(
-                                    child: Icon(
-                                      Icons.chevron_right_rounded,
-                                      size: 20,
-                                      color: context.cText2.withValues(alpha: 0.5),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
 
-                      const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                      // 6. Logout Card (Αποσύνδεση)
-                      _LogoutCard(userId: userId),
+                    // 6. Logout Card (Αποσύνδεση)
+                    _LogoutCard(userId: userId),
 
-                      // 7. Έκδοση εφαρμογής (από pubspec.yaml μέσω package_info_plus)
-                      _AppVersionFooter(label: _versionLabel),
-                    ],
-                    )
-                  ),
+                    // 7. Έκδοση εφαρμογής (από pubspec.yaml μέσω package_info_plus)
+                    _AppVersionFooter(label: _versionLabel),
+                  ],
+                ),
+              ),
             );
           },
         ),
@@ -753,7 +797,11 @@ class _CategoryManagementCard extends StatelessWidget {
           child: Row(
             children: [
               ExcludeSemantics(
-                child: Icon(Icons.category_rounded, size: 24, color: context.cPrimary),
+                child: Icon(
+                  Icons.category_rounded,
+                  size: 24,
+                  color: context.cPrimary,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -806,12 +854,14 @@ class _TagsManagementCard extends StatelessWidget {
           child: Row(
             children: [
               ExcludeSemantics(
-                child: Icon(Icons.label_rounded, size: 24, color: context.cPrimary),
+                child: Icon(
+                  Icons.label_rounded,
+                  size: 24,
+                  color: context.cPrimary,
+                ),
               ),
               const SizedBox(width: 16),
-              Expanded(
-                child: Text('Διαχείριση Tags', style: context.titleMd),
-              ),
+              Expanded(child: Text('Διαχείριση Tags', style: context.titleMd)),
               Icon(
                 Icons.chevron_right_rounded,
                 size: 24,
@@ -875,7 +925,9 @@ class _PlaceholderOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return AccessibilityService.accessibleButton(
       label: '$title, $subtitle',
-      hint: onTap != null ? 'Πατήστε για άνοιγμα' : 'Πατήστε για περισσότερες πληροφορίες',
+      hint: onTap != null
+          ? 'Πατήστε για άνοιγμα'
+          : 'Πατήστε για περισσότερες πληροφορίες',
       onPressed: onTap ?? () => _showComingSoonDialog(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -962,7 +1014,11 @@ class _UserDetailsOption extends StatelessWidget {
             const SizedBox(width: 16),
             Expanded(child: Text('Στοιχεία Χρήστη', style: context.bodyMd)),
             ExcludeSemantics(
-              child: Icon(Icons.chevron_right_rounded, size: 24, color: context.cText2),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                size: 24,
+                color: context.cText2,
+              ),
             ),
           ],
         ),
@@ -1038,9 +1094,10 @@ class _UserDetailsDialogState extends State<_UserDetailsDialog> {
         });
       }
     } catch (e) {
+      DebugConfig.print('❌ user details load error: $e');
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Σφάλμα φόρτωσης: ${e.toString()}';
+        _errorMessage = 'Αποτυχία φόρτωσης στοιχείων χρήστη. Δοκιμάστε ξανά.';
         _isLoading = false;
       });
     }
@@ -1066,19 +1123,16 @@ class _UserDetailsDialogState extends State<_UserDetailsDialog> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Οι αλλαγές αποθηκεύτηκαν επιτυχώς'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppMessenger.success(context, 'Οι αλλαγές αποθηκεύτηκαν επιτυχώς');
 
       Navigator.of(context).pop();
     } catch (e) {
+      DebugConfig.print('❌ user details save error: $e');
       if (!mounted) return;
 
       setState(() {
-        _errorMessage = 'Αποτυχία αποθήκευσης: ${e.toString()}';
+        _errorMessage =
+            'Αποτυχία αποθήκευσης στοιχείων χρήστη. Δοκιμάστε ξανά.';
         _isSaving = false;
       });
 
@@ -1131,7 +1185,11 @@ class _UserDetailsDialogState extends State<_UserDetailsDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           ExcludeSemantics(
-            child: Icon(Icons.error_outline, size: 48, color: Colors.red.shade700),
+            child: Icon(
+              Icons.error_outline,
+              size: 48,
+              color: Colors.red.shade700,
+            ),
           ),
           const SizedBox(height: 16),
           Text(
@@ -1307,15 +1365,17 @@ class _UserDetailsDialogState extends State<_UserDetailsDialog> {
                         onPressed: _isSaving ? null : _saveChanges,
                         child: _isSaving
                             ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: ExcludeSemantics(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
-                            ),
-                          ),
-                        )
+                                height: 20,
+                                width: 20,
+                                child: ExcludeSemantics(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              )
                             : const Text('Αποθήκευση'),
                       ),
                     ),
@@ -1344,9 +1404,7 @@ class _UserDetailsDialogState extends State<_UserDetailsDialog> {
           controller: controller,
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: ExcludeSemantics(
-              child: Icon(icon, size: 20),
-            ),
+            prefixIcon: ExcludeSemantics(child: Icon(icon, size: 20)),
             filled: true,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -1372,9 +1430,7 @@ class _UserDetailsDialogState extends State<_UserDetailsDialog> {
           items: items,
           onChanged: onChanged,
           decoration: InputDecoration(
-            prefixIcon: ExcludeSemantics(
-              child: Icon(icon, size: 20),
-            ),
+            prefixIcon: ExcludeSemantics(child: Icon(icon, size: 20)),
             filled: true,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -1406,7 +1462,11 @@ class _UserDetailsDialogState extends State<_UserDetailsDialog> {
           Row(
             children: [
               ExcludeSemantics(
-                child: Icon(Icons.info_outline, size: 16, color: context.cPrimary),
+                child: Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: context.cPrimary,
+                ),
               ),
               const SizedBox(width: 8),
               Text(
@@ -1572,7 +1632,9 @@ class _ThemeSwitchTile extends StatelessWidget {
               ),
               child: ExcludeSemantics(
                 child: Icon(
-                  isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                  isDarkMode
+                      ? Icons.dark_mode_rounded
+                      : Icons.light_mode_rounded,
                   size: 20,
                   color: context.cPrimary,
                 ),
@@ -1709,19 +1771,10 @@ class _LogoutCard extends StatelessWidget {
         MaterialPageRoute(builder: (_) => const LoginRegisterPage()),
         (route) => false,
       );
-    } catch (e) {
+    } catch (_) {
       if (!context.mounted) return;
 
-      AccessibilityService.announceError(
-        'Αποτυχία αποσύνδεσης. Δοκιμάστε ξανά.',
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Αποτυχία αποσύνδεσης. Δοκιμάστε ξανά.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppMessenger.error(context, 'Αποτυχία αποσύνδεσης. Δοκιμάστε ξανά.');
     }
   }
 
@@ -1739,7 +1792,11 @@ class _LogoutCard extends StatelessWidget {
           child: Row(
             children: [
               ExcludeSemantics(
-                child: Icon(Icons.logout_rounded, size: 24, color: Colors.red.shade700),
+                child: Icon(
+                  Icons.logout_rounded,
+                  size: 24,
+                  color: Colors.red.shade700,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1888,10 +1945,12 @@ class _BiometricSettingsDialogState extends State<_BiometricSettingsDialog> {
         _loading = false;
       });
     } catch (e, st) {
+      DebugConfig.print('❌ biometrics load error: $e');
+      DebugConfig.print('$st');
       if (!mounted) return;
 
       setState(() {
-        _error = 'LOAD ERROR:\n$e\n\nSTACK:\n$st';
+        _error = 'Αποτυχία φόρτωσης ρυθμίσεων βιομετρικών. Δοκιμάστε ξανά.';
         _loading = false;
       });
     }
@@ -1961,7 +2020,7 @@ class _BiometricSettingsDialogState extends State<_BiometricSettingsDialog> {
       setState(() {
         _enabled = false;
         _saving = false;
-        _error = 'Σφάλμα βιομετρικών: $e';
+        _error = 'Αποτυχία αποθήκευσης ρυθμίσεων βιομετρικών. Δοκιμάστε ξανά.';
       });
 
       AccessibilityService.announceError('Σφάλμα βιομετρικών');
@@ -2031,9 +2090,7 @@ class _BiometricSettingsDialogState extends State<_BiometricSettingsDialog> {
             child: CircularProgressIndicator(color: context.cPrimary),
           ),
           const SizedBox(height: 14),
-          ExcludeSemantics(
-            child: Text('Φόρτωση...', style: context.bodyMd),
-          ),
+          ExcludeSemantics(child: Text('Φόρτωση...', style: context.bodyMd)),
         ],
       ),
     );
@@ -2044,7 +2101,11 @@ class _BiometricSettingsDialogState extends State<_BiometricSettingsDialog> {
       mainAxisSize: MainAxisSize.min,
       children: [
         ExcludeSemantics(
-          child: Icon(Icons.error_outline, size: 44, color: Colors.red.shade700),
+          child: Icon(
+            Icons.error_outline,
+            size: 44,
+            color: Colors.red.shade700,
+          ),
         ),
         const SizedBox(height: 10),
         Text(_error!, style: context.bodyMd, textAlign: TextAlign.center),

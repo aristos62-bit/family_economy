@@ -31,12 +31,7 @@ Future<void> main() async {
     await _startApplication();
   } catch (e) {
     DebugConfig.print('Firebase initialization error: $e');
-    runApp(
-      ErrorApp(
-        error: e.toString(),
-        onRetry: _startApplication,
-      ),
-    );
+    runApp(ErrorApp(onRetry: _startApplication));
   }
 }
 
@@ -79,7 +74,8 @@ Future<StartupDependencies> prepareStartup({
     }
   }
 
-  final notificationsInit = initNotifications ??
+  final notificationsInit =
+      initNotifications ??
       () => NotificationsService().initialize(requestPermissions: false);
   try {
     await notificationsInit().timeout(notificationsTimeout);
@@ -90,8 +86,8 @@ Future<StartupDependencies> prepareStartup({
     DebugConfig.print('⚠️ Notifications init failed (continuing): $e');
   }
 
-  final connectivity =
-      _connectivityService ??= (createConnectivity ?? ConnectivityService.new)();
+  final connectivity = _connectivityService ??=
+      (createConnectivity ?? ConnectivityService.new)();
   DebugConfig.startup("ConnectivityService ready");
 
   return (themeProvider: theme, connectivityService: connectivity);
@@ -131,7 +127,9 @@ Future<void> _bootstrap({
   // Σε επανάληψη, αν το Firebase app υπάρχει ήδη από την προηγούμενη
   // προσπάθεια, δεν ξανακαλούμε initializeApp (μη εγγυημένη idempotency).
   if (isRetry && Firebase.apps.isNotEmpty) {
-    DebugConfig.print('↑ Firebase app already initialized — skip initializeApp');
+    DebugConfig.print(
+      '↑ Firebase app already initialized — skip initializeApp',
+    );
   } else {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -174,9 +172,7 @@ Future<void> _bootstrap({
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider<ThemeProvider>.value(
-          value: themeProvider,
-        ),
+        ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
         // ✅ ΑΛΛΑΓΗ: Χρήση .value αντί για create
         ChangeNotifierProvider<ConnectivityService>.value(
           value: connectivityService,
@@ -220,9 +216,7 @@ class MyApp extends StatelessWidget {
 
         return MediaQuery(
           data: mediaQuery.copyWith(textScaler: textScaler),
-          child: AnnouncementOverlay(
-            child: child ?? const SizedBox.shrink(),
-          ),
+          child: AnnouncementOverlay(child: child ?? const SizedBox.shrink()),
         );
       },
 
@@ -232,18 +226,13 @@ class MyApp extends StatelessWidget {
 }
 
 /// ✅ Error screen για Firebase initialization failures (L18)
+/// L11: χωρίς raw σφάλμα — μόνο σταθερά μηνύματα προς χρήστη.
 class ErrorApp extends StatefulWidget {
-  final String error;
-
   /// Επανάληψη αρχικοποίησης. Σε επιτυχία καλεί `runApp` και το δέντρο
   /// αντικαθίσταται· σε αποτυχία πετά, ώστε η οθόνη να δείξει το νέο σφάλμα.
   final Future<void> Function() onRetry;
 
-  const ErrorApp({
-    super.key,
-    required this.error,
-    required this.onRetry,
-  });
+  const ErrorApp({super.key, required this.onRetry});
 
   @override
   State<ErrorApp> createState() => _ErrorAppState();
@@ -254,7 +243,8 @@ class _ErrorAppState extends State<ErrorApp> {
   /// χρήστης δεν πρέπει να μείνει μόνιμα στο «Νέα προσπάθεια…».
   static const Duration _retryTimeout = Duration(seconds: 20);
 
-  late String _error = widget.error;
+  /// Σταθερό μήνυμα αποτυχίας· ποτέ raw exception (L11).
+  String _failure = '';
   bool _retrying = false;
   int _attempts = 0;
 
@@ -275,7 +265,8 @@ class _ErrorAppState extends State<ErrorApp> {
     } on TimeoutException {
       if (!mounted) return;
       setState(() {
-        _error = 'Η αρχικοποίηση δεν ολοκληρώθηκε σε '
+        _failure =
+            'Η αρχικοποίηση δεν ολοκληρώθηκε σε '
             '${_retryTimeout.inSeconds} δευτερόλεπτα.';
         _attempts++;
         _retrying = false;
@@ -287,22 +278,18 @@ class _ErrorAppState extends State<ErrorApp> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _failure = 'Η επανάληψη απέτυχε.';
         _attempts++;
         _retrying = false;
       });
       DebugConfig.print('ErrorApp retry failed: $e');
-      AccessibilityService.announceError(
-        'Αποτυχία επανάληψης αρχικοποίησης: $_error',
-      );
+      AccessibilityService.announceError('Αποτυχία επανάληψης αρχικοποίησης.');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final details = _attempts > 0
-        ? 'Σφάλμα: $_error\nΠροσπάθειες: $_attempts'
-        : 'Σφάλμα: $_error';
+    final details = _attempts > 0 ? '$_failure\nΠροσπάθειες: $_attempts' : null;
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -310,8 +297,7 @@ class _ErrorAppState extends State<ErrorApp> {
         backgroundColor: Colors.redAccent.shade100.withValues(alpha: 0.15),
         body: StartupErrorView(
           title: 'Σφάλμα Αρχικοποίησης',
-          message:
-          'Η εφαρμογή δεν μπόρεσε να ολοκληρώσει την αρχικοποίηση.',
+          message: 'Η εφαρμογή δεν μπόρεσε να ολοκληρώσει την αρχικοποίηση.',
           details: details,
           primaryLabel: _retrying ? 'Νέα προσπάθεια…' : 'Δοκιμή ξανά',
           primaryIcon: Icons.refresh,

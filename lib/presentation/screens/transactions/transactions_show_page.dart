@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 // Core imports
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
 import 'package:family_economy/core/session/session_scope.dart';
@@ -49,39 +50,15 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
   //============================
 
   void _showSuccessSnack(String message) {
-    final b = Theme.of(context).brightness;
-
     final messenger = _scaffoldMessengerKey.currentState;
-    DebugConfig.print('TXEDIT: showSuccessSnack messengerIsNull=${messenger == null}');
-
     if (messenger == null) return;
-
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: TextStyle(color: ColorsUI.getOnPrimary(b)),
-        ),
-        backgroundColor: ColorsUI.getSuccess(b),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppMessenger.success(context, message, messenger: messenger);
   }
 
-
   void _showErrorSnack(String message) {
-    final b = Theme.of(context).brightness;
-
-    _scaffoldMessengerKey.currentState?.showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: TextStyle(color: ColorsUI.getOnError(b)),
-        ),
-        backgroundColor: ColorsUI.getError(b),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    final messenger = _scaffoldMessengerKey.currentState;
+    if (messenger == null) return;
+    AppMessenger.error(context, message, messenger: messenger);
   }
 
   // ============================================================
@@ -264,10 +241,7 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
   // TRANSACTION TYPE HELPERS
   // ============================================================
 
-  Color _getTransactionColor(
-      Brightness brightness,
-      double amount,
-      ) {
+  Color _getTransactionColor(Brightness brightness, double amount) {
     // Το χρώμα εξαρτάται ΠΑΝΤΑ από το πρόσημο
     if (amount >= 0) {
       return ColorsUI.getIncomeColor(brightness); // πράσινο
@@ -275,7 +249,6 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
       return ColorsUI.getExpenseColor(brightness); // κόκκινο
     }
   }
-
 
   IconData _getTransactionIcon(String type) {
     switch (type) {
@@ -308,7 +281,7 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
         content: Text(
           isTransfer
               ? 'Αυτή η κίνηση είναι μεταφορά.\n\n'
-              'Θέλετε να συνεχίσετε με τη διαγραφή;'
+                    'Θέλετε να συνεχίσετε με τη διαγραφή;'
               : 'Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την κίνηση;',
           style: TypographyUI.bodyMedium(brightness),
         ),
@@ -376,7 +349,6 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
         return true;
       }).toList();
     });
-
 
     // ✅ δείξε μήνυμα άμεσα (και offline)
     _showSuccessSnack('Η κίνηση διαγράφηκε');
@@ -537,9 +509,9 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
                 ExcludeSemantics(
                   child: Text(
                     'Προγραμματισμένες Κινήσεις',
-                    style: TypographyUI.bodySmall(brightness).copyWith(
-                      color: ColorsUI.getTextSecondary(brightness),
-                    ),
+                    style: TypographyUI.bodySmall(
+                      brightness,
+                    ).copyWith(color: ColorsUI.getTextSecondary(brightness)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -565,7 +537,6 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
       ),
     );
   }
-
 
   Widget _buildLoadingState(Brightness brightness) {
     return Semantics(
@@ -610,7 +581,10 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('Σφάλμα φόρτωσης', style: TypographyUI.titleLarge(brightness)),
+              Text(
+                'Σφάλμα φόρτωσης',
+                style: TypographyUI.titleLarge(brightness),
+              ),
               const SizedBox(height: 8),
               Text(
                 error,
@@ -787,7 +761,8 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
             ),
           ),
           child: Semantics(
-            label: '$displayTitle: ${CurrencyFormatter.format(amount.abs(), currency: currency)}'
+            label:
+                '$displayTitle: ${CurrencyFormatter.format(amount.abs(), currency: currency)}'
                 '${isPendingScheduled ? ". Προγραμματισμένη κίνηση" : ""}'
                 '${notes.isNotEmpty ? ". $notes" : ""}',
             child: InkWell(
@@ -833,18 +808,24 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
                             const SizedBox(height: 2),
                             Text(
                               'Προγραμματισμένη κίνηση',
-                              style: TypographyUI.bodySmall(brightness).copyWith(
-                                color: ColorsUI.getTextSecondary(brightness),
-                                fontStyle: FontStyle.italic,
-                              ),
+                              style: TypographyUI.bodySmall(brightness)
+                                  .copyWith(
+                                    color: ColorsUI.getTextSecondary(
+                                      brightness,
+                                    ),
+                                    fontStyle: FontStyle.italic,
+                                  ),
                             ),
                           ],
                           if (notes.isNotEmpty)
                             Text(
                               notes,
-                              style: TypographyUI.bodySmall(brightness).copyWith(
-                                color: ColorsUI.getTextSecondary(brightness),
-                              ),
+                              style: TypographyUI.bodySmall(brightness)
+                                  .copyWith(
+                                    color: ColorsUI.getTextSecondary(
+                                      brightness,
+                                    ),
+                                  ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -875,102 +856,164 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
                                   child: Icon(
                                     Icons.edit,
                                     size: 16,
-                                    color: ColorsUI.getTextSecondary(brightness),
+                                    color: ColorsUI.getTextSecondary(
+                                      brightness,
+                                    ),
                                   ),
                                 ),
-                                onPressed: isPendingScheduled ? null : () async {
-                                  DebugConfig.print('TXEDIT: pressed');
+                                onPressed: isPendingScheduled
+                                    ? null
+                                    : () async {
+                                        DebugConfig.print('TXEDIT: pressed');
 
-                                  if (isTransfer) {
-                                    await showDialog<void>(
-                                      context: context,
-                                      builder: (dCtx) => AlertDialog(
-                                        backgroundColor: ColorsUI.getSurface(brightness),
-                                        title: Text('Επεξεργασία Μεταφοράς', style: TypographyUI.titleLarge(brightness)),
-                                        content: Text(
-                                          'Η κίνηση είναι Μεταφορά.\n\n'
-                                              'Οι αλλαγές που θα κάνετε θα εφαρμοστούν ΚΑΙ '
-                                              'στην αντίστοιχη κίνηση του άλλου λογαριασμού.',
-                                          style: TypographyUI.bodyMedium(brightness),
-                                        ),
-                                        actions: [
-                                          Semantics(
-                                            button: true,
-                                            label: 'Κλείσιμο ενημέρωσης μεταφοράς',
-                                            child: TextButton(
-                                              onPressed: () => Navigator.pop(dCtx),
-                                              child: Text('OK', style: TypographyUI.buttonBase().copyWith(color: ColorsUI.getPrimary(brightness))),
+                                        if (isTransfer) {
+                                          await showDialog<void>(
+                                            context: context,
+                                            builder: (dCtx) => AlertDialog(
+                                              backgroundColor:
+                                                  ColorsUI.getSurface(
+                                                    brightness,
+                                                  ),
+                                              title: Text(
+                                                'Επεξεργασία Μεταφοράς',
+                                                style: TypographyUI.titleLarge(
+                                                  brightness,
+                                                ),
+                                              ),
+                                              content: Text(
+                                                'Η κίνηση είναι Μεταφορά.\n\n'
+                                                'Οι αλλαγές που θα κάνετε θα εφαρμοστούν ΚΑΙ '
+                                                'στην αντίστοιχη κίνηση του άλλου λογαριασμού.',
+                                                style: TypographyUI.bodyMedium(
+                                                  brightness,
+                                                ),
+                                              ),
+                                              actions: [
+                                                Semantics(
+                                                  button: true,
+                                                  label:
+                                                      'Κλείσιμο ενημέρωσης μεταφοράς',
+                                                  child: TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(dCtx),
+                                                    child: Text(
+                                                      'OK',
+                                                      style: TypographyUI.buttonBase()
+                                                          .copyWith(
+                                                            color:
+                                                                ColorsUI.getPrimary(
+                                                                  brightness,
+                                                                ),
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }
-                                  if (!context.mounted) return;
+                                          );
+                                        }
+                                        if (!context.mounted) return;
 
-                                  DebugConfig.print('TXEDIT: opening sheet...');
-                                  final result = await TransactionEditSheet.show(context, tx: tx);
-                                  DebugConfig.print('TXEDIT: sheet closed. resultIsNull=${result == null}');
+                                        DebugConfig.print(
+                                          'TXEDIT: opening sheet...',
+                                        );
+                                        final result =
+                                            await TransactionEditSheet.show(
+                                              context,
+                                              tx: tx,
+                                            );
+                                        DebugConfig.print(
+                                          'TXEDIT: sheet closed. resultIsNull=${result == null}',
+                                        );
 
-                                  if (result == null) return;
+                                        if (result == null) return;
 
-                                  DebugConfig.print('TXEDIT: result date=${result.date} amountAbs=${result.amountAbs}');
+                                        DebugConfig.print(
+                                          'TXEDIT: result date=${result.date} amountAbs=${result.amountAbs}',
+                                        );
 
-                                  if (!context.mounted) return;
-                                  final userId = context.session.userId;
+                                        if (!context.mounted) return;
+                                        final userId = context.session.userId;
 
-                                  final backup = List<Map<String, dynamic>>.from(_transactions);
-                                  final txUuid = tx['uuid'] as String?;
+                                        final backup =
+                                            List<Map<String, dynamic>>.from(
+                                              _transactions,
+                                            );
+                                        final txUuid = tx['uuid'] as String?;
 
-                                  if (txUuid != null) {
-                                    setState(() {
-                                      _transactions = _transactions.map((t) {
-                                        if (t['uuid'] != txUuid) return t;
+                                        if (txUuid != null) {
+                                          setState(() {
+                                            _transactions = _transactions.map((
+                                              t,
+                                            ) {
+                                              if (t['uuid'] != txUuid) return t;
 
-                                        final oldAmount = (t['amount'] as num?)?.toDouble() ?? 0.0;
-                                        final signedNewAmount =
-                                        oldAmount >= 0 ? result.amountAbs : -result.amountAbs;
+                                              final oldAmount =
+                                                  (t['amount'] as num?)
+                                                      ?.toDouble() ??
+                                                  0.0;
+                                              final signedNewAmount =
+                                                  oldAmount >= 0
+                                                  ? result.amountAbs
+                                                  : -result.amountAbs;
 
-                                        return {
-                                          ...t,
-                                          'amount': signedNewAmount,
-                                          'date': Timestamp.fromDate(result.date),
-                                          'category_id': result.categoryId,
-                                          'subcategory_id': result.subcategoryId,
-                                          'account_id': result.accountId,
-                                          'notes': (result.notes == null || result.notes!.trim().isEmpty)
-                                              ? ''
-                                              : result.notes!.trim(),
-                                        };
-                                      }).toList();
-                                    });
-                                  }
+                                              return {
+                                                ...t,
+                                                'amount': signedNewAmount,
+                                                'date': Timestamp.fromDate(
+                                                  result.date,
+                                                ),
+                                                'category_id':
+                                                    result.categoryId,
+                                                'subcategory_id':
+                                                    result.subcategoryId,
+                                                'account_id': result.accountId,
+                                                'notes':
+                                                    (result.notes == null ||
+                                                        result.notes!
+                                                            .trim()
+                                                            .isEmpty)
+                                                    ? ''
+                                                    : result.notes!.trim(),
+                                              };
+                                            }).toList();
+                                          });
+                                        }
 
-                                  _showSuccessSnack('Η μεταβολή αποθηκεύτηκε');
+                                        _showSuccessSnack(
+                                          'Η μεταβολή αποθηκεύτηκε',
+                                        );
 
-                                  try {
-                                    await TransactionsActionsService().edit(
-                                      userId: userId,
-                                      tx: tx,
-                                      newAmountAbs: result.amountAbs,
-                                      newDate: result.date,
-                                      newCategoryId: result.categoryId,
-                                      newSubcategoryId: result.subcategoryId,
-                                      newAccountId: result.accountId,
-                                      newNotes: result.notes,
-                                    );
+                                        try {
+                                          await TransactionsActionsService()
+                                              .edit(
+                                                userId: userId,
+                                                tx: tx,
+                                                newAmountAbs: result.amountAbs,
+                                                newDate: result.date,
+                                                newCategoryId:
+                                                    result.categoryId,
+                                                newSubcategoryId:
+                                                    result.subcategoryId,
+                                                newAccountId: result.accountId,
+                                                newNotes: result.notes,
+                                              );
 
-                                    if (!context.mounted) return;
-                                    _loadTransactions();
-                                  } catch (e) {
-                                    if (!context.mounted) return;
-                                    setState(() {
-                                      _transactions = backup;
-                                    });
-                                    _showErrorSnack('Η αποθήκευση απέτυχε');
-                                    DebugConfig.print('Save transaction edit error: $e');
-                                  }
-                                },
+                                          if (!context.mounted) return;
+                                          _loadTransactions();
+                                        } catch (e) {
+                                          if (!context.mounted) return;
+                                          setState(() {
+                                            _transactions = backup;
+                                          });
+                                          _showErrorSnack(
+                                            'Η αποθήκευση απέτυχε',
+                                          );
+                                          DebugConfig.print(
+                                            'Save transaction edit error: $e',
+                                          );
+                                        }
+                                      },
                               ),
                             ),
                             Semantics(
@@ -1001,9 +1044,10 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
                               amount.abs(),
                               currency: currency,
                             ),
-                            style: TypographyUI.bodyLarge(
-                              brightness,
-                            ).copyWith(fontWeight: FontWeight.bold, color: color),
+                            style: TypographyUI.bodyLarge(brightness).copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
                           ),
                         ),
                       ],

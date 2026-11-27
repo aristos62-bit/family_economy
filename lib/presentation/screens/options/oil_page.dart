@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
@@ -77,7 +78,9 @@ class _OilPageState extends State<OilPage> {
         DebugConfig.print(
           '📐 OIL after load: type=${settings.type}, dim1=${settings.dim1}, dim2=${settings.dim2}, dim3=${settings.dim3}',
         );
-        DebugConfig.print('🗺️ OIL dimensionsByType: ${settings.dimensionsByType}');
+        DebugConfig.print(
+          '🗺️ OIL dimensionsByType: ${settings.dimensionsByType}',
+        );
       } else {
         // New user, create default rectangular tank
         final defaultDimensions = <String, List<double>>{
@@ -112,10 +115,12 @@ class _OilPageState extends State<OilPage> {
         '🛢 OIL Loaded settings: type=${_settings!.type}, dims=${_settings!.dim1},${_settings!.dim2},${_settings!.dim3}',
       );
     } catch (e) {
+      DebugConfig.print('❌ oil load error: $e');
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Σφάλμα φόρτωσης: ${e.toString()}';
+        _errorMessage =
+            'Αποτυχία φόρτωσης ρυθμίσεων δεξαμενής. Δοκιμάστε ξανά.';
       });
     }
   }
@@ -123,13 +128,9 @@ class _OilPageState extends State<OilPage> {
   Future<void> _saveSettings() async {
     final connectivity = context.read<ConnectivityService>();
     if (connectivity.isOffline) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Εκτός σύνδεσης — δεν είναι δυνατή η αποθήκευση.'),
-        ),
-      );
-      AccessibilityService.announceError(
-        'Εκτός σύνδεσης. Δεν είναι δυνατή η αποθήκευση.',
+      AppMessenger.warning(
+        context,
+        'Εκτός σύνδεσης — δεν είναι δυνατή η αποθήκευση.',
       );
       return;
     }
@@ -157,29 +158,23 @@ class _OilPageState extends State<OilPage> {
       await settingsToSave.save(userId);
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Οι ρυθμίσεις της δεξαμενής αποθηκεύτηκαν'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      AccessibilityService.announceSuccess(
-        'Οι ρυθμίσεις της δεξαμενής αποθηκεύτηκαν.',
-      );
+      AppMessenger.success(context, 'Οι ρυθμίσεις της δεξαμενής αποθηκεύτηκαν');
     } catch (e) {
+      DebugConfig.print('❌ oil save error: $e');
       if (!mounted) return;
       setState(() {
         _isSaving = false;
-        _errorMessage = 'Αποτυχία αποθήκευσης: ${e.toString()}';
+        _errorMessage =
+            'Αποτυχία αποθήκευσης ρυθμίσεων δεξαμενής. Δοκιμάστε ξανά.';
       });
       AccessibilityService.announceError(_errorMessage!);
     }
   }
 
   Future<void> _recalculateAvgCost(
-      String userId, {
-        double litersDelta = 0,
-      }) async {
+    String userId, {
+    double litersDelta = 0,
+  }) async {
     final snapshot = await FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
@@ -233,12 +228,12 @@ class _OilPageState extends State<OilPage> {
         .collection('settings')
         .doc('oil_tank')
         .set({
-      'avg_cost_per_liter': newAvg,
-      'liters_at_last_purchase': newLitersAtLast,
-      if (latestDate != null)
-        'last_purchase_date': latestDate.toUtc().toIso8601String(),
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }, SetOptions(merge: true));
+          'avg_cost_per_liter': newAvg,
+          'liters_at_last_purchase': newLitersAtLast,
+          if (latestDate != null)
+            'last_purchase_date': latestDate.toUtc().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }, SetOptions(merge: true));
 
     // Ενημέρωση τοπικά χωρίς να ξαναφορτώσουμε όλες τις ρυθμίσεις
     if (mounted) {
@@ -255,14 +250,26 @@ class _OilPageState extends State<OilPage> {
   void _onTankChanged(TankType newType, double dim1, double dim2, double dim3) {
     if (_settings == null) return;
 
-    DebugConfig.print('🔄 _onTankChanged called: oldType=${_settings!.type}, newType=$newType, incoming dims=$dim1,$dim2,$dim3');
+    DebugConfig.print(
+      '🔄 _onTankChanged called: oldType=${_settings!.type}, newType=$newType, incoming dims=$dim1,$dim2,$dim3',
+    );
 
     if (newType != _settings!.type) {
       // Αποθήκευσε τον παλιό τύπο στο map
-      final newDimensionsByType = Map<String, List<double>>.from(_settings!.dimensionsByType);
-      newDimensionsByType[_settings!.type.name] = [_settings!.dim1, _settings!.dim2, _settings!.dim3];
-      DebugConfig.print('💾 Saving dims for ${_settings!.type.name}: ${_settings!.dim1}, ${_settings!.dim2}, ${_settings!.dim3}');
-      DebugConfig.print('🗺️ Full dimensionsByType before switch: $newDimensionsByType');
+      final newDimensionsByType = Map<String, List<double>>.from(
+        _settings!.dimensionsByType,
+      );
+      newDimensionsByType[_settings!.type.name] = [
+        _settings!.dim1,
+        _settings!.dim2,
+        _settings!.dim3,
+      ];
+      DebugConfig.print(
+        '💾 Saving dims for ${_settings!.type.name}: ${_settings!.dim1}, ${_settings!.dim2}, ${_settings!.dim3}',
+      );
+      DebugConfig.print(
+        '🗺️ Full dimensionsByType before switch: $newDimensionsByType',
+      );
 
       // Ανάκτησε αποθηκευμένες διαστάσεις για τον νέο τύπο
       final savedDims = newDimensionsByType[newType.name];
@@ -271,10 +278,14 @@ class _OilPageState extends State<OilPage> {
         dim1 = savedDims[0];
         dim2 = savedDims[1];
         dim3 = savedDims[2];
-        DebugConfig.print('📌 Using saved dimensions for $newType: $dim1,$dim2,$dim3');
+        DebugConfig.print(
+          '📌 Using saved dimensions for $newType: $dim1,$dim2,$dim3',
+        );
       } else {
         // 🔥 ΑΛΛΑΓΗ: ΔΕΝ μηδενίζουμε, κρατάμε ό,τι μας δόθηκε από τα πεδία
-        DebugConfig.print('📌 No saved dimensions for $newType, keeping incoming values: $dim1,$dim2,$dim3');
+        DebugConfig.print(
+          '📌 No saved dimensions for $newType, keeping incoming values: $dim1,$dim2,$dim3',
+        );
         // Δεν αλλάζουμε τα dim1, dim2, dim3 – παραμένουν όπως ήρθαν
       }
 
@@ -286,12 +297,21 @@ class _OilPageState extends State<OilPage> {
           dim3: dim3,
           dimensionsByType: newDimensionsByType,
         );
-        _calculator = TankCalculator(type: newType, dim1: dim1, dim2: dim2, dim3: dim3);
-        DebugConfig.print('✅ _settings updated after type change: type=${_settings!.type}, dims=${_settings!.dim1},${_settings!.dim2},${_settings!.dim3}');
+        _calculator = TankCalculator(
+          type: newType,
+          dim1: dim1,
+          dim2: dim2,
+          dim3: dim3,
+        );
+        DebugConfig.print(
+          '✅ _settings updated after type change: type=${_settings!.type}, dims=${_settings!.dim1},${_settings!.dim2},${_settings!.dim3}',
+        );
       });
     } else {
       // Ίδιος τύπος – ενημέρωσε το map με τις νέες διαστάσεις
-      final newDimensionsByType = Map<String, List<double>>.from(_settings!.dimensionsByType);
+      final newDimensionsByType = Map<String, List<double>>.from(
+        _settings!.dimensionsByType,
+      );
       newDimensionsByType[newType.name] = [dim1, dim2, dim3];
 
       setState(() {
@@ -301,8 +321,15 @@ class _OilPageState extends State<OilPage> {
           dim3: dim3,
           dimensionsByType: newDimensionsByType,
         );
-        _calculator = TankCalculator(type: newType, dim1: dim1, dim2: dim2, dim3: dim3);
-        DebugConfig.print('✅ _settings updated (same type): dims=$dim1,$dim2,$dim3');
+        _calculator = TankCalculator(
+          type: newType,
+          dim1: dim1,
+          dim2: dim2,
+          dim3: dim3,
+        );
+        DebugConfig.print(
+          '✅ _settings updated (same type): dims=$dim1,$dim2,$dim3',
+        );
       });
     }
   }

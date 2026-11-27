@@ -11,7 +11,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 
 import 'package:family_economy/providers/accounts_provider.dart';
-import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/services/account_restore_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/utils/account_restore_policy.dart';
@@ -32,37 +31,26 @@ enum CreateAccountOutcome {
   keepDialog,
 }
 
+/// Πού θα εμφανιστεί το μήνυμα του ελέγχου ονόματος.
+enum CreateMessageKind { none, error, success }
+
+/// Αποτέλεσμα ελέγχου ονόματος με προαιρετικό μήνυμα για τον καλώντα.
+class CreateAccountCheck {
+  const CreateAccountCheck({
+    required this.outcome,
+    this.message,
+    this.kind = CreateMessageKind.none,
+  });
+
+  final CreateAccountOutcome outcome;
+  final String? message;
+  final CreateMessageKind kind;
+}
+
 class AccountDuplicateService {
   // ✅ Singleton pattern
   AccountDuplicateService._();
   static final AccountDuplicateService instance = AccountDuplicateService._();
-
-  void _showSuccessSnack(BuildContext context, String message) {
-    final b = Theme.of(context).brightness;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: TextStyle(color: ColorsUI.getOnPrimary(b)),
-        ),
-        backgroundColor: ColorsUI.getSuccess(b),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showErrorSnack(BuildContext context, String message) {
-    final b = Theme.of(context).brightness;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: TextStyle(color: ColorsUI.getOnError(b))),
-        backgroundColor: ColorsUI.getError(b),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
 
   /// Έλεγχος αν υπάρχει ενεργός λογαριασμός με το ίδιο όνομα
   bool activeAccountNameExists(
@@ -125,8 +113,8 @@ class AccountDuplicateService {
   }
 
   /// Διάλογος επαναφοράς διαγραμμένου λογαριασμού.
-  /// Επιστρέφει `true` μόνο όταν ο λογαριασμός επανήλθε.
-  Future<bool> showRestoreAccountDialog(
+  /// Επιστρέφει το μήνυμα επιτυχίας μόνο όταν ο λογαριασμός επανήλθε.
+  Future<String?> showRestoreAccountDialog(
     BuildContext context,
     String userId,
     DeletedAccountInfo deletedAccount,
@@ -134,51 +122,59 @@ class AccountDuplicateService {
     final result = await showDialog<_RestoreDialogResult>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => _RestoreAccountDialog(
-        userId: userId,
-        account: deletedAccount,
-      ),
+      builder: (_) =>
+          _RestoreAccountDialog(userId: userId, account: deletedAccount),
     );
 
-    if (result == null || !result.restored) return false;
-    if (!context.mounted) return true;
-
-    _showSuccessSnack(context, result.message);
-    AccessibilityService.announceAfterFirstFrame(context, result.message);
-    return true;
+    if (result == null || !result.restored) return null;
+    return result.message;
   }
 
   /// Helper: Πλήρης έλεγχος για δημιουργία λογαριασμού.
-  Future<CreateAccountOutcome> checkForCreateAccount(
+  Future<CreateAccountCheck> checkForCreateAccount(
     BuildContext context,
     String userId,
     String accountName,
   ) async {
     // 1. Έλεγχος ενεργών λογαριασμών
     if (activeAccountNameExists(context, accountName)) {
-      _showErrorSnack(context, 'Υπάρχει ενεργός Λογαριασμός με αυτό το Όνομα');
-      return CreateAccountOutcome.closeDialog;
+      return const CreateAccountCheck(
+        outcome: CreateAccountOutcome.closeDialog,
+        kind: CreateMessageKind.error,
+        message: 'Υπάρχει ενεργός Λογαριασμός με αυτό το Όνομα',
+      );
     }
 
     // 2. Έλεγχος διεγραμμένων λογαριασμών
     final deletedAccount = await findDeletedAccountByName(userId, accountName);
-    if (!context.mounted) return CreateAccountOutcome.keepDialog;
-    if (deletedAccount == null) return CreateAccountOutcome.proceed;
+    if (!context.mounted) {
+      return const CreateAccountCheck(outcome: CreateAccountOutcome.keepDialog);
+    }
+    if (deletedAccount == null) {
+      return const CreateAccountCheck(outcome: CreateAccountOutcome.proceed);
+    }
 
-    final restored = await showRestoreAccountDialog(
+    final restoredMessage = await showRestoreAccountDialog(
       context,
       userId,
       deletedAccount,
     );
-    if (!context.mounted) return CreateAccountOutcome.keepDialog;
-    return restored
-        ? CreateAccountOutcome.closeDialog
-        : CreateAccountOutcome.keepDialog;
+    if (!context.mounted) {
+      return const CreateAccountCheck(outcome: CreateAccountOutcome.keepDialog);
+    }
+    if (restoredMessage == null) {
+      return const CreateAccountCheck(outcome: CreateAccountOutcome.keepDialog);
+    }
+    return CreateAccountCheck(
+      outcome: CreateAccountOutcome.closeDialog,
+      kind: CreateMessageKind.success,
+      message: restoredMessage,
+    );
   }
 
-  /// Helper: Έλεγχος για επεξεργασία λογαριασμού
-  /// Returns: true αν μπορεί να συνεχίσει, false αν πρέπει να σταματήσει
-  Future<bool> checkForEditAccount(
+  /// Helper: Έλεγχος για επεξεργασία λογαριασμού.
+  /// Επιστρέφει `keepDialog` με μήνυμα όταν το όνομα δεν επιτρέπεται.
+  Future<CreateAccountCheck> checkForEditAccount(
     BuildContext context,
     String accountName,
     String currentAccountUuid,
@@ -189,24 +185,29 @@ class AccountDuplicateService {
       accountName,
       excludeUuid: currentAccountUuid,
     )) {
-      _showErrorSnack(
-        context,
-        'Υπάρχει ήδη ενεργός λογαριασμός με αυτό το όνομα',
+      return const CreateAccountCheck(
+        outcome: CreateAccountOutcome.keepDialog,
+        kind: CreateMessageKind.error,
+        message: 'Υπάρχει ήδη ενεργός λογαριασμός με αυτό το όνομα',
       );
-      return false;
     }
     // ✅ Έλεγχος διεγραμμένου λογαριασμού με ίδιο όνομα
     final userId = context.session.userId;
 
     final deletedAccount = await findDeletedAccountByName(userId, accountName);
 
-    if (!context.mounted) return false;
+    if (!context.mounted) {
+      return const CreateAccountCheck(outcome: CreateAccountOutcome.keepDialog);
+    }
 
     if (deletedAccount != null && deletedAccount.uuid != currentAccountUuid) {
-      _showErrorSnack(context, 'Δεν μπορεί να χρησιμοποιηθεί αυτό το Όνομα');
-      return false;
+      return const CreateAccountCheck(
+        outcome: CreateAccountOutcome.keepDialog,
+        kind: CreateMessageKind.error,
+        message: 'Δεν μπορεί να χρησιμοποιηθεί αυτό το Όνομα',
+      );
     }
-    return true;
+    return const CreateAccountCheck(outcome: CreateAccountOutcome.proceed);
   }
 
   static double _amountOf(dynamic value) {
@@ -230,10 +231,7 @@ class _RestoreDialogResult {
 enum _RestorePhase { loading, offline, preview, working, error, confirmWipe }
 
 class _RestoreAccountDialog extends StatefulWidget {
-  const _RestoreAccountDialog({
-    required this.userId,
-    required this.account,
-  });
+  const _RestoreAccountDialog({required this.userId, required this.account});
 
   final String userId;
   final DeletedAccountInfo account;
@@ -321,10 +319,7 @@ class _RestoreAccountDialogState extends State<_RestoreAccountDialog> {
     setState(() => _phase = _RestorePhase.working);
 
     final result = withHistory
-        ? await _service.restoreWithHistory(
-            userId: widget.userId,
-            plan: plan!,
-          )
+        ? await _service.restoreWithHistory(userId: widget.userId, plan: plan!)
         : await _service.restoreWithoutBalance(
             userId: widget.userId,
             accountUuid: widget.account.uuid,
@@ -333,9 +328,9 @@ class _RestoreAccountDialogState extends State<_RestoreAccountDialog> {
     if (!mounted) return;
 
     if (result.isSuccess) {
-      Navigator.of(context).pop(
-        _RestoreDialogResult(restored: true, message: result.message()),
-      );
+      Navigator.of(
+        context,
+      ).pop(_RestoreDialogResult(restored: true, message: result.message()));
       return;
     }
 
@@ -390,10 +385,7 @@ class _RestoreAccountDialogState extends State<_RestoreAccountDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              _error,
-              style: TypographyUI.bodyMedium(brightness),
-            ),
+            Text(_error, style: TypographyUI.bodyMedium(brightness)),
             const SizedBox(height: 12),
             Text(
               'Ο λογαριασμός παραμένει όπως είναι.',
@@ -452,9 +444,9 @@ class _RestoreAccountDialogState extends State<_RestoreAccountDialog> {
       );
     }
 
-    final muted = TypographyUI.bodySmall(brightness).copyWith(
-      color: ColorsUI.getTextSecondary(brightness),
-    );
+    final muted = TypographyUI.bodySmall(
+      brightness,
+    ).copyWith(color: ColorsUI.getTextSecondary(brightness));
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -566,10 +558,7 @@ class _RestoreAccountDialogState extends State<_RestoreAccountDialog> {
               ),
             ),
           ),
-          ElevatedButton(
-            onPressed: _load,
-            child: const Text('Δοκιμή ξανά'),
-          ),
+          ElevatedButton(onPressed: _load, child: const Text('Δοκιμή ξανά')),
         ];
 
       case _RestorePhase.confirmWipe:

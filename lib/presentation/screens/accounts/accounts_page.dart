@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 // Core imports
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
 import 'package:family_economy/core/utils/icon_mapper.dart';
@@ -97,30 +98,11 @@ class _AccountsPageState extends State<AccountsPage>
   }
 
   void _showSuccessSnack(BuildContext context, String message) {
-    final b = Theme.of(context).brightness;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: TextStyle(color: ColorsUI.getOnPrimary(b)),
-        ),
-        backgroundColor: ColorsUI.getSuccess(b),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppMessenger.success(context, message);
   }
 
   void _showErrorSnack(BuildContext context, String message) {
-    final b = Theme.of(context).brightness;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: TextStyle(color: ColorsUI.getOnError(b))),
-        backgroundColor: ColorsUI.getError(b),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppMessenger.error(context, message);
   }
 
   // ============================================================
@@ -213,6 +195,7 @@ class _AccountsPageState extends State<AccountsPage>
     String selectedType = 'bank';
     String selectedCurrency = defaultCurrency;
     int selectedIconIndex = 0;
+    String? nameError;
 
     showDialog(
       context: context,
@@ -234,6 +217,7 @@ class _AccountsPageState extends State<AccountsPage>
                     labelText: 'Όνομα',
                     border: const OutlineInputBorder(),
                     labelStyle: TypographyUI.bodyMedium(brightness),
+                    errorText: nameError,
                   ),
                   style: TypographyUI.bodyMedium(brightness),
                 ),
@@ -336,26 +320,43 @@ class _AccountsPageState extends State<AccountsPage>
                   'balanceText="${initialBalanceController.text}"',
                 );
                 if (name.isEmpty) {
-                  _showErrorSnack(context, 'Το Όνομα είναι Υποχρεωτικό');
+                  setDialogState(
+                    () => nameError = 'Το Όνομα είναι Υποχρεωτικό',
+                  );
                   return;
                 }
+                setDialogState(() => nameError = null);
+
                 // ✅ Έλεγχος διπλότυπων με το service (E33: 3 καταστάσεις)
-                final outcome = await AccountDuplicateService.instance
+                final check = await AccountDuplicateService.instance
                     .checkForCreateAccount(context, userId, name);
 
                 DebugConfig.print(
-                  '🧾 [CREATE] duplicate check outcome=$outcome',
+                  '🧾 [CREATE] duplicate check outcome=${check.outcome}',
                 );
 
-                if (outcome == CreateAccountOutcome.keepDialog) {
+                if (!dialogContext.mounted) return;
+
+                if (check.outcome == CreateAccountOutcome.keepDialog) {
                   // Ακύρωση/αποτυχία επαναφοράς → μένει ανοιχτή η δημιουργία
+                  final message = check.message;
+                  if (message != null) {
+                    setDialogState(() => nameError = message);
+                  }
                   return;
                 }
 
-                if (outcome == CreateAccountOutcome.closeDialog) {
+                if (check.outcome == CreateAccountOutcome.closeDialog) {
                   // Διπλότυπο ή επιτυχής επαναφορά → κλείσε το dialog
-                  if (!dialogContext.mounted) return;
+                  final message = check.message;
                   Navigator.pop(dialogContext);
+                  if (message != null && context.mounted) {
+                    if (check.kind == CreateMessageKind.success) {
+                      AppMessenger.success(context, message);
+                    } else {
+                      AppMessenger.error(context, message);
+                    }
+                  }
                   return;
                 }
                 final initialBalance =
@@ -414,6 +415,7 @@ class _AccountsPageState extends State<AccountsPage>
     String selectedType = account.accountType;
     String selectedCurrency = account.currency;
     int selectedIconIndex = account.iconIndex ?? 0;
+    String? nameError;
 
     showDialog(
       context: context,
@@ -435,6 +437,7 @@ class _AccountsPageState extends State<AccountsPage>
                     labelText: 'Όνομα',
                     border: const OutlineInputBorder(),
                     labelStyle: TypographyUI.bodyMedium(brightness),
+                    errorText: nameError,
                   ),
                   style: TypographyUI.bodyMedium(brightness),
                 ),
@@ -548,9 +551,12 @@ class _AccountsPageState extends State<AccountsPage>
               onPressed: () async {
                 final newName = nameController.text.trim();
                 if (newName.isEmpty) {
-                  _showErrorSnack(context, 'Το Όνομα είναι Υποχρεωτικό');
+                  setDialogState(
+                    () => nameError = 'Το Όνομα είναι Υποχρεωτικό',
+                  );
                   return;
                 }
+                setDialogState(() => nameError = null);
                 // ✅ Αν δεν άλλαξε το όνομα, δεν χρειάζεται duplicate check
                 if (newName.trim().toLowerCase() ==
                     account.name.trim().toLowerCase()) {
@@ -576,11 +582,15 @@ class _AccountsPageState extends State<AccountsPage>
                   return;
                 }
                 // ✅ Έλεγχος διπλότυπων με το service
-                final canContinue = await AccountDuplicateService.instance
+                final check = await AccountDuplicateService.instance
                     .checkForEditAccount(context, newName, account.uuid);
 
-                if (!context.mounted) return;
-                if (!canContinue) {
+                if (!dialogContext.mounted) return;
+                if (check.outcome != CreateAccountOutcome.proceed) {
+                  final message = check.message;
+                  if (message != null) {
+                    setDialogState(() => nameError = message);
+                  }
                   return;
                 }
                 Navigator.pop(dialogContext);
@@ -715,8 +725,7 @@ class _AccountsPageState extends State<AccountsPage>
 
     // E24: offline η ανάγνωση κινήσεων μπορεί να είναι κενή/μερική (cache).
     if (_isOfflineConfirmed(context)) {
-      const offlineMessage =
-          'Ο επανυπολογισμός απαιτεί σύνδεση στο internet';
+      const offlineMessage = 'Ο επανυπολογισμός απαιτεί σύνδεση στο internet';
       _showErrorSnack(context, offlineMessage);
       AccessibilityService.announceError(offlineMessage);
       return;
@@ -762,8 +771,9 @@ class _AccountsPageState extends State<AccountsPage>
                 ),
                 actions: [
                   TextButton(
-                    onPressed:
-                        isWorking ? null : () => Navigator.pop(dialogContext),
+                    onPressed: isWorking
+                        ? null
+                        : () => Navigator.pop(dialogContext),
                     child: Text(
                       'Ακύρωση',
                       style: TypographyUI.buttonBase().copyWith(
@@ -952,9 +962,9 @@ class _AccountsPageState extends State<AccountsPage>
                   Text(
                     'Κατάσταση: Αρχειοθετημένος'
                     '${account.archivedAt == null ? '' : ' από ${_formatShortDate(account.archivedAt!)}'}',
-                    style: TypographyUI.bodyMedium(brightness).copyWith(
-                      color: ColorsUI.getTextSecondary(brightness),
-                    ),
+                    style: TypographyUI.bodyMedium(
+                      brightness,
+                    ).copyWith(color: ColorsUI.getTextSecondary(brightness)),
                   ),
                 Row(
                   children: [
@@ -1020,19 +1030,19 @@ class _AccountsPageState extends State<AccountsPage>
             // Edit (μόνο για ενεργούς — E26)
             if (!isArchived)
               ListTile(
-              leading: Icon(
-                Icons.edit,
-                color: ColorsUI.getTextPrimary(brightness),
+                leading: Icon(
+                  Icons.edit,
+                  color: ColorsUI.getTextPrimary(brightness),
+                ),
+                title: Text(
+                  'Επεξεργασία',
+                  style: TypographyUI.bodyMedium(brightness),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showEditAccountDialog(context, account);
+                },
               ),
-              title: Text(
-                'Επεξεργασία',
-                style: TypographyUI.bodyMedium(brightness),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showEditAccountDialog(context, account);
-              },
-            ),
 
             // Transactions
             ListTile(
@@ -1225,8 +1235,7 @@ class _AccountsPageState extends State<AccountsPage>
     final completedPairs = plan?.completedPairs ?? 0;
     final pendingPairs = plan?.pendingPairs ?? 0;
     final orphanLegs = (plan?.partialPairs ?? 0) + (plan?.unknownPairs ?? 0);
-    final hasTransfers =
-        transferCount > 0 || orphanLegs > 0;
+    final hasTransfers = transferCount > 0 || orphanLegs > 0;
 
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -1252,7 +1261,9 @@ class _AccountsPageState extends State<AccountsPage>
                   color: ColorsUI.getWarning(brightness).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: ColorsUI.getWarning(brightness).withValues(alpha: 0.3),
+                    color: ColorsUI.getWarning(
+                      brightness,
+                    ).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Column(
@@ -1467,8 +1478,7 @@ class _AccountsPageState extends State<AccountsPage>
         pendingCount: plan.pendingLegUuids.length,
         targetIsVisible: account.isActive,
       );
-      if (freshDecision.action != AccountAction.delete ||
-          plan.budgetsUnknown) {
+      if (freshDecision.action != AccountAction.delete || plan.budgetsUnknown) {
         DebugConfig.print(
           '⚠️ Delete drift: action=${freshDecision.action.name}, '
           'legs=${plan.activeLegCount}, budgets=${plan.budgetsCount}, '
@@ -1479,9 +1489,9 @@ class _AccountsPageState extends State<AccountsPage>
           scaffoldContext,
           plan.budgetsUnknown
               ? 'Σφάλμα ανάγνωσης δεδομένων λογαριασμού. Δεν άλλαξε τίποτα. '
-                  'Δοκιμάστε ξανά.'
+                    'Δοκιμάστε ξανά.'
               : 'Τα δεδομένα άλλαξαν (βρέθηκαν κινήσεις ή προϋπολογισμοί). '
-                  'Δεν έγινε καμία αλλαγή. Δοκιμάστε ξανά.',
+                    'Δεν έγινε καμία αλλαγή. Δοκιμάστε ξανά.',
           title: 'Διαγραφή μη διαθέσιμη',
         );
         return;
@@ -1491,10 +1501,7 @@ class _AccountsPageState extends State<AccountsPage>
       await actions.applyAccountDeletePlan(userId: userId, plan: plan);
 
       // 5) Καθαρισμός τοπικής προτίμησης (αποκλεισμός από το συνολικό υπόλοιπο)
-      await accountsProvider.setExcludedFromTotal(
-        uuid,
-        excluded: false,
-      );
+      await accountsProvider.setExcludedFromTotal(uuid, excluded: false);
 
       DebugConfig.print(
         '✅ Account deleted: $uuid (plain=${plan.plainLegUuids.length}, '
@@ -1651,10 +1658,7 @@ class _AccountsPageState extends State<AccountsPage>
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: ColorsUI.getSurface(brightness),
-        title: Text(
-          title,
-          style: TypographyUI.titleLarge(brightness),
-        ),
+        title: Text(title, style: TypographyUI.titleLarge(brightness)),
         content: Text(message, style: TypographyUI.bodyMedium(brightness)),
         actions: [
           TextButton(
@@ -1690,17 +1694,17 @@ class _AccountsPageState extends State<AccountsPage>
     final transactionsText = transactionsCount == 0
         ? 'Καμία κίνηση· το υπόλοιπο $balanceText διατηρείται'
         : transactionsCount == 1
-            ? 'Η 1 κίνηση και το υπόλοιπο $balanceText διατηρούνται'
-            : 'Οι $transactionsCount κινήσεις και το υπόλοιπο $balanceText '
-                'διατηρούνται';
+        ? 'Η 1 κίνηση και το υπόλοιπο $balanceText διατηρούνται'
+        : 'Οι $transactionsCount κινήσεις και το υπόλοιπο $balanceText '
+              'διατηρούνται';
     final inactiveText = inactiveBudgetsCount == 0
         ? ''
         : ' ($inactiveBudgetsCount '
-            '${inactiveBudgetsCount == 1 ? "ανενεργός" : "ανενεργοί"})';
+              '${inactiveBudgetsCount == 1 ? "ανενεργός" : "ανενεργοί"})';
     final budgetsText = budgetsCount == 1
         ? '1 προϋπολογισμός συνεχίζει να τον χρησιμοποιεί$inactiveText.'
         : '$budgetsCount προϋπολογισμοί συνεχίζουν να τον '
-            'χρησιμοποιούν$inactiveText.';
+              'χρησιμοποιούν$inactiveText.';
 
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -1806,7 +1810,7 @@ class _AccountsPageState extends State<AccountsPage>
     if (isLoading) {
       content = _buildLoadingState(brightness);
     } else if (error != null) {
-      content = _buildErrorState(brightness, error);
+      content = _buildErrorState(brightness);
     } else if (accounts.isEmpty && archivedAccounts.isEmpty) {
       content = _buildEmptyState(brightness);
     } else {
@@ -1961,13 +1965,13 @@ class _AccountsPageState extends State<AccountsPage>
     );
   }
 
-  Widget _buildErrorState(Brightness brightness, String error) {
+  Widget _buildErrorState(Brightness brightness) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Semantics(
           liveRegion: true,
-          label: 'Σφάλμα φόρτωσης: $error',
+          label: 'Σφάλμα φόρτωσης λογαριασμών',
           excludeSemantics: true,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1986,7 +1990,7 @@ class _AccountsPageState extends State<AccountsPage>
               ),
               const SizedBox(height: 8),
               Text(
-                error,
+                'Αποτυχία φόρτωσης λογαριασμών. Δοκιμάστε ξανά.',
                 style: TypographyUI.bodyMedium(brightness),
                 textAlign: TextAlign.center,
               ),
@@ -2193,9 +2197,9 @@ class _AccountsPageState extends State<AccountsPage>
   }
 
   Widget _buildAccountCard(Brightness brightness, AccountModel account) {
-    final isExcluded = context
-        .read<AccountsProvider>()
-        .isExcludedFromTotal(account.uuid);
+    final isExcluded = context.read<AccountsProvider>().isExcludedFromTotal(
+      account.uuid,
+    );
 
     return Card(
       elevation: 2,

@@ -88,7 +88,9 @@ class _AppStartState extends State<AppStart> {
 
       final userData = ensured.data;
       final currency = (userData?['default_currency'] as String?) ?? 'EUR';
-      DebugConfig.print('🔑 Loaded user document for uid=$uid with default currency=$currency');
+      DebugConfig.print(
+        '🔑 Loaded user document for uid=$uid with default currency=$currency',
+      );
 
       // 2) E65: βιομετρικές ρυθμίσεις από το doc που ήδη διαβάστηκε
       // (0 επιπλέον reads). Αν το doc δεν είναι διαθέσιμο, δεν μπορούμε να
@@ -117,7 +119,6 @@ class _AppStartState extends State<AppStart> {
         DebugConfig.print('🟢 Biometric authentication required for uid=$uid');
         final ok = await BiometricAuthService.instance.authenticate(
           reason: 'Είσοδος στην εφαρμογή',
-
         );
 
         if (!ok) {
@@ -147,25 +148,39 @@ class _AppStartState extends State<AppStart> {
       if (!mounted) return;
 
       Navigator.pushReplacement(
-      context,
+        context,
         MaterialPageRoute(
           builder: (_) => MultiProvider(
             providers: [
-              ChangeNotifierProvider(create: (_) => AccountsProvider(userId: uid)),
-              ChangeNotifierProvider(create: (_) => CategoriesProvider(userId: uid)),
-              ChangeNotifierProvider(create: (_) => TransactionsProvider(userId: uid)),
-              ChangeNotifierProvider(create: (_) => NotificationsProvider(userId: uid)),
-              ChangeNotifierProvider(create: (_) => BudgetsProvider(userId: uid)),
+              ChangeNotifierProvider(
+                create: (_) => AccountsProvider(userId: uid),
+              ),
+              ChangeNotifierProvider(
+                create: (_) => CategoriesProvider(userId: uid),
+              ),
+              ChangeNotifierProvider(
+                create: (_) => TransactionsProvider(userId: uid),
+              ),
+              ChangeNotifierProvider(
+                create: (_) => NotificationsProvider(userId: uid),
+              ),
+              ChangeNotifierProvider(
+                create: (_) => BudgetsProvider(userId: uid),
+              ),
               ChangeNotifierProvider(create: (_) => TagsProvider(userId: uid)),
             ],
             child: Builder(
               builder: (context) {
-                DebugConfig.print('🔗 Binding NotificationsService.onTap to NotificationsProvider');
+                DebugConfig.print(
+                  '🔗 Binding NotificationsService.onTap to NotificationsProvider',
+                );
                 NotificationsService().onTap = (uuid) {
                   DebugConfig.print('📲 onTap called with payload=$uuid');
                   if (uuid == null || uuid.trim().isEmpty) return;
                   // ignore: unawaited_futures
-                  context.read<NotificationsProvider>().markAsDelivered(uuid.trim());
+                  context.read<NotificationsProvider>().markAsDelivered(
+                    uuid.trim(),
+                  );
                 };
                 return SessionScope(
                   session: Session(userId: uid, defaultCurrency: currency),
@@ -174,7 +189,6 @@ class _AppStartState extends State<AppStart> {
               },
             ),
           ),
-
         ),
       );
     } on SchemaBlockedException catch (e) {
@@ -192,11 +206,11 @@ class _AppStartState extends State<AppStart> {
       DebugConfig.print('❌ AppStart error: $e');
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = 'Αποτυχία φόρτωσης στοιχείων. Δοκιμάστε ξανά.';
         _loading = false;
       });
       AccessibilityService.announceError(
-        'Απαιτείται ταυτοποίηση: ${e.toString().replaceFirst('Exception: ', '')}',
+        'Αποτυχία φόρτωσης στοιχείων. Δοκιμάστε ξανά.',
       );
     }
   }
@@ -215,7 +229,7 @@ class _AppStartState extends State<AppStart> {
     );
     DebugConfig.print(
       '🗂️ schema: ${decision.status.name} '
-          '(${decision.fromVersion} → ${decision.toVersion})',
+      '(${decision.fromVersion} → ${decision.toVersion})',
     );
   }
 
@@ -264,10 +278,13 @@ class _AppStartState extends State<AppStart> {
       DebugConfig.print('🔍 Checking scheduled transactions for user: $userId');
 
       final scheduledService = ScheduledTransactionsService();
-      final executed = await scheduledService.checkAndExecutePendingTransactions(userId);
+      final executed = await scheduledService
+          .checkAndExecutePendingTransactions(userId);
 
       if (executed.isNotEmpty) {
-        DebugConfig.print('✅ Executed ${executed.length} scheduled transactions on app start');
+        DebugConfig.print(
+          '✅ Executed ${executed.length} scheduled transactions on app start',
+        );
 
         // ✅ ΠΡΟΣΘΗΚΗ ΓΡΑΜΜΗΣ 1: Set flag για HomePage να το δει
         ScheduledTransactionsService.lastExecutedCount = executed.length;
@@ -299,9 +316,7 @@ class _AppStartState extends State<AppStart> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_error != null) {

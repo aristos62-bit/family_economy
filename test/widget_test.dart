@@ -8,21 +8,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:family_economy/main.dart';
 
 void main() {
-  testWidgets('ErrorApp shows init error', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      ErrorApp(error: 'test-error', onRetry: () async {}),
-    );
+  testWidgets('ErrorApp εμφανίζει γενικό μήνυμα χωρίς raw σφάλμα', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(ErrorApp(onRetry: () async {}));
 
     expect(find.text('Σφάλμα Αρχικοποίησης'), findsOneWidget);
-    expect(find.textContaining('test-error'), findsOneWidget);
+    expect(find.textContaining('Προσπάθειες:'), findsNothing);
+    expect(find.textContaining('Exception'), findsNothing);
   });
 
-  testWidgets('ErrorApp shows the new error when retry fails',
-      (WidgetTester tester) async {
+  testWidgets('ErrorApp δείχνει σταθερό μήνυμα όταν η επανάληψη αποτύχει', (
+    WidgetTester tester,
+  ) async {
     var calls = 0;
     await tester.pumpWidget(
       ErrorApp(
-        error: 'first-error',
         onRetry: () async {
           calls++;
           throw Exception('second-error');
@@ -34,17 +35,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(calls, 1);
-    expect(find.textContaining('second-error'), findsOneWidget);
+    expect(find.textContaining('Η επανάληψη απέτυχε.'), findsOneWidget);
+    expect(find.textContaining('second-error'), findsNothing);
     expect(find.textContaining('Προσπάθειες: 1'), findsOneWidget);
   });
 
-  testWidgets('ErrorApp ignores taps while a retry is running',
-      (WidgetTester tester) async {
+  testWidgets('ErrorApp ignores taps while a retry is running', (
+    WidgetTester tester,
+  ) async {
     var calls = 0;
     final completer = Completer<void>();
     await tester.pumpWidget(
       ErrorApp(
-        error: 'test-error',
         onRetry: () {
           calls++;
           return completer.future;
@@ -76,14 +78,10 @@ void main() {
     expect(idleButton.onPressed, isNotNull);
   });
 
-  testWidgets('ErrorApp λήγει με μήνυμα όταν η επανάληψη κολλήσει',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(
-      ErrorApp(
-        error: 'test-error',
-        onRetry: () => Completer<void>().future,
-      ),
-    );
+  testWidgets('ErrorApp λήγει με μήνυμα όταν η επανάληψη κολλήσει', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(ErrorApp(onRetry: () => Completer<void>().future));
 
     await tester.tap(find.text('Δοκιμή ξανά'));
     await tester.pump();

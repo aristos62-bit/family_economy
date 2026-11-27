@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
@@ -272,10 +273,13 @@ class _CalendarPageState extends State<CalendarPage> {
               child: Center(
                 child: Text(
                   day,
-                  style: TypographyUI.labelLarge(Theme.of(context).brightness).copyWith(
-                    color: ColorsUI.getTextSecondary(Theme.of(context).brightness),
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TypographyUI.labelLarge(Theme.of(context).brightness)
+                      .copyWith(
+                        color: ColorsUI.getTextSecondary(
+                          Theme.of(context).brightness,
+                        ),
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
               ),
             ),
@@ -401,10 +405,7 @@ class _CalendarPageState extends State<CalendarPage> {
     }
 
     // 3️⃣ Τελική λίστα που θα εμφανιστεί στο ημερολόγιο
-    final visibleNotifications = [
-      ...normalNotifications,
-      ?nextRecurring,
-    ];
+    final visibleNotifications = [...normalNotifications, ?nextRecurring];
 
     final notificationsCount = visibleNotifications.length;
     final hasRecurring = nextRecurring != null;
@@ -872,17 +873,9 @@ class _DayDetailsDialogState extends State<_DayDetailsDialog>
     final occIndex = notification.occurrenceIndex ?? 0;
     if (notification.isRecurring && occIndex > 0) {
       if (mounted) {
-        AccessibilityService.announcePolite(
-          'Αυτή είναι εμφάνιση επαναλαμβανόμενης υπενθύμισης. Δεν επιτρέπεται επεξεργασία.',
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Επαναλαμβανόμενο: δεν επιτρέπεται επεξεργασία σε εμφάνιση.',
-            ),
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppMessenger.info(
+          context,
+          'Επαναλαμβανόμενο: δεν επιτρέπεται επεξεργασία σε εμφάνιση.',
         );
       }
       return;
@@ -1320,7 +1313,9 @@ class _DayDetailsDialogState extends State<_DayDetailsDialog>
                         const SizedBox(width: 8),
                         ExcludeSemantics(
                           child: Icon(
-                            _showNotifications ? Icons.expand_less : Icons.expand_more,
+                            _showNotifications
+                                ? Icons.expand_less
+                                : Icons.expand_more,
                             color: widget.isPastDay
                                 ? ColorsUI.getTextSecondary(context.brightness)
                                 : ColorsUI.getPrimary(context.brightness),
@@ -1389,7 +1384,8 @@ class _DayDetailsDialogState extends State<_DayDetailsDialog>
     final formattedAmount = CurrencyFormatter.format(amount);
 
     return Semantics(
-      label: '$label: $formattedAmount${onTap != null ? ". Πατήστε για λεπτομέρειες" : ""}',
+      label:
+          '$label: $formattedAmount${onTap != null ? ". Πατήστε για λεπτομέρειες" : ""}',
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -1404,13 +1400,13 @@ class _DayDetailsDialogState extends State<_DayDetailsDialog>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ExcludeSemantics(
-                    child: Icon(icon, color: color, size: 20),
-                  ),
+                  ExcludeSemantics(child: Icon(icon, color: color, size: 20)),
                   const SizedBox(width: 8),
                   Text(
                     label,
-                    style: TypographyUI.labelLarge(context.brightness).copyWith(color: color),
+                    style: TypographyUI.labelLarge(
+                      context.brightness,
+                    ).copyWith(color: color),
                   ),
                 ],
               ),
@@ -1457,7 +1453,12 @@ class _TransactionListSheet extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 16),
+        padding: const EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 12,
+          bottom: 16,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1485,9 +1486,9 @@ class _TransactionListSheet extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   '$label — ${transactions.length} κινήσεις',
-                  style: TypographyUI.titleMedium(brightness).copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TypographyUI.titleMedium(
+                    brightness,
+                  ).copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
                 Semantics(
@@ -1594,10 +1595,9 @@ class _TransactionListSheet extends StatelessWidget {
                               children: [
                                 Text(
                                   categoryName,
-                                  style: TypographyUI.bodyLarge(brightness)
-                                      .copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                  style: TypographyUI.bodyLarge(
+                                    brightness,
+                                  ).copyWith(fontWeight: FontWeight.w600),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1632,10 +1632,11 @@ class _TransactionListSheet extends StatelessWidget {
                           // Amount
                           Text(
                             '${type == 'income' ? '+' : '-'}$formattedAmount',
-                            style: TypographyUI.currencySmall(brightness).copyWith(
-                              color: color,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: TypographyUI.currencySmall(brightness)
+                                .copyWith(
+                                  color: color,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
                         ],
                       ),

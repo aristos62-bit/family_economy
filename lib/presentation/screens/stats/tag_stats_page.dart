@@ -24,8 +24,10 @@ import 'package:provider/provider.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/utils/currency_formatter.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 
 import 'package:family_economy/providers/accounts_provider.dart';
 import 'package:family_economy/providers/categories_provider.dart';
@@ -89,11 +91,11 @@ class _TagStatsPageState extends State<TagStatsPage> {
     super.initState();
     final now = DateTime.now();
     _fromDate = DateTime(now.year, now.month, 1);
-    _toDate   = DateTime(now.year, now.month + 1, 0);
+    _toDate = DateTime(now.year, now.month + 1, 0);
     AccessibilityService.announceAfterFirstFrame(
       context,
       'Στατιστικά από Tags. '
-          'Επιλέξτε χρονικό διάστημα, τύπο κινήσεων, λογαριασμούς και tags.',
+      'Επιλέξτε χρονικό διάστημα, τύπο κινήσεων, λογαριασμούς και tags.',
     );
   }
 
@@ -104,13 +106,13 @@ class _TagStatsPageState extends State<TagStatsPage> {
   Future<void> _pickDate({required bool isFrom}) async {
     final initial = isFrom
         ? (_fromDate ?? DateTime.now())
-        : (_toDate  ?? DateTime.now());
+        : (_toDate ?? DateTime.now());
 
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
       firstDate: DateTime(2000),
-      lastDate:  DateTime(2100),
+      lastDate: DateTime(2100),
       helpText: isFrom ? 'Ημ/νία από' : 'Ημ/νία έως',
       locale: const Locale('el', 'GR'),
     );
@@ -150,7 +152,9 @@ class _TagStatsPageState extends State<TagStatsPage> {
     AccessibilityService.announcePolite(
       _movementType == null
           ? 'Τύπος κινήσεων αποεπιλέχθηκε'
-          : (_movementType == 'income' ? 'Επιλέχθηκαν Έσοδα' : 'Επιλέχθηκαν Έξοδα'),
+          : (_movementType == 'income'
+                ? 'Επιλέχθηκαν Έσοδα'
+                : 'Επιλέχθηκαν Έξοδα'),
     );
   }
 
@@ -165,8 +169,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
     });
   }
 
-  bool _hasSelectedAccounts() =>
-      _selectedAccounts.values.any((v) => v == true);
+  bool _hasSelectedAccounts() => _selectedAccounts.values.any((v) => v == true);
 
   // ──────────────────────────────────────────────────────────
   // HELPERS – TAGS
@@ -197,15 +200,14 @@ class _TagStatsPageState extends State<TagStatsPage> {
     AccessibilityService.announcePolite('Αποεπιλέχθηκαν όλα τα tags');
   }
 
-  bool _hasSelectedTags() =>
-      _selectedTags.values.any((v) => v == true);
+  bool _hasSelectedTags() => _selectedTags.values.any((v) => v == true);
 
   bool _canGenerateReport() =>
       _fromDate != null &&
-          _toDate   != null &&
-          _movementType != null &&
-          _hasSelectedAccounts() &&   // ✅ ΝΕΟ
-          _hasSelectedTags();
+      _toDate != null &&
+      _movementType != null &&
+      _hasSelectedAccounts() && // ✅ ΝΕΟ
+      _hasSelectedTags();
 
   // ──────────────────────────────────────────────────────────
   // OFFLINE-SAFE: ensure TransactionsProvider listener
@@ -218,15 +220,15 @@ class _TagStatsPageState extends State<TagStatsPage> {
   }) {
     final rangeChanged =
         _listeningStart == null ||
-            _listeningEnd   == null ||
-            _listeningStart != from ||
-            _listeningEnd   != to;
+        _listeningEnd == null ||
+        _listeningStart != from ||
+        _listeningEnd != to;
 
     if (!rangeChanged || _loadScheduled) return;
 
     _listeningStart = from;
-    _listeningEnd   = to;
-    _loadScheduled  = true;
+    _listeningEnd = to;
+    _loadScheduled = true;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadScheduled = false;
@@ -254,7 +256,10 @@ class _TagStatsPageState extends State<TagStatsPage> {
       return;
     }
     if (!_hasSelectedAccounts()) {
-      _showSnack('Παρακαλώ επιλέξτε τουλάχιστον έναν λογαριασμό.', Colors.orange);
+      _showSnack(
+        'Παρακαλώ επιλέξτε τουλάχιστον έναν λογαριασμό.',
+        Colors.orange,
+      );
       return;
     }
     if (!_hasSelectedTags()) {
@@ -277,10 +282,20 @@ class _TagStatsPageState extends State<TagStatsPage> {
 
     try {
       final from = DateTime(
-        _fromDate!.year, _fromDate!.month, _fromDate!.day, 0, 0, 0,
+        _fromDate!.year,
+        _fromDate!.month,
+        _fromDate!.day,
+        0,
+        0,
+        0,
       );
       final to = DateTime(
-        _toDate!.year, _toDate!.month, _toDate!.day, 23, 59, 59,
+        _toDate!.year,
+        _toDate!.month,
+        _toDate!.day,
+        23,
+        59,
+        59,
       );
 
       final selectedAccountIds = _selectedAccounts.entries
@@ -297,9 +312,9 @@ class _TagStatsPageState extends State<TagStatsPage> {
       final allTxs = transactionsP.getFilteredTransactionsForPeriod(
         _periodKey,
         includeTransfers: false,
-        includeFuture:    false,
+        includeFuture: false,
         from: from,
-        to:   to,
+        to: to,
         movementType: _movementType,
         categoryTypeOf: (categoryId) {
           return categoriesP.getCategoryByUuid(categoryId)?.type;
@@ -328,9 +343,6 @@ class _TagStatsPageState extends State<TagStatsPage> {
             duration: const Duration(seconds: 3),
           );
         });
-        AccessibilityService.announceAssertive(
-          'Δεν βρέθηκαν κινήσεις για τα επιλεγμένα tags.',
-        );
         return;
       }
 
@@ -345,36 +357,39 @@ class _TagStatsPageState extends State<TagStatsPage> {
         String subName = '';
         if (t.categoryId != null && t.subcategoryId != null) {
           final sub = categoriesP.getSubcategoryByUuid(
-            t.categoryId!, t.subcategoryId!,
+            t.categoryId!,
+            t.subcategoryId!,
           );
           subName = sub?.name ?? '';
         }
 
         final tagModels = tagsP.getTagsByIds(t.tagIds);
-        final tagNames  = tagModels.map((tg) => tg.name).join(', ');
+        final tagNames = tagModels.map((tg) => tg.name).join(', ');
         final tagColors = tagModels.map((tg) => tg.color).toList();
 
-        rows.add(_TagReportRow(
-          date:            t.date,
-          accountName:     acc?.name ?? '',
-          categoryName:    cat?.name ?? '',
-          subcategoryName: subName,
-          amount:          t.amount,
-          notes:           t.notes,
-          tagNames:        tagNames,
-          tagColors:       tagColors,
-        ));
+        rows.add(
+          _TagReportRow(
+            date: t.date,
+            accountName: acc?.name ?? '',
+            categoryName: cat?.name ?? '',
+            subcategoryName: subName,
+            amount: t.amount,
+            notes: t.notes,
+            tagNames: tagNames,
+            tagColors: tagColors,
+          ),
+        );
       }
 
       _applySorting(rows);
 
-      _lastReportRows      = rows;
-      _lastFromDate        = _fromDate;
-      _lastToDate          = _toDate;
-      _lastMovementType    = _movementType;
+      _lastReportRows = rows;
+      _lastFromDate = _fromDate;
+      _lastToDate = _toDate;
+      _lastMovementType = _movementType;
       _lastIncludeComments = _includeComments;
-      _lastSortBy          = _sortBy;
-      _lastGroupBy         = _groupBy;
+      _lastSortBy = _sortBy;
+      _lastGroupBy = _groupBy;
 
       if (!mounted) return;
       setState(() => _isGenerating = false);
@@ -382,11 +397,13 @@ class _TagStatsPageState extends State<TagStatsPage> {
         'Αναφορά έτοιμη. ${rows.length} κινήσεις βρέθηκαν.',
       );
       _showReportPreviewDialog();
-
     } catch (e) {
       if (!mounted) return;
       setState(() => _isGenerating = false);
-      _showSnack('Σφάλμα κατά τη δημιουργία report: $e', Colors.red);
+      _showSnack(
+        MessagePolicy.fromError(e, action: 'δημιουργίας report'),
+        Colors.red,
+      );
     }
   }
 
@@ -469,7 +486,8 @@ class _TagStatsPageState extends State<TagStatsPage> {
       rows.fold(0.0, (sum, r) => sum + r.amount);
 
   Map<String, double> _calculateSubtotals(
-      Map<String, List<_TagReportRow>> grouped) {
+    Map<String, List<_TagReportRow>> grouped,
+  ) {
     final Map<String, double> subtotals = {};
     grouped.forEach((key, rows) {
       subtotals[key] = _calculateTotal(rows);
@@ -481,18 +499,15 @@ class _TagStatsPageState extends State<TagStatsPage> {
   // SNACK HELPER
   // ──────────────────────────────────────────────────────────
 
-  void _showSnack(
-      String message,
-      Color color, {
-        Duration duration = const Duration(seconds: 2),
-      }) {
+  void _showSnack(String message, Color color, {Duration? duration}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.fixed,
-      duration: duration,
-    ));
+    if (color == Colors.red) {
+      AppMessenger.error(context, message, duration: duration);
+    } else if (color == Colors.orange) {
+      AppMessenger.warning(context, message, duration: duration);
+    } else {
+      AppMessenger.info(context, message, duration: duration);
+    }
   }
 
   // ──────────────────────────────────────────────────────────
@@ -500,8 +515,8 @@ class _TagStatsPageState extends State<TagStatsPage> {
   // ──────────────────────────────────────────────────────────
 
   void _showReportPreviewDialog() {
-    final grouped    = _groupRows(_lastReportRows);
-    final subtotals  = _calculateSubtotals(grouped);
+    final grouped = _groupRows(_lastReportRows);
+    final subtotals = _calculateSubtotals(grouped);
     final grandTotal = _calculateTotal(_lastReportRows);
 
     showDialog(
@@ -509,7 +524,9 @@ class _TagStatsPageState extends State<TagStatsPage> {
       builder: (dlgCtx) {
         return AlertDialog(
           backgroundColor: context.cSurface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           title: Semantics(
             header: true,
             child: Row(
@@ -541,7 +558,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
                     padding: const EdgeInsets.only(bottom: 4.0),
                     child: Text(
                       'Περίοδος: ${_dateFormat.format(_lastFromDate!)} – '
-                          '${_dateFormat.format(_lastToDate!)}',
+                      '${_dateFormat.format(_lastToDate!)}',
                       style: TextStyle(color: context.cText2, fontSize: 12),
                     ),
                   ),
@@ -559,7 +576,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color:        context.cPrimary.withValues(alpha: 0.10),
+                    color: context.cPrimary.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: context.cPrimary.withValues(alpha: 0.35),
@@ -576,7 +593,8 @@ class _TagStatsPageState extends State<TagStatsPage> {
                         ),
                       ),
                       Semantics(
-                        label: 'Γενικό σύνολο '
+                        label:
+                            'Γενικό σύνολο '
                             '${CurrencyFormatter.format(grandTotal.abs())}',
                         child: ExcludeSemantics(
                           child: Text(
@@ -594,9 +612,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
                 ),
 
                 ExcludeSemantics(
-                  child: Divider(
-                    color: context.cText2.withValues(alpha: 0.25),
-                  ),
+                  child: Divider(color: context.cText2.withValues(alpha: 0.25)),
                 ),
 
                 // ── Table ─────────────────────────────────────
@@ -642,9 +658,9 @@ class _TagStatsPageState extends State<TagStatsPage> {
   // ──────────────────────────────────────────────────────────
 
   Widget _buildGroupedReportTable(
-      Map<String, List<_TagReportRow>> grouped,
-      Map<String, double> subtotals,
-      ) {
+    Map<String, List<_TagReportRow>> grouped,
+    Map<String, double> subtotals,
+  ) {
     final sections = <Widget>[];
 
     grouped.forEach((groupName, rows) {
@@ -656,10 +672,12 @@ class _TagStatsPageState extends State<TagStatsPage> {
             if (_groupBy != _TagGroupOption.none)
               Container(
                 padding: const EdgeInsets.symmetric(
-                    vertical: 8, horizontal: 12),
+                  vertical: 8,
+                  horizontal: 12,
+                ),
                 margin: const EdgeInsets.only(top: 12, bottom: 4),
                 decoration: BoxDecoration(
-                  color:        context.cSurface,
+                  color: context.cSurface,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: context.cText2.withValues(alpha: 0.20),
@@ -678,8 +696,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
                       ),
                     ),
                     Text(
-                      CurrencyFormatter.format(
-                          subtotals[groupName]!.abs()),
+                      CurrencyFormatter.format(subtotals[groupName]!.abs()),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: context.cPrimary,
@@ -704,36 +721,45 @@ class _TagStatsPageState extends State<TagStatsPage> {
                     const DataColumn(label: Text('Κατηγορία')),
                   if (_groupBy != _TagGroupOption.subcategory)
                     const DataColumn(label: Text('Υποκατηγορία')),
-                  const DataColumn(
-                      label: Text('Ποσό'),
-                      numeric: true),
+                  const DataColumn(label: Text('Ποσό'), numeric: true),
                   const DataColumn(label: Text('Tags')),
                   if (_lastIncludeComments)
                     const DataColumn(label: Text('Σχόλια')),
                 ],
                 rows: rows.map((r) {
                   final cells = <DataCell>[
-                    DataCell(Text(
-                      _dateFormat.format(r.date),
-                      style: TextStyle(
-                          fontSize: 11, color: context.cText),
-                    )),
+                    DataCell(
+                      Text(
+                        _dateFormat.format(r.date),
+                        style: TextStyle(fontSize: 11, color: context.cText),
+                      ),
+                    ),
                     if (_groupBy != _TagGroupOption.account)
-                      DataCell(Text(r.accountName,
-                          style: TextStyle(
-                              fontSize: 11, color: context.cText))),
+                      DataCell(
+                        Text(
+                          r.accountName,
+                          style: TextStyle(fontSize: 11, color: context.cText),
+                        ),
+                      ),
                     if (_groupBy != _TagGroupOption.category &&
                         _groupBy != _TagGroupOption.subcategory)
-                      DataCell(Text(r.categoryName,
-                          style: TextStyle(
-                              fontSize: 11, color: context.cText))),
+                      DataCell(
+                        Text(
+                          r.categoryName,
+                          style: TextStyle(fontSize: 11, color: context.cText),
+                        ),
+                      ),
                     if (_groupBy != _TagGroupOption.subcategory)
-                      DataCell(Text(r.subcategoryName,
-                          style: TextStyle(
-                              fontSize: 11, color: context.cText))),
+                      DataCell(
+                        Text(
+                          r.subcategoryName,
+                          style: TextStyle(fontSize: 11, color: context.cText),
+                        ),
+                      ),
                     DataCell(
                       Semantics(
-                        label: 'Ποσό '
+                        label:
+                            'Ποσό '
                             '${CurrencyFormatter.format(r.amount.abs())}',
                         child: ExcludeSemantics(
                           child: Text(
@@ -742,10 +768,10 @@ class _TagStatsPageState extends State<TagStatsPage> {
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: _lastMovementType == 'income'
-                                  ? ColorsUI.getIncomeColor(
-                                  context.brightness)
+                                  ? ColorsUI.getIncomeColor(context.brightness)
                                   : ColorsUI.getExpenseColor(
-                                  context.brightness),
+                                      context.brightness,
+                                    ),
                             ),
                           ),
                         ),
@@ -754,11 +780,14 @@ class _TagStatsPageState extends State<TagStatsPage> {
                     DataCell(_buildTagChips(r)),
                   ];
                   if (_lastIncludeComments) {
-                    cells.add(DataCell(Text(
-                      r.notes ?? '',
-                      style: TextStyle(
-                          fontSize: 10, color: context.cText2),
-                    )));
+                    cells.add(
+                      DataCell(
+                        Text(
+                          r.notes ?? '',
+                          style: TextStyle(fontSize: 10, color: context.cText2),
+                        ),
+                      ),
+                    );
                   }
                   return DataRow(cells: cells);
                 }).toList(),
@@ -775,11 +804,10 @@ class _TagStatsPageState extends State<TagStatsPage> {
   /// Χρωματιστά tag chips για προεπισκόπηση
   Widget _buildTagChips(_TagReportRow row) {
     if (row.tagNames.isEmpty) {
-      return Text('–',
-          style: TextStyle(fontSize: 11, color: context.cText2));
+      return Text('–', style: TextStyle(fontSize: 11, color: context.cText2));
     }
 
-    final names  = row.tagNames.split(', ');
+    final names = row.tagNames.split(', ');
     final colors = row.tagColors;
 
     return Wrap(
@@ -793,16 +821,15 @@ class _TagStatsPageState extends State<TagStatsPage> {
         } catch (_) {
           chipColor = context.cPrimary;
         }
-        final onChip = ThemeData.estimateBrightnessForColor(chipColor) ==
-            Brightness.dark
+        final onChip =
+            ThemeData.estimateBrightnessForColor(chipColor) == Brightness.dark
             ? Colors.white
             : Colors.black87;
 
         return Container(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 6, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color:        chipColor.withValues(alpha: 0.85),
+            color: chipColor.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
@@ -824,8 +851,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
 
   Future<void> _exportToExcel() async {
     if (_lastReportRows.isEmpty) {
-      _showSnack('Δεν υπάρχει διαθέσιμο report προς εξαγωγή.',
-          Colors.orange);
+      _showSnack('Δεν υπάρχει διαθέσιμο report προς εξαγωγή.', Colors.orange);
       return;
     }
 
@@ -849,13 +875,12 @@ class _TagStatsPageState extends State<TagStatsPage> {
         TextCellValue('Περίοδος:'),
         TextCellValue(
           '${_dateFormat.format(_lastFromDate!)} - '
-              '${_dateFormat.format(_lastToDate!)}',
+          '${_dateFormat.format(_lastToDate!)}',
         ),
       ]);
       sheet.appendRow([
         TextCellValue('Τύπος:'),
-        TextCellValue(
-            _lastMovementType == 'income' ? 'Έσοδα' : 'Έξοδα'),
+        TextCellValue(_lastMovementType == 'income' ? 'Έσοδα' : 'Έξοδα'),
       ]);
       if (_lastSortBy != null) {
         sheet.appendRow([
@@ -873,14 +898,18 @@ class _TagStatsPageState extends State<TagStatsPage> {
 
       // ── Headers ───────────────────────────────────────────
       final headers = <String>[
-        'Ημ/νία', 'Λογαριασμός', 'Κατηγορία',
-        'Υποκατηγορία', 'Ποσό', 'Tags',
+        'Ημ/νία',
+        'Λογαριασμός',
+        'Κατηγορία',
+        'Υποκατηγορία',
+        'Ποσό',
+        'Tags',
       ];
       if (_lastIncludeComments) headers.add('Σχόλια');
       sheet.appendRow(headers.map((h) => TextCellValue(h)).toList());
 
       // ── Data ──────────────────────────────────────────────
-      final grouped   = _groupRows(_lastReportRows);
+      final grouped = _groupRows(_lastReportRows);
       final subtotals = _calculateSubtotals(grouped);
       final grandTotal = _calculateTotal(_lastReportRows);
 
@@ -918,7 +947,9 @@ class _TagStatsPageState extends State<TagStatsPage> {
       // ── Grand total ───────────────────────────────────────
       sheet.appendRow([TextCellValue('')]);
       sheet.appendRow([
-        TextCellValue(''), TextCellValue(''), TextCellValue(''),
+        TextCellValue(''),
+        TextCellValue(''),
+        TextCellValue(''),
         TextCellValue('ΓΕΝΙΚΟ ΣΥΝΟΛΟ:'),
         TextCellValue(CurrencyFormatter.format(grandTotal.abs())),
       ]);
@@ -929,33 +960,27 @@ class _TagStatsPageState extends State<TagStatsPage> {
         return;
       }
 
-      final ts       = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+      final ts = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
       final fileName = 'Αναφορά_Tags_$ts.xlsx';
 
       final savePath = await FilePicker.platform.saveFile(
-        dialogTitle:       'Αποθήκευση Αναφοράς Excel',
-        fileName:          fileName,
-        type:              FileType.custom,
+        dialogTitle: 'Αποθήκευση Αναφοράς Excel',
+        fileName: fileName,
+        type: FileType.custom,
         allowedExtensions: ['xlsx'],
-        bytes:             Uint8List.fromList(bytes),
+        bytes: Uint8List.fromList(bytes),
       );
 
       if (savePath == null) return;
       if (!mounted) return;
 
-      AccessibilityService.announcePolite('Excel αποθηκεύτηκε επιτυχώς!');
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Row(children: [
-          ExcludeSemantics(
-              child: Icon(Icons.check_circle, color: Colors.white)),
-          SizedBox(width: 12),
-          Expanded(child: Text('Το Excel αποθηκεύτηκε επιτυχώς!')),
-        ]),
-        backgroundColor: Colors.green,
-      ));
+      AppMessenger.success(context, 'Το Excel αποθηκεύτηκε επιτυχώς!');
     } catch (e) {
       if (!mounted) return;
-      _showSnack('Σφάλμα Excel: $e', Colors.red);
+      _showSnack(
+        MessagePolicy.fromError(e, action: 'εξαγωγής Excel'),
+        Colors.red,
+      );
     }
   }
 
@@ -965,8 +990,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
 
   Future<void> _exportToPdf() async {
     if (_lastReportRows.isEmpty) {
-      _showSnack('Δεν υπάρχει διαθέσιμο report προς εξαγωγή.',
-          Colors.orange);
+      _showSnack('Δεν υπάρχει διαθέσιμο report προς εξαγωγή.', Colors.orange);
       return;
     }
 
@@ -975,9 +999,9 @@ class _TagStatsPageState extends State<TagStatsPage> {
         await rootBundle.load('assets/fonts/NotoSans-Regular.ttf'),
       );
 
-      final pdf     = pw.Document();
+      final pdf = pw.Document();
       final grouped = _groupRows(_lastReportRows);
-      final subtotals  = _calculateSubtotals(grouped);
+      final subtotals = _calculateSubtotals(grouped);
       final grandTotal = _calculateTotal(_lastReportRows);
 
       pdf.addPage(
@@ -985,133 +1009,170 @@ class _TagStatsPageState extends State<TagStatsPage> {
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
           theme: pw.ThemeData.withFont(
-            base:      ttf,
-            bold:      ttf,
-            italic:    ttf,
+            base: ttf,
+            bold: ttf,
+            italic: ttf,
             boldItalic: ttf,
           ),
           build: (pdfCtx) {
             final content = <pw.Widget>[];
 
             // ── Title ────────────────────────────────────────
-            content.add(pw.Header(
-              level: 0,
-              child: pw.Text(
-                'Αναφορά Στατιστικών από Tags',
-                style: pw.TextStyle(
-                    fontSize: 20, fontWeight: pw.FontWeight.bold),
+            content.add(
+              pw.Header(
+                level: 0,
+                child: pw.Text(
+                  'Αναφορά Στατιστικών από Tags',
+                  style: pw.TextStyle(
+                    fontSize: 20,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
               ),
-            ));
+            );
 
-            content.add(pw.Text(
-              'Ημερομηνία Αναφοράς: '
-                  '${_reportDateTimeFormat.format(DateTime.now())}',
-              style: const pw.TextStyle(fontSize: 10),
-            ));
+            content.add(
+              pw.Text(
+                'Ημερομηνία Αναφοράς: '
+                '${_reportDateTimeFormat.format(DateTime.now())}',
+                style: const pw.TextStyle(fontSize: 10),
+              ),
+            );
 
             content.add(pw.SizedBox(height: 6));
 
-            content.add(pw.Text(
-              'Περίοδος: ${_dateFormat.format(_lastFromDate!)} – '
-                  '${_dateFormat.format(_lastToDate!)}',
-              style: const pw.TextStyle(fontSize: 11),
-            ));
+            content.add(
+              pw.Text(
+                'Περίοδος: ${_dateFormat.format(_lastFromDate!)} – '
+                '${_dateFormat.format(_lastToDate!)}',
+                style: const pw.TextStyle(fontSize: 11),
+              ),
+            );
 
-            content.add(pw.Text(
-              'Τύπος: ${_lastMovementType == 'income' ? 'Έσοδα' : 'Έξοδα'}',
-              style: const pw.TextStyle(fontSize: 11),
-            ));
+            content.add(
+              pw.Text(
+                'Τύπος: ${_lastMovementType == 'income' ? 'Έσοδα' : 'Έξοδα'}',
+                style: const pw.TextStyle(fontSize: 11),
+              ),
+            );
 
             if (_lastSortBy != null) {
-              content.add(pw.Text(
-                'Ταξινόμηση: ${_lastSortBy!.label}',
-                style: const pw.TextStyle(fontSize: 10),
-              ));
+              content.add(
+                pw.Text(
+                  'Ταξινόμηση: ${_lastSortBy!.label}',
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+              );
             }
 
             content.add(pw.SizedBox(height: 12));
 
             // ── Grand total box ───────────────────────────────
-            content.add(pw.Container(
-              padding: const pw.EdgeInsets.all(12),
-              decoration: pw.BoxDecoration(
-                color:        PdfColor.fromHex('#E3F2FD'),
-                borderRadius: pw.BorderRadius.circular(6),
-              ),
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Γενικό Σύνολο:',
+            content.add(
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex('#E3F2FD'),
+                  borderRadius: pw.BorderRadius.circular(6),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Γενικό Σύνολο:',
                       style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold)),
-                  pw.Text(
-                    CurrencyFormatter.format(grandTotal.abs()),
-                    style: pw.TextStyle(
                         fontSize: 14,
-                        fontWeight: pw.FontWeight.bold),
-                  ),
-                ],
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      CurrencyFormatter.format(grandTotal.abs()),
+                      style: pw.TextStyle(
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ));
+            );
 
             content.add(pw.SizedBox(height: 12));
 
             // ── Grouped tables ────────────────────────────────
             grouped.forEach((groupName, rows) {
               if (_groupBy != _TagGroupOption.none) {
-                content.add(pw.Container(
-                  padding: const pw.EdgeInsets.all(6),
-                  margin: const pw.EdgeInsets.only(top: 10, bottom: 4),
-                  color: PdfColor.fromHex('#EEEEEE'),
-                  child: pw.Row(
-                    mainAxisAlignment:
-                    pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text(groupName,
+                content.add(
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(6),
+                    margin: const pw.EdgeInsets.only(top: 10, bottom: 4),
+                    color: PdfColor.fromHex('#EEEEEE'),
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          groupName,
                           style: pw.TextStyle(
-                              fontWeight: pw.FontWeight.bold,
-                              fontSize: 11)),
-                      pw.Text(
-                        'Υποσύνολο: '
-                            '${CurrencyFormatter.format(subtotals[groupName]!.abs())}',
-                        style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
-                            fontSize: 11),
-                      ),
-                    ],
+                            fontSize: 11,
+                          ),
+                        ),
+                        pw.Text(
+                          'Υποσύνολο: '
+                          '${CurrencyFormatter.format(subtotals[groupName]!.abs())}',
+                          style: pw.TextStyle(
+                            fontWeight: pw.FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ));
+                );
               }
 
               final headers = [
-                'Ημ/νία', 'Λογαριασμός', 'Κατηγορία',
-                'Υποκατηγορία', 'Ποσό', 'Tags',
+                'Ημ/νία',
+                'Λογαριασμός',
+                'Κατηγορία',
+                'Υποκατηγορία',
+                'Ποσό',
+                'Tags',
                 if (_lastIncludeComments) 'Σχόλια',
               ];
 
-              final data = rows.map((r) => [
-                _dateFormat.format(r.date),
-                r.accountName,
-                r.categoryName,
-                r.subcategoryName,
-                CurrencyFormatter.format(r.amount.abs()),
-                r.tagNames,
-                if (_lastIncludeComments) (r.notes ?? ''),
-              ]).toList();
+              final data = rows
+                  .map(
+                    (r) => [
+                      _dateFormat.format(r.date),
+                      r.accountName,
+                      r.categoryName,
+                      r.subcategoryName,
+                      CurrencyFormatter.format(r.amount.abs()),
+                      r.tagNames,
+                      if (_lastIncludeComments) (r.notes ?? ''),
+                    ],
+                  )
+                  .toList();
 
-              content.add(pw.TableHelper.fromTextArray(
-                headers: headers,
-                data:    data,
-                headerStyle: pw.TextStyle(
-                    fontSize: 9, fontWeight: pw.FontWeight.bold),
-                cellStyle:   const pw.TextStyle(fontSize: 8),
-                headerDecoration: pw.BoxDecoration(
-                    color: PdfColor.fromHex('#DDDDDD')),
-                border: pw.TableBorder.all(
-                    color: PdfColor.fromHex('#BBBBBB')),
-                cellPadding: const pw.EdgeInsets.all(4),
-              ));
+              content.add(
+                pw.TableHelper.fromTextArray(
+                  headers: headers,
+                  data: data,
+                  headerStyle: pw.TextStyle(
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                  cellStyle: const pw.TextStyle(fontSize: 8),
+                  headerDecoration: pw.BoxDecoration(
+                    color: PdfColor.fromHex('#DDDDDD'),
+                  ),
+                  border: pw.TableBorder.all(
+                    color: PdfColor.fromHex('#BBBBBB'),
+                  ),
+                  cellPadding: const pw.EdgeInsets.all(4),
+                ),
+              );
             });
 
             return content;
@@ -1119,34 +1180,28 @@ class _TagStatsPageState extends State<TagStatsPage> {
         ),
       );
 
-      final bytes    = await pdf.save();
-      final ts       = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+      final bytes = await pdf.save();
+      final ts = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
       final fileName = 'Αναφορά_Tags_$ts.pdf';
 
       final savePath = await FilePicker.platform.saveFile(
-        dialogTitle:       'Αποθήκευση Αναφοράς PDF',
-        fileName:          fileName,
-        type:              FileType.custom,
+        dialogTitle: 'Αποθήκευση Αναφοράς PDF',
+        fileName: fileName,
+        type: FileType.custom,
         allowedExtensions: ['pdf'],
-        bytes:             Uint8List.fromList(bytes),
+        bytes: Uint8List.fromList(bytes),
       );
 
       if (savePath == null) return;
       if (!mounted) return;
 
-      AccessibilityService.announcePolite('PDF αποθηκεύτηκε επιτυχώς!');
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Row(children: [
-          ExcludeSemantics(
-              child: Icon(Icons.check_circle, color: Colors.white)),
-          SizedBox(width: 12),
-          Expanded(child: Text('Το PDF αποθηκεύτηκε επιτυχώς!')),
-        ]),
-        backgroundColor: Colors.green,
-      ));
+      AppMessenger.success(context, 'Το PDF αποθηκεύτηκε επιτυχώς!');
     } catch (e) {
       if (!mounted) return;
-      _showSnack('Σφάλμα PDF: $e', Colors.red);
+      _showSnack(
+        MessagePolicy.fromError(e, action: 'εξαγωγής PDF'),
+        Colors.red,
+      );
     }
   }
 
@@ -1159,11 +1214,11 @@ class _TagStatsPageState extends State<TagStatsPage> {
     // ✅ SessionScope guard
     final _ = context.session.userId;
 
-    final accountsP     = context.watch<AccountsProvider>();
-    final categoriesP   = context.watch<CategoriesProvider>();
+    final accountsP = context.watch<AccountsProvider>();
+    final categoriesP = context.watch<CategoriesProvider>();
     final transactionsP = context.watch<TransactionsProvider>();
-    final tagsP         = context.watch<TagsProvider>();
-    final connectivity  = context.watch<ConnectivityService>();
+    final tagsP = context.watch<TagsProvider>();
+    final connectivity = context.watch<ConnectivityService>();
 
     // ✅ Συγχρονισμός λογαριασμών (E28: ενεργοί + αρχειοθετημένοι, 0 νέα reads)
     final accounts = <AccountModel>[
@@ -1173,18 +1228,16 @@ class _TagStatsPageState extends State<TagStatsPage> {
     for (final a in accounts) {
       _selectedAccounts.putIfAbsent(a.uuid, () => false);
     }
-    _selectedAccounts.removeWhere(
-          (k, _) => accounts.every((a) => a.uuid != k),
-    );
+    _selectedAccounts.removeWhere((k, _) => accounts.every((a) => a.uuid != k));
 
     final from = _fromDate ?? DateTime.now();
-    final to   = _toDate   ?? DateTime.now();
+    final to = _toDate ?? DateTime.now();
 
     // ✅ Offline-safe: trigger listener για τη χρονική περίοδο
     _ensureTransactionsListener(
       transactionsP: transactionsP,
       from: from,
-      to:   to,
+      to: to,
     );
 
     // ✅ Συγχρονισμός tags state με τα διαθέσιμα tags
@@ -1193,12 +1246,12 @@ class _TagStatsPageState extends State<TagStatsPage> {
       _selectedTags.putIfAbsent(t.uuid, () => false);
     }
     _selectedTags.removeWhere(
-          (k, _) => availableTags.every((t) => t.uuid != k),
+      (k, _) => availableTags.every((t) => t.uuid != k),
     );
 
     final canGenerate = _canGenerateReport();
     final screenWidth = MediaQuery.of(context).size.width;
-    final isWide      = screenWidth >= 700;
+    final isWide = screenWidth >= 700;
 
     return Scaffold(
       backgroundColor: context.cBg,
@@ -1206,31 +1259,30 @@ class _TagStatsPageState extends State<TagStatsPage> {
         child: Column(
           children: [
             _buildHeader(connectivity),
-            if (connectivity.isOffline)
-              _buildOfflineBanner(),
+            if (connectivity.isOffline) _buildOfflineBanner(),
             Expanded(
               child: Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: isWide ? 32 : 16,
-                  vertical:   10,
+                  vertical: 10,
                 ),
                 child: isWide
                     ? _buildWideLayout(
-                  accountsP:     accountsP,
-                  categoriesP:   categoriesP,
-                  transactionsP: transactionsP,
-                  tagsP:         tagsP,
-                  availableTags: availableTags,
-                  canGenerate:   canGenerate,
-                )
+                        accountsP: accountsP,
+                        categoriesP: categoriesP,
+                        transactionsP: transactionsP,
+                        tagsP: tagsP,
+                        availableTags: availableTags,
+                        canGenerate: canGenerate,
+                      )
                     : _buildNarrowLayout(
-                  accountsP:     accountsP,
-                  categoriesP:   categoriesP,
-                  transactionsP: transactionsP,
-                  tagsP:         tagsP,
-                  availableTags: availableTags,
-                  canGenerate:   canGenerate,
-                ),
+                        accountsP: accountsP,
+                        categoriesP: categoriesP,
+                        transactionsP: transactionsP,
+                        tagsP: tagsP,
+                        availableTags: availableTags,
+                        canGenerate: canGenerate,
+                      ),
               ),
             ),
           ],
@@ -1248,7 +1300,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
       decoration: BoxDecoration(
         color: context.cPrimary,
         borderRadius: const BorderRadius.only(
-          bottomLeft:  Radius.circular(16),
+          bottomLeft: Radius.circular(16),
           bottomRight: Radius.circular(16),
         ),
       ),
@@ -1267,17 +1319,22 @@ class _TagStatsPageState extends State<TagStatsPage> {
                   shape: BoxShape.circle,
                 ),
                 child: ExcludeSemantics(
-                  child: Icon(Icons.arrow_back,
-                      color: context.cOnPrimary, size: 22),
+                  child: Icon(
+                    Icons.arrow_back,
+                    color: context.cOnPrimary,
+                    size: 22,
+                  ),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 14),
           ExcludeSemantics(
-            child: Icon(Icons.label_rounded,
-                color: context.cOnPrimary.withValues(alpha: 0.85),
-                size: 22),
+            child: Icon(
+              Icons.label_rounded,
+              color: context.cOnPrimary.withValues(alpha: 0.85),
+              size: 22,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1286,14 +1343,15 @@ class _TagStatsPageState extends State<TagStatsPage> {
               child: Text(
                 'Στατιστικά από Tags',
                 style: TextStyle(
-                  color:      context.cOnPrimary,
-                  fontSize:   19,
+                  color: context.cOnPrimary,
+                  fontSize: 19,
                   fontWeight: FontWeight.w600,
                   shadows: const [
                     Shadow(
-                        color:      Colors.black45,
-                        blurRadius: 6,
-                        offset:     Offset(0, 1)),
+                      color: Colors.black45,
+                      blurRadius: 6,
+                      offset: Offset(0, 1),
+                    ),
                   ],
                 ),
               ),
@@ -1301,9 +1359,11 @@ class _TagStatsPageState extends State<TagStatsPage> {
           ),
           if (connectivity.isOffline)
             ExcludeSemantics(
-              child: Icon(Icons.cloud_off,
-                  color: context.cOnPrimary.withValues(alpha: 0.70),
-                  size: 20),
+              child: Icon(
+                Icons.cloud_off,
+                color: context.cOnPrimary.withValues(alpha: 0.70),
+                size: 20,
+              ),
             ),
         ],
       ),
@@ -1323,9 +1383,11 @@ class _TagStatsPageState extends State<TagStatsPage> {
         child: Row(
           children: [
             ExcludeSemantics(
-              child: Icon(Icons.cloud_off,
-                  size: 16,
-                  color: ColorsUI.getWarning(context.brightness)),
+              child: Icon(
+                Icons.cloud_off,
+                size: 16,
+                color: ColorsUI.getWarning(context.brightness),
+              ),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -1356,12 +1418,12 @@ class _TagStatsPageState extends State<TagStatsPage> {
   }) {
     return ListView(
       children: _buildFormCards(
-        accountsP:     accountsP,
-        categoriesP:   categoriesP,
+        accountsP: accountsP,
+        categoriesP: categoriesP,
         transactionsP: transactionsP,
-        tagsP:         tagsP,
+        tagsP: tagsP,
         availableTags: availableTags,
-        canGenerate:   canGenerate,
+        canGenerate: canGenerate,
       ),
     );
   }
@@ -1377,15 +1439,15 @@ class _TagStatsPageState extends State<TagStatsPage> {
     required bool canGenerate,
   }) {
     final cards = _buildFormCards(
-      accountsP:     accountsP,
-      categoriesP:   categoriesP,
+      accountsP: accountsP,
+      categoriesP: categoriesP,
       transactionsP: transactionsP,
-      tagsP:         tagsP,
+      tagsP: tagsP,
       availableTags: availableTags,
-      canGenerate:   canGenerate,
+      canGenerate: canGenerate,
     );
 
-    final left  = cards.take((cards.length / 2).ceil()).toList();
+    final left = cards.take((cards.length / 2).ceil()).toList();
     final right = cards.skip((cards.length / 2).ceil()).toList();
 
     return SingleChildScrollView(
@@ -1395,10 +1457,12 @@ class _TagStatsPageState extends State<TagStatsPage> {
           Expanded(
             child: Column(
               children: left
-                  .map((w) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: w,
-              ))
+                  .map(
+                    (w) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: w,
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -1406,10 +1470,12 @@ class _TagStatsPageState extends State<TagStatsPage> {
           Expanded(
             child: Column(
               children: right
-                  .map((w) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: w,
-              ))
+                  .map(
+                    (w) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: w,
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -1477,18 +1543,20 @@ class _TagStatsPageState extends State<TagStatsPage> {
 
     // 8. Generate button
     if (canGenerate) {
-      widgets.add(_buildGenerateButton(
-        canGenerate: canGenerate,
-        onPressed: () {
-          AccessibilityService.announcePolite('Δημιουργία αναφοράς tags...');
-          _generateReport(
-            accountsP:     context.read<AccountsProvider>(),
-            categoriesP:   context.read<CategoriesProvider>(),
-            transactionsP: context.read<TransactionsProvider>(),
-            tagsP:         context.read<TagsProvider>(),
-          );
-        },
-      ));
+      widgets.add(
+        _buildGenerateButton(
+          canGenerate: canGenerate,
+          onPressed: () {
+            AccessibilityService.announcePolite('Δημιουργία αναφοράς tags...');
+            _generateReport(
+              accountsP: context.read<AccountsProvider>(),
+              categoriesP: context.read<CategoriesProvider>(),
+              transactionsP: context.read<TransactionsProvider>(),
+              tagsP: context.read<TagsProvider>(),
+            );
+          },
+        ),
+      );
       widgets.add(const SizedBox(height: 40));
     }
 
@@ -1503,85 +1571,96 @@ class _TagStatsPageState extends State<TagStatsPage> {
     return Card(
       elevation: 2,
       color: context.cSurface,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              ExcludeSemantics(
-                child: Icon(Icons.calendar_month,
-                    color: context.cPrimary, size: 22),
-              ),
-              const SizedBox(width: 8),
-              Semantics(
-                header: true,
-                child: Text('Χρονικό Διάστημα',
+            Row(
+              children: [
+                ExcludeSemantics(
+                  child: Icon(
+                    Icons.calendar_month,
+                    color: context.cPrimary,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    'Χρονικό Διάστημα',
                     style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: context.cText)),
-              ),
-            ]),
+                      fontWeight: FontWeight.bold,
+                      color: context.cText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
-            Row(children: [
-              Expanded(
-                child: Semantics(
-                  button: true,
-                  label:
-                  'Ημερομηνία από. '
-                      '${_fromDate == null ? 'Μη επιλεγμένη' : _dateFormat.format(_fromDate!)}',
-                  child: InkWell(
-                    onTap: () => _pickDate(isFrom: true),
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Από',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const ExcludeSemantics(
-                            child: Icon(Icons.calendar_today)),
-                        isDense: true,
-                      ),
-                      child: ExcludeSemantics(
-                        child: Text(
-                          _fromDate == null
-                              ? 'Επιλογή ημερομηνίας'
-                              : _dateFormat.format(_fromDate!),
+            Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    label:
+                        'Ημερομηνία από. '
+                        '${_fromDate == null ? 'Μη επιλεγμένη' : _dateFormat.format(_fromDate!)}',
+                    child: InkWell(
+                      onTap: () => _pickDate(isFrom: true),
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Από',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const ExcludeSemantics(
+                            child: Icon(Icons.calendar_today),
+                          ),
+                          isDense: true,
+                        ),
+                        child: ExcludeSemantics(
+                          child: Text(
+                            _fromDate == null
+                                ? 'Επιλογή ημερομηνίας'
+                                : _dateFormat.format(_fromDate!),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Semantics(
-                  button: true,
-                  label:
-                  'Ημερομηνία έως. '
-                      '${_toDate == null ? 'Μη επιλεγμένη' : _dateFormat.format(_toDate!)}',
-                  child: InkWell(
-                    onTap: () => _pickDate(isFrom: false),
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Έως',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const ExcludeSemantics(
-                            child: Icon(Icons.calendar_today)),
-                        isDense: true,
-                      ),
-                      child: ExcludeSemantics(
-                        child: Text(
-                          _toDate == null
-                              ? 'Επιλογή ημερομηνίας'
-                              : _dateFormat.format(_toDate!),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    label:
+                        'Ημερομηνία έως. '
+                        '${_toDate == null ? 'Μη επιλεγμένη' : _dateFormat.format(_toDate!)}',
+                    child: InkWell(
+                      onTap: () => _pickDate(isFrom: false),
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Έως',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const ExcludeSemantics(
+                            child: Icon(Icons.calendar_today),
+                          ),
+                          isDense: true,
+                        ),
+                        child: ExcludeSemantics(
+                          child: Text(
+                            _toDate == null
+                                ? 'Επιλογή ημερομηνίας'
+                                : _dateFormat.format(_toDate!),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ],
         ),
       ),
@@ -1596,8 +1675,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
     return Card(
       elevation: 2,
       color: context.cSurface,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -1605,10 +1683,13 @@ class _TagStatsPageState extends State<TagStatsPage> {
           children: [
             Semantics(
               header: true,
-              child: Text('Τύπος Κινήσεων',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: context.cText)),
+              child: Text(
+                'Τύπος Κινήσεων',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: context.cText,
+                ),
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -1616,38 +1697,40 @@ class _TagStatsPageState extends State<TagStatsPage> {
               style: TextStyle(color: context.cText2, fontSize: 12),
             ),
             const SizedBox(height: 8),
-            Row(children: [
-              Expanded(
-                child: Semantics(
-                  label: 'Έσοδα, '
-                      '${_movementType == 'income' ? 'επιλεγμένο' : 'μη επιλεγμένο'}',
-                  child: CheckboxListTile(
-                    dense: true,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    title: const ExcludeSemantics(child: Text('Έσοδα')),
-                    value: _movementType == 'income',
-                    activeColor: ColorsUI.getIncomeColor(
-                        context.brightness),
-                    onChanged: (_) => _onToggleMovementType('income'),
+            Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    label:
+                        'Έσοδα, '
+                        '${_movementType == 'income' ? 'επιλεγμένο' : 'μη επιλεγμένο'}',
+                    child: CheckboxListTile(
+                      dense: true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const ExcludeSemantics(child: Text('Έσοδα')),
+                      value: _movementType == 'income',
+                      activeColor: ColorsUI.getIncomeColor(context.brightness),
+                      onChanged: (_) => _onToggleMovementType('income'),
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: Semantics(
-                  label: 'Έξοδα, '
-                      '${_movementType == 'expense' ? 'επιλεγμένο' : 'μη επιλεγμένο'}',
-                  child: CheckboxListTile(
-                    dense: true,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    title: const ExcludeSemantics(child: Text('Έξοδα')),
-                    value: _movementType == 'expense',
-                    activeColor: ColorsUI.getExpenseColor(
-                        context.brightness),
-                    onChanged: (_) => _onToggleMovementType('expense'),
+                Expanded(
+                  child: Semantics(
+                    label:
+                        'Έξοδα, '
+                        '${_movementType == 'expense' ? 'επιλεγμένο' : 'μη επιλεγμένο'}',
+                    child: CheckboxListTile(
+                      dense: true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const ExcludeSemantics(child: Text('Έξοδα')),
+                      value: _movementType == 'expense',
+                      activeColor: ColorsUI.getExpenseColor(context.brightness),
+                      onChanged: (_) => _onToggleMovementType('expense'),
+                    ),
                   ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ],
         ),
       ),
@@ -1693,7 +1776,9 @@ class _TagStatsPageState extends State<TagStatsPage> {
                 controlAffinity: ListTileControlAffinity.leading,
                 title: Text(acc.name),
                 subtitle: Text(
-                  acc.isArchived ? '$balanceText · Αρχειοθετημένος' : balanceText,
+                  acc.isArchived
+                      ? '$balanceText · Αρχειοθετημένος'
+                      : balanceText,
                 ),
                 value: selected,
                 onChanged: (val) => _onToggleAccount(acc.uuid, val),
@@ -1714,8 +1799,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
       key: const ValueKey('tags_card'),
       elevation: 2,
       color: context.cSurface,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -1725,50 +1809,63 @@ class _TagStatsPageState extends State<TagStatsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(children: [
-                  ExcludeSemantics(
-                    child: Icon(Icons.label_rounded,
-                        color: context.cPrimary, size: 22),
-                  ),
-                  const SizedBox(width: 8),
-                  Semantics(
-                    header: true,
-                    child: Text('Tags',
+                Row(
+                  children: [
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.label_rounded,
+                        color: context.cPrimary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        'Tags',
                         style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: context.cText)),
-                  ),
-                ]),
-                Row(children: [
-                  Semantics(
-                    button: true,
-                    label: 'Επιλογή όλων tags',
-                    child: TextButton(
-                      onPressed: () => _selectAllTags(tags),
-                      style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8)),
-                      child: Text('Όλα',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: context.cPrimary)),
+                          fontWeight: FontWeight.bold,
+                          color: context.cText,
+                        ),
+                      ),
                     ),
-                  ),
-                  Semantics(
-                    button: true,
-                    label: 'Καθαρισμός επιλογής tags',
-                    child: TextButton(
-                      onPressed: () => _clearAllTags(tags),
-                      style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8)),
-                      child: Text('Καθαρισμός',
+                  ],
+                ),
+                Row(
+                  children: [
+                    Semantics(
+                      button: true,
+                      label: 'Επιλογή όλων tags',
+                      child: TextButton(
+                        onPressed: () => _selectAllTags(tags),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        child: Text(
+                          'Όλα',
                           style: TextStyle(
-                              fontSize: 11,
-                              color: context.cText2)),
+                            fontSize: 11,
+                            color: context.cPrimary,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ]),
+                    Semantics(
+                      button: true,
+                      label: 'Καθαρισμός επιλογής tags',
+                      child: TextButton(
+                        onPressed: () => _clearAllTags(tags),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        child: Text(
+                          'Καθαρισμός',
+                          style: TextStyle(fontSize: 11, color: context.cText2),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 4),
@@ -1790,7 +1887,8 @@ class _TagStatsPageState extends State<TagStatsPage> {
               }
 
               return Semantics(
-                label: '${tag.name}, '
+                label:
+                    '${tag.name}, '
                     '${selected ? 'επιλεγμένο' : 'μη επιλεγμένο'}',
                 child: CheckboxListTile(
                   dense: true,
@@ -1799,24 +1897,26 @@ class _TagStatsPageState extends State<TagStatsPage> {
                   value: selected,
                   onChanged: (val) => _onToggleTag(tag.uuid, val),
                   title: ExcludeSemantics(
-                    child: Row(children: [
-                      Container(
-                        width:  12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color:  tagColor,
-                          shape:  BoxShape.circle,
-                          border: Border.all(
-                            color: context.cText2.withValues(
-                                alpha: 0.30),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: tagColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: context.cText2.withValues(alpha: 0.30),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(tag.name,
-                          style: TextStyle(
-                              color: context.cText, fontSize: 14)),
-                    ]),
+                        const SizedBox(width: 8),
+                        Text(
+                          tag.name,
+                          style: TextStyle(color: context.cText, fontSize: 14),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -1832,25 +1932,28 @@ class _TagStatsPageState extends State<TagStatsPage> {
       key: const ValueKey('no_tags_card'),
       elevation: 2,
       color: context.cSurface,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(children: [
-          ExcludeSemantics(
-            child: Icon(Icons.label_off_rounded,
-                color: context.cText2, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Δεν υπάρχουν διαθέσιμα tags. '
-                  'Δημιουργήστε tags από τη Διαχείριση Tags.',
-              style: TextStyle(
-                  color: context.cText2, fontSize: 13),
+        child: Row(
+          children: [
+            ExcludeSemantics(
+              child: Icon(
+                Icons.label_off_rounded,
+                color: context.cText2,
+                size: 22,
+              ),
             ),
-          ),
-        ]),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Δεν υπάρχουν διαθέσιμα tags. '
+                'Δημιουργήστε tags από τη Διαχείριση Tags.',
+                style: TextStyle(color: context.cText2, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1863,8 +1966,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
     return Card(
       elevation: 2,
       color: context.cSurface,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -1872,31 +1974,40 @@ class _TagStatsPageState extends State<TagStatsPage> {
           children: [
             Semantics(
               header: true,
-              child: Text('Ταξινόμηση & Ομαδοποίηση',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: context.cText)),
+              child: Text(
+                'Ταξινόμηση & Ομαδοποίηση',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: context.cText,
+                ),
+              ),
             ),
             const SizedBox(height: 10),
-            Text('Ταξινόμηση:',
-                style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: context.cText)),
+            Text(
+              'Ταξινόμηση:',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: context.cText,
+              ),
+            ),
             const SizedBox(height: 4),
             DropdownButtonFormField<_TagSortOption>(
               initialValue: _sortBy,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 isDense: true,
-                prefixIcon: ExcludeSemantics(
-                    child: Icon(Icons.sort)),
+                prefixIcon: ExcludeSemantics(child: Icon(Icons.sort)),
               ),
               items: _TagSortOption.values
-                  .map((o) => DropdownMenuItem(
-                value: o,
-                child: Text(o.label,
-                    style: const TextStyle(fontSize: 12)),
-              ))
+                  .map(
+                    (o) => DropdownMenuItem(
+                      value: o,
+                      child: Text(
+                        o.label,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (val) {
                 if (val == null) return;
@@ -1904,25 +2015,31 @@ class _TagStatsPageState extends State<TagStatsPage> {
               },
             ),
             const SizedBox(height: 12),
-            Text('Ομαδοποίηση:',
-                style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: context.cText)),
+            Text(
+              'Ομαδοποίηση:',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: context.cText,
+              ),
+            ),
             const SizedBox(height: 4),
             DropdownButtonFormField<_TagGroupOption>(
               initialValue: _groupBy,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 isDense: true,
-                prefixIcon: ExcludeSemantics(
-                    child: Icon(Icons.grid_view)),
+                prefixIcon: ExcludeSemantics(child: Icon(Icons.grid_view)),
               ),
               items: _TagGroupOption.values
-                  .map((o) => DropdownMenuItem(
-                value: o,
-                child: Text(o.label,
-                    style: const TextStyle(fontSize: 12)),
-              ))
+                  .map(
+                    (o) => DropdownMenuItem(
+                      value: o,
+                      child: Text(
+                        o.label,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (val) {
                 if (val == null) return;
@@ -1943,16 +2060,15 @@ class _TagStatsPageState extends State<TagStatsPage> {
     return Card(
       elevation: 2,
       color: context.cSurface,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Semantics(
-        label: 'Συμπερίληψη σχολίων, '
+        label:
+            'Συμπερίληψη σχολίων, '
             '${_includeComments ? 'ενεργό' : 'ανενεργό'}',
         child: CheckboxListTile(
           dense: true,
           controlAffinity: ListTileControlAffinity.leading,
-          title: const ExcludeSemantics(
-              child: Text('Συμπερίληψη Σχολίων')),
+          title: const ExcludeSemantics(child: Text('Συμπερίληψη Σχολίων')),
           subtitle: ExcludeSemantics(
             child: Text(
               'Εμφάνιση σχολίων κινήσεων στο report',
@@ -1960,8 +2076,7 @@ class _TagStatsPageState extends State<TagStatsPage> {
             ),
           ),
           value: _includeComments,
-          onChanged: (val) =>
-              setState(() => _includeComments = val ?? false),
+          onChanged: (val) => setState(() => _includeComments = val ?? false),
         ),
       ),
     );
@@ -1972,12 +2087,14 @@ class _TagStatsPageState extends State<TagStatsPage> {
   // ──────────────────────────────────────────────────────────
 
   Widget _buildSummaryCard(List<AccountModel> accounts, List<TagModel> tags) {
-    final selectedAccountsCount = _selectedAccounts.values.where((v) => v).length;
+    final selectedAccountsCount = _selectedAccounts.values
+        .where((v) => v)
+        .length;
     final selectedTagsCount = _selectedTags.values.where((v) => v).length;
 
     final periodText = (_fromDate != null && _toDate != null)
         ? '${_dateFormat.format(_fromDate!)} – '
-        '${_dateFormat.format(_toDate!)}'
+              '${_dateFormat.format(_toDate!)}'
         : '–';
 
     final bg = context.brightness == Brightness.dark
@@ -1991,7 +2108,9 @@ class _TagStatsPageState extends State<TagStatsPage> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-            color: context.cPrimary.withValues(alpha: 0.35), width: 1.2),
+          color: context.cPrimary.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
       ),
       child: DefaultTextStyle.merge(
         style: TextStyle(color: fg),
@@ -2002,45 +2121,54 @@ class _TagStatsPageState extends State<TagStatsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  ExcludeSemantics(
-                    child: Icon(Icons.summarize,
-                        color: context.cPrimary, size: 20),
-                  ),
-                  const SizedBox(width: 8),
-                  Semantics(
-                    header: true,
-                    child: Text('Περίληψη Επιλογών',
+                Row(
+                  children: [
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.summarize,
+                        color: context.cPrimary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        'Περίληψη Επιλογών',
                         style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: context.cPrimary)),
-                  ),
-                ]),
+                          fontWeight: FontWeight.bold,
+                          color: context.cPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 10),
-                _summaryRow(Icons.calendar_month, 'Περίοδος',
-                    periodText),
+                _summaryRow(Icons.calendar_month, 'Περίοδος', periodText),
                 _summaryRow(
-                    Icons.compare_arrows,
-                    'Τύπος',
-                    _movementType == 'income' ? 'Έσοδα' : 'Έξοδα'),
+                  Icons.compare_arrows,
+                  'Τύπος',
+                  _movementType == 'income' ? 'Έσοδα' : 'Έξοδα',
+                ),
                 _summaryRow(
-                    Icons.account_balance_wallet,
-                    'Λογαριασμοί',
-                    selectedAccountsCount == 0
-                        ? 'Κανένας'
-                        : '$selectedAccountsCount επιλεγμένοι'),
+                  Icons.account_balance_wallet,
+                  'Λογαριασμοί',
+                  selectedAccountsCount == 0
+                      ? 'Κανένας'
+                      : '$selectedAccountsCount επιλεγμένοι',
+                ),
                 _summaryRow(
-                    Icons.label_rounded,
-                    'Tags',
-                    '$selectedTagsCount επιλεγμένα'),
+                  Icons.label_rounded,
+                  'Tags',
+                  '$selectedTagsCount επιλεγμένα',
+                ),
+                _summaryRow(Icons.sort, 'Ταξινόμηση', _sortBy.label),
+                _summaryRow(Icons.grid_view, 'Ομαδοποίηση', _groupBy.label),
                 _summaryRow(
-                    Icons.sort, 'Ταξινόμηση', _sortBy.label),
-                _summaryRow(
-                    Icons.grid_view, 'Ομαδοποίηση', _groupBy.label),
-                _summaryRow(
-                    Icons.comment,
-                    'Σχόλια',
-                    _includeComments ? 'Ναι' : 'Όχι'),
+                  Icons.comment,
+                  'Σχόλια',
+                  _includeComments ? 'Ναι' : 'Όχι',
+                ),
               ],
             ),
           ),
@@ -2055,15 +2183,18 @@ class _TagStatsPageState extends State<TagStatsPage> {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: ExcludeSemantics(
-          child: Row(children: [
-            Icon(icon, size: 15, color: context.cPrimary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text('$label: $value',
-                  style: TextStyle(
-                      color: context.cText2, fontSize: 12)),
-            ),
-          ]),
+          child: Row(
+            children: [
+              Icon(icon, size: 15, color: context.cPrimary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$label: $value',
+                  style: TextStyle(color: context.cText2, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2080,45 +2211,42 @@ class _TagStatsPageState extends State<TagStatsPage> {
     final onPrimary = context.cOnPrimary;
     return Center(
       child: Semantics(
-        button:  true,
-        label:   'Δημιουργία αναφοράς από Tags',
+        button: true,
+        label: 'Δημιουργία αναφοράς από Tags',
         enabled: canGenerate && !_isGenerating,
         child: ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
-            backgroundColor:
-            canGenerate ? context.cPrimary : Colors.grey,
-            foregroundColor:
-            canGenerate ? onPrimary : Colors.white,
-            padding: const EdgeInsets.symmetric(
-                horizontal: 32, vertical: 14),
+            backgroundColor: canGenerate ? context.cPrimary : Colors.grey,
+            foregroundColor: canGenerate ? onPrimary : Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
             elevation: canGenerate ? 4 : 0,
           ),
           icon: _isGenerating
               ? SizedBox(
-            height: 18,
-            width:  18,
-            child: ExcludeSemantics(
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  canGenerate ? onPrimary : Colors.white,
-                ),
-              ),
-            ),
-          )
+                  height: 18,
+                  width: 18,
+                  child: ExcludeSemantics(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        canGenerate ? onPrimary : Colors.white,
+                      ),
+                    ),
+                  ),
+                )
               : ExcludeSemantics(
-            child: Icon(Icons.label_rounded,
-                size: 20,
-                color: canGenerate ? onPrimary : Colors.white),
-          ),
+                  child: Icon(
+                    Icons.label_rounded,
+                    size: 20,
+                    color: canGenerate ? onPrimary : Colors.white,
+                  ),
+                ),
           label: Text(
-            _isGenerating
-                ? 'Δημιουργία αναφοράς...'
-                : 'Δημιουργία Αναφοράς',
-            style: const TextStyle(
-                fontSize: 15, fontWeight: FontWeight.bold),
+            _isGenerating ? 'Δημιουργία αναφοράς...' : 'Δημιουργία Αναφοράς',
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
           onPressed: (canGenerate && !_isGenerating) ? onPressed : null,
         ),
@@ -2133,12 +2261,12 @@ class _TagStatsPageState extends State<TagStatsPage> {
 
 class _TagReportRow {
   final DateTime date;
-  final String   accountName;
-  final String   categoryName;
-  final String   subcategoryName;
-  final double   amount;
-  final String?  notes;
-  final String   tagNames;
+  final String accountName;
+  final String categoryName;
+  final String subcategoryName;
+  final double amount;
+  final String? notes;
+  final String tagNames;
   final List<String> tagColors;
 
   _TagReportRow({
@@ -2148,7 +2276,7 @@ class _TagReportRow {
     required this.subcategoryName,
     required this.amount,
     this.notes,
-    this.tagNames  = '',
+    this.tagNames = '',
     this.tagColors = const [],
   });
 }
@@ -2158,26 +2286,26 @@ class _TagReportRow {
 // ============================================================
 
 enum _TagSortOption {
-  dateDesc( 'Ημερομηνία (Νεότερη → Παλαιότερη)'),
-  dateAsc(  'Ημερομηνία (Παλαιότερη → Νεότερη)'),
+  dateDesc('Ημερομηνία (Νεότερη → Παλαιότερη)'),
+  dateAsc('Ημερομηνία (Παλαιότερη → Νεότερη)'),
   amountDesc('Ποσό (Μεγαλύτερο → Μικρότερο)'),
-  amountAsc( 'Ποσό (Μικρότερο → Μεγαλύτερο)'),
-  category(  'Κατηγορία (Αλφαβητικά)'),
-  account(   'Λογαριασμός (Αλφαβητικά)'),
-  tag(       'Tag (Αλφαβητικά)');
+  amountAsc('Ποσό (Μικρότερο → Μεγαλύτερο)'),
+  category('Κατηγορία (Αλφαβητικά)'),
+  account('Λογαριασμός (Αλφαβητικά)'),
+  tag('Tag (Αλφαβητικά)');
 
   final String label;
   const _TagSortOption(this.label);
 }
 
 enum _TagGroupOption {
-  none(       'Χωρίς ομαδοποίηση'),
-  tag(        'Ανά Tag'),
-  category(   'Ανά Κατηγορία'),
+  none('Χωρίς ομαδοποίηση'),
+  tag('Ανά Tag'),
+  category('Ανά Κατηγορία'),
   subcategory('Ανά Υποκατηγορία'),
-  account(    'Ανά Λογαριασμό'),
-  day(        'Ανά Ημέρα'),
-  month(      'Ανά Μήνα');
+  account('Ανά Λογαριασμό'),
+  day('Ανά Ημέρα'),
+  month('Ανά Μήνα');
 
   final String label;
   const _TagGroupOption(this.label);

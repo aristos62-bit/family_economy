@@ -16,6 +16,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
@@ -76,8 +77,7 @@ class _CryptoItem {
     symbol: (j['symbol'] as String).toUpperCase(),
     image: j['image'] as String?,
     price: (j['current_price'] as num?)?.toDouble() ?? 0,
-    change24h:
-    (j['price_change_percentage_24h'] as num?)?.toDouble() ?? 0,
+    change24h: (j['price_change_percentage_24h'] as num?)?.toDouble() ?? 0,
     marketCap: (j['market_cap'] as num?)?.toDouble() ?? 0,
     volume24h: (j['total_volume'] as num?)?.toDouble() ?? 0,
   );
@@ -89,84 +89,139 @@ class _CryptoItem {
 
 // BASE: meters
 const _lengthUnits = <_Unit>[
-  _Unit(id: 'mm',   label: 'Χιλιοστόμετρο (mm)',    toBase: 0.001),
-  _Unit(id: 'cm',   label: 'Εκατοστόμετρο (cm)',     toBase: 0.01),
-  _Unit(id: 'dm',   label: 'Δεκατόμετρο (dm)',       toBase: 0.1),
-  _Unit(id: 'm',    label: 'Μέτρο (m)',              toBase: 1.0),
-  _Unit(id: 'km',   label: 'Χιλιόμετρο (km)',        toBase: 1000.0),
-  _Unit(id: 'in',   label: 'Ίντσα (in)',             toBase: 0.0254),
-  _Unit(id: 'ft',   label: 'Πόδι (ft)',              toBase: 0.3048),
-  _Unit(id: 'yd',   label: 'Γιάρδα (yd)',            toBase: 0.9144),
-  _Unit(id: 'mi',   label: 'Μίλι (mi)',              toBase: 1609.344),
-  _Unit(id: 'nmi',  label: 'Ναυτικό μίλι (nmi)',     toBase: 1852.0),
+  _Unit(id: 'mm', label: 'Χιλιοστόμετρο (mm)', toBase: 0.001),
+  _Unit(id: 'cm', label: 'Εκατοστόμετρο (cm)', toBase: 0.01),
+  _Unit(id: 'dm', label: 'Δεκατόμετρο (dm)', toBase: 0.1),
+  _Unit(id: 'm', label: 'Μέτρο (m)', toBase: 1.0),
+  _Unit(id: 'km', label: 'Χιλιόμετρο (km)', toBase: 1000.0),
+  _Unit(id: 'in', label: 'Ίντσα (in)', toBase: 0.0254),
+  _Unit(id: 'ft', label: 'Πόδι (ft)', toBase: 0.3048),
+  _Unit(id: 'yd', label: 'Γιάρδα (yd)', toBase: 0.9144),
+  _Unit(id: 'mi', label: 'Μίλι (mi)', toBase: 1609.344),
+  _Unit(id: 'nmi', label: 'Ναυτικό μίλι (nmi)', toBase: 1852.0),
 ];
 
 // BASE: grams
 const _weightUnits = <_Unit>[
-  _Unit(id: 'mg',  label: 'Χιλιοστόγραμμο (mg)', toBase: 0.001),
-  _Unit(id: 'g',   label: 'Γραμμάριο (g)',        toBase: 1.0),
-  _Unit(id: 'kg',  label: 'Κιλό (kg)',            toBase: 1000.0),
-  _Unit(id: 'ton', label: 'Τόνος (t)',            toBase: 1000000.0),
-  _Unit(id: 'oz',  label: 'Ουγγιά (oz)',          toBase: 28.3495),
-  _Unit(id: 'lb',  label: 'Λίμπρα (lb)',          toBase: 453.592),
-  _Unit(id: 'st',  label: 'Στόνο (st)',           toBase: 6350.29),
+  _Unit(id: 'mg', label: 'Χιλιοστόγραμμο (mg)', toBase: 0.001),
+  _Unit(id: 'g', label: 'Γραμμάριο (g)', toBase: 1.0),
+  _Unit(id: 'kg', label: 'Κιλό (kg)', toBase: 1000.0),
+  _Unit(id: 'ton', label: 'Τόνος (t)', toBase: 1000000.0),
+  _Unit(id: 'oz', label: 'Ουγγιά (oz)', toBase: 28.3495),
+  _Unit(id: 'lb', label: 'Λίμπρα (lb)', toBase: 453.592),
+  _Unit(id: 'st', label: 'Στόνο (st)', toBase: 6350.29),
 ];
 
 // BASE: milliliters
 const _volumeUnits = <_Unit>[
-  _Unit(id: 'ml',      label: 'Χιλιοστόλιτρο (mL)',   toBase: 1.0),
-  _Unit(id: 'cl',      label: 'Εκατοστόλιτρο (cL)',    toBase: 10.0),
-  _Unit(id: 'dl',      label: 'Δεκατόλιτρο (dL)',      toBase: 100.0),
-  _Unit(id: 'l',       label: 'Λίτρο (L)',             toBase: 1000.0),
-  _Unit(id: 'm3',      label: 'Κυβικό μέτρο (m³)',     toBase: 1000000.0),
-  _Unit(id: 'floz_us', label: 'Fl. oz US',             toBase: 29.5735),
-  _Unit(id: 'cup_us',  label: 'Cup US',                toBase: 236.588),
-  _Unit(id: 'pt_us',   label: 'Pint US',               toBase: 473.176),
-  _Unit(id: 'qt_us',   label: 'Quart US',              toBase: 946.353),
-  _Unit(id: 'gal_us',  label: 'Gallon US',             toBase: 3785.41),
-  _Unit(id: 'floz_uk', label: 'Fl. oz UK',             toBase: 28.4131),
-  _Unit(id: 'pt_uk',   label: 'Pint UK',               toBase: 568.261),
-  _Unit(id: 'gal_uk',  label: 'Gallon UK',             toBase: 4546.09),
+  _Unit(id: 'ml', label: 'Χιλιοστόλιτρο (mL)', toBase: 1.0),
+  _Unit(id: 'cl', label: 'Εκατοστόλιτρο (cL)', toBase: 10.0),
+  _Unit(id: 'dl', label: 'Δεκατόλιτρο (dL)', toBase: 100.0),
+  _Unit(id: 'l', label: 'Λίτρο (L)', toBase: 1000.0),
+  _Unit(id: 'm3', label: 'Κυβικό μέτρο (m³)', toBase: 1000000.0),
+  _Unit(id: 'floz_us', label: 'Fl. oz US', toBase: 29.5735),
+  _Unit(id: 'cup_us', label: 'Cup US', toBase: 236.588),
+  _Unit(id: 'pt_us', label: 'Pint US', toBase: 473.176),
+  _Unit(id: 'qt_us', label: 'Quart US', toBase: 946.353),
+  _Unit(id: 'gal_us', label: 'Gallon US', toBase: 3785.41),
+  _Unit(id: 'floz_uk', label: 'Fl. oz UK', toBase: 28.4131),
+  _Unit(id: 'pt_uk', label: 'Pint UK', toBase: 568.261),
+  _Unit(id: 'gal_uk', label: 'Gallon UK', toBase: 4546.09),
 ];
 
 const _substances = <_Substance>[
-  _Substance(label: 'Νερό',          density: 1.000),
+  _Substance(label: 'Νερό', density: 1.000),
   _Substance(label: 'Γάλα (αγελ.)', density: 1.030),
-  _Substance(label: 'Ελαιόλαδο',    density: 0.916),
-  _Substance(label: 'Ηλιέλαιο',     density: 0.920),
-  _Substance(label: 'Κρασί',        density: 0.990),
-  _Substance(label: 'Μέλι',         density: 1.420),
-  _Substance(label: 'Αλεύρι',       density: 0.593),
-  _Substance(label: 'Ζάχαρη',       density: 0.849),
-  _Substance(label: 'Αλάτι',        density: 1.217),
-  _Substance(label: 'Βούτυρο',      density: 0.911),
+  _Substance(label: 'Ελαιόλαδο', density: 0.916),
+  _Substance(label: 'Ηλιέλαιο', density: 0.920),
+  _Substance(label: 'Κρασί', density: 0.990),
+  _Substance(label: 'Μέλι', density: 1.420),
+  _Substance(label: 'Αλεύρι', density: 0.593),
+  _Substance(label: 'Ζάχαρη', density: 0.849),
+  _Substance(label: 'Αλάτι', density: 1.217),
+  _Substance(label: 'Βούτυρο', density: 0.911),
 ];
 
 const _currencyCodes = [
-  'EUR','USD','GBP','JPY','CHF','AUD','CAD','CNY',
-  'SEK','NOK','DKK','PLN','CZK','HUF','RON','BGN',
-  'TRY','RUB','INR','BRL','MXN','ZAR','SGD','HKD',
+  'EUR',
+  'USD',
+  'GBP',
+  'JPY',
+  'CHF',
+  'AUD',
+  'CAD',
+  'CNY',
+  'SEK',
+  'NOK',
+  'DKK',
+  'PLN',
+  'CZK',
+  'HUF',
+  'RON',
+  'BGN',
+  'TRY',
+  'RUB',
+  'INR',
+  'BRL',
+  'MXN',
+  'ZAR',
+  'SGD',
+  'HKD',
 ];
 
 const _currencyNames = {
-  'EUR': 'Ευρώ',       'USD': 'Αμερ. Δολάριο',  'GBP': 'Βρετ. Λίρα',
-  'JPY': 'Ιαπ. Γεν',  'CHF': 'Ελβ. Φράγκο',    'AUD': 'Αυστρ. Δολάριο',
-  'CAD': 'Καναδ. Δολάριο', 'CNY': 'Κιν. Γιουάν','SEK': 'Σουηδ. Κορόνα',
-  'NOK': 'Νορβ. Κορόνα',  'DKK': 'Δαν. Κορόνα', 'PLN': 'Πολ. Ζλότι',
-  'CZK': 'Τσεχ. Κορόνα',  'HUF': 'Ουγγρ. Φιορίνι','RON': 'Ρουμ. Λέου',
-  'BGN': 'Βουλγ. Λέβα',   'TRY': 'Τουρκ. Λίρα', 'RUB': 'Ρωσ. Ρούβλι',
-  'INR': 'Ινδ. Ρουπία',   'BRL': 'Βραζ. Ρεάλ',  'MXN': 'Μεξ. Πέσο',
-  'ZAR': 'Ν.Αφρ. Ραντ',   'SGD': 'Δολ. Σινγκαπ.','HKD': 'Δολ. Χ. Κονγκ',
+  'EUR': 'Ευρώ',
+  'USD': 'Αμερ. Δολάριο',
+  'GBP': 'Βρετ. Λίρα',
+  'JPY': 'Ιαπ. Γεν',
+  'CHF': 'Ελβ. Φράγκο',
+  'AUD': 'Αυστρ. Δολάριο',
+  'CAD': 'Καναδ. Δολάριο',
+  'CNY': 'Κιν. Γιουάν',
+  'SEK': 'Σουηδ. Κορόνα',
+  'NOK': 'Νορβ. Κορόνα',
+  'DKK': 'Δαν. Κορόνα',
+  'PLN': 'Πολ. Ζλότι',
+  'CZK': 'Τσεχ. Κορόνα',
+  'HUF': 'Ουγγρ. Φιορίνι',
+  'RON': 'Ρουμ. Λέου',
+  'BGN': 'Βουλγ. Λέβα',
+  'TRY': 'Τουρκ. Λίρα',
+  'RUB': 'Ρωσ. Ρούβλι',
+  'INR': 'Ινδ. Ρουπία',
+  'BRL': 'Βραζ. Ρεάλ',
+  'MXN': 'Μεξ. Πέσο',
+  'ZAR': 'Ν.Αφρ. Ραντ',
+  'SGD': 'Δολ. Σινγκαπ.',
+  'HKD': 'Δολ. Χ. Κονγκ',
 };
 
 // Σύμβολα νομισμάτων για εμφάνιση στο badge
 const _currencySymbols = {
-  'EUR': '€',  'USD': '\$',  'GBP': '£',  'JPY': '¥',
-  'CHF': 'CHF','AUD': 'A\$', 'CAD': 'CA\$','CNY': '¥',
-  'SEK': 'kr', 'NOK': 'kr',  'DKK': 'kr', 'PLN': 'zł',
-  'CZK': 'Kč', 'HUF': 'Ft',  'RON': 'lei','BGN': 'лв',
-  'TRY': '₺',  'RUB': '₽',   'INR': '₹',  'BRL': 'R\$',
-  'MXN': 'MX\$','ZAR': 'R',  'SGD': 'S\$','HKD': 'HK\$',
+  'EUR': '€',
+  'USD': '\$',
+  'GBP': '£',
+  'JPY': '¥',
+  'CHF': 'CHF',
+  'AUD': 'A\$',
+  'CAD': 'CA\$',
+  'CNY': '¥',
+  'SEK': 'kr',
+  'NOK': 'kr',
+  'DKK': 'kr',
+  'PLN': 'zł',
+  'CZK': 'Kč',
+  'HUF': 'Ft',
+  'RON': 'lei',
+  'BGN': 'лв',
+  'TRY': '₺',
+  'RUB': '₽',
+  'INR': '₹',
+  'BRL': 'R\$',
+  'MXN': 'MX\$',
+  'ZAR': 'R',
+  'SGD': 'S\$',
+  'HKD': 'HK\$',
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -187,45 +242,44 @@ class ConverterPage extends StatefulWidget {
 
 class _ConverterPageState extends State<ConverterPage>
     with SingleTickerProviderStateMixin {
-
   late TabController _tabController;
 
   // ── Μήκος ────────────────────────────────────
   _Unit _fromLength = _lengthUnits[3]; // m
-  _Unit _toLength   = _lengthUnits[4]; // km
+  _Unit _toLength = _lengthUnits[4]; // km
   final _fromLengthCtrl = TextEditingController(text: '1');
-  final _toLengthCtrl   = TextEditingController();
-  bool  _lengthFromFocus = true;
+  final _toLengthCtrl = TextEditingController();
+  bool _lengthFromFocus = true;
 
   // ── Βάρος ────────────────────────────────────
   _Unit _fromWeight = _weightUnits[2]; // kg
-  _Unit _toWeight   = _weightUnits[5]; // lb
+  _Unit _toWeight = _weightUnits[5]; // lb
   final _fromWeightCtrl = TextEditingController(text: '1');
-  final _toWeightCtrl   = TextEditingController();
-  bool  _weightFromFocus = true;
+  final _toWeightCtrl = TextEditingController();
+  bool _weightFromFocus = true;
 
   // ── Υγρά ─────────────────────────────────────
   _Unit _fromVol = _volumeUnits[3]; // L
-  _Unit _toVol   = _volumeUnits[9]; // gal_us
+  _Unit _toVol = _volumeUnits[9]; // gal_us
   final _fromVolCtrl = TextEditingController(text: '1');
-  final _toVolCtrl   = TextEditingController();
-  bool  _volFromFocus = true;
+  final _toVolCtrl = TextEditingController();
+  bool _volFromFocus = true;
 
   // ── Cross-convert ────────────────────────────
   // Βάρος ↔ Υγρά ανά ουσία
   _Substance _substance = _substances[0]; // νερό
   bool _crossFromWeight = true; // true=βάρος→υγρά, false=υγρά→βάρος
   _Unit _crossWeightUnit = _weightUnits[2]; // kg
-  _Unit _crossVolUnit    = _volumeUnits[3]; // L
+  _Unit _crossVolUnit = _volumeUnits[3]; // L
   final _crossFromCtrl = TextEditingController(text: '1');
-  final _crossToCtrl   = TextEditingController();
+  final _crossToCtrl = TextEditingController();
 
   // ── Νομίσματα ────────────────────────────────
   String _fromCurrency = 'EUR';
-  String _toCurrency   = 'USD';
+  String _toCurrency = 'USD';
   final _fromCurrCtrl = TextEditingController(text: '1');
-  final _toCurrCtrl   = TextEditingController();
-  bool   _currFromFocus = true;
+  final _toCurrCtrl = TextEditingController();
+  bool _currFromFocus = true;
 
   Map<String, double>? _currencyRates; // EUR-based
   DateTime? _ratesUpdatedAt;
@@ -250,7 +304,7 @@ class _ConverterPageState extends State<ConverterPage>
   // ── Crypto: μετατροπή ───────────────────────
   String? _convFromId;
   String? _convToId;
-  final  _convAmtCtrl = TextEditingController(text: '1');
+  final _convAmtCtrl = TextEditingController(text: '1');
 
   @override
   void initState() {
@@ -281,11 +335,16 @@ class _ConverterPageState extends State<ConverterPage>
   @override
   void dispose() {
     _tabController.dispose();
-    _fromLengthCtrl.dispose(); _toLengthCtrl.dispose();
-    _fromWeightCtrl.dispose(); _toWeightCtrl.dispose();
-    _fromVolCtrl.dispose();    _toVolCtrl.dispose();
-    _crossFromCtrl.dispose();  _crossToCtrl.dispose();
-    _fromCurrCtrl.dispose();   _toCurrCtrl.dispose();
+    _fromLengthCtrl.dispose();
+    _toLengthCtrl.dispose();
+    _fromWeightCtrl.dispose();
+    _toWeightCtrl.dispose();
+    _fromVolCtrl.dispose();
+    _toVolCtrl.dispose();
+    _crossFromCtrl.dispose();
+    _crossToCtrl.dispose();
+    _fromCurrCtrl.dispose();
+    _toCurrCtrl.dispose();
     _convAmtCtrl.dispose();
     super.dispose();
   }
@@ -303,7 +362,10 @@ class _ConverterPageState extends State<ConverterPage>
       return v.toStringAsExponential(6);
     }
     // Smart precision
-    final s = v.toStringAsFixed(10).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+    final s = v
+        .toStringAsFixed(10)
+        .replaceAll(RegExp(r'0+$'), '')
+        .replaceAll(RegExp(r'\.$'), '');
     // Max 10 digits shown
     final parts = s.split('.');
     if (parts.length == 1) return parts[0];
@@ -364,13 +426,13 @@ class _ConverterPageState extends State<ConverterPage>
     if (_currFromFocus) {
       final val = double.tryParse(_fromCurrCtrl.text.replaceAll(',', '.')) ?? 0;
       final rateFrom = _currencyRates![_fromCurrency] ?? 1.0;
-      final rateTo   = _currencyRates![_toCurrency]   ?? 1.0;
+      final rateTo = _currencyRates![_toCurrency] ?? 1.0;
       final eur = val / rateFrom;
       _toCurrCtrl.text = _fmt(eur * rateTo);
     } else {
       final val = double.tryParse(_toCurrCtrl.text.replaceAll(',', '.')) ?? 0;
       final rateFrom = _currencyRates![_fromCurrency] ?? 1.0;
-      final rateTo   = _currencyRates![_toCurrency]   ?? 1.0;
+      final rateTo = _currencyRates![_toCurrency] ?? 1.0;
       final eur = val / rateTo;
       _fromCurrCtrl.text = _fmt(eur * rateFrom);
     }
@@ -383,12 +445,15 @@ class _ConverterPageState extends State<ConverterPage>
     if (connectivity.isOffline) {
       setState(() {
         _currencyError =
-        'Χωρίς σύνδεση. Δεν είναι δυνατή η ενημέρωση ισοτιμιών.';
+            'Χωρίς σύνδεση. Δεν είναι δυνατή η ενημέρωση ισοτιμιών.';
       });
       return;
     }
 
-    setState(() { _currencyLoading = true; _currencyError = null; });
+    setState(() {
+      _currencyLoading = true;
+      _currencyError = null;
+    });
 
     try {
       final uri = Uri.parse('https://open.er-api.com/v6/latest/EUR');
@@ -430,11 +495,14 @@ class _ConverterPageState extends State<ConverterPage>
       });
       return;
     }
-    setState(() { _catalogLoading = true; _cryptoError = null; });
+    setState(() {
+      _catalogLoading = true;
+      _cryptoError = null;
+    });
     try {
       final uri = Uri.parse(
         'https://api.coingecko.com/api/v3/coins/markets'
-            '?vs_currency=eur&order=market_cap_desc&per_page=250&page=1&sparkline=false',
+        '?vs_currency=eur&order=market_cap_desc&per_page=250&page=1&sparkline=false',
       );
       final response = await http.get(uri).timeout(const Duration(seconds: 12));
       if (response.statusCode == 200) {
@@ -512,9 +580,10 @@ class _ConverterPageState extends State<ConverterPage>
       return;
     }
 
-// ⏱ Cooldown 30 δευτερόλεπτα
+    // ⏱ Cooldown 30 δευτερόλεπτα
     if (_lastRefresh != null &&
-        DateTime.now().difference(_lastRefresh!) < const Duration(seconds: 30)) {
+        DateTime.now().difference(_lastRefresh!) <
+            const Duration(seconds: 30)) {
       DebugConfig.print('⏳ Refresh skipped (cooldown)');
       return;
     }
@@ -533,18 +602,17 @@ class _ConverterPageState extends State<ConverterPage>
 
       final uri = Uri.parse(
         'https://api.coingecko.com/api/v3/coins/markets'
-            '?vs_currency=eur'
-            '&ids=$ids'
-            '&order=market_cap_desc'
-            '&per_page=250'
-            '&page=1'
-            '&sparkline=false',
+        '?vs_currency=eur'
+        '&ids=$ids'
+        '&order=market_cap_desc'
+        '&per_page=250'
+        '&page=1'
+        '&sparkline=false',
       );
 
       DebugConfig.print('🌍 Request URI: $uri');
 
-      final response =
-      await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       DebugConfig.print('📡 Status: ${response.statusCode}');
 
@@ -569,13 +637,13 @@ class _ConverterPageState extends State<ConverterPage>
           _cryptoUpdatedAt = DateTime.now();
         });
 
-        AccessibilityService.announcePolite(
-          'Τιμές crypto ενημερώθηκαν',
-        );
+        AccessibilityService.announcePolite('Τιμές crypto ενημερώθηκαν');
       } else if (response.statusCode == 429) {
         DebugConfig.print('🚫 Rate limit exceeded (429)');
         _rateLimitUntil = DateTime.now().add(const Duration(seconds: 90));
-        throw Exception('Υπέρβαση ορίου API. Δοκιμάστε ξανά σε 90 δευτερόλεπτα.');
+        throw Exception(
+          'Υπέρβαση ορίου API. Δοκιμάστε ξανά σε 90 δευτερόλεπτα.',
+        );
       } else {
         DebugConfig.print('❌ HTTP ${response.statusCode}');
         throw Exception('HTTP ${response.statusCode}');
@@ -601,7 +669,7 @@ class _ConverterPageState extends State<ConverterPage>
     if (amt <= 0) return '0';
 
     final fromItem = _convFromId != null ? _watchedData[_convFromId] : null;
-    final toItem   = _convToId   != null ? _watchedData[_convToId]   : null;
+    final toItem = _convToId != null ? _watchedData[_convToId] : null;
 
     // Crypto → Crypto: amt τεμάχια FROM → τεμάχια TO
     if (_convFromId != null && _convToId != null) {
@@ -633,7 +701,7 @@ class _ConverterPageState extends State<ConverterPage>
     if (_convFromId == null || _convToId == null) return null;
 
     final fromItem = _watchedData[_convFromId];
-    final toItem   = _watchedData[_convToId];
+    final toItem = _watchedData[_convToId];
     if (fromItem == null || toItem == null) return null;
 
     // Αξία των amt τεμαχίων FROM σε €
@@ -646,10 +714,12 @@ class _ConverterPageState extends State<ConverterPage>
   String _fmtCrypto(double v) {
     if (v <= 0) return '0';
     if (v >= 1000) return NumberFormat('#,##0.00', 'el_GR').format(v);
-    if (v >= 1)    return NumberFormat('#,##0.0000', 'el_GR').format(v);
+    if (v >= 1) return NumberFormat('#,##0.0000', 'el_GR').format(v);
     // μικρές τιμές — έως 8 δεκαδικά
     final s = v.toStringAsFixed(10);
-    final trimmed = s.replaceAll(RegExp(r'0+\$'), '').replaceAll(RegExp(r'\.\$'), '');
+    final trimmed = s
+        .replaceAll(RegExp(r'0+\$'), '')
+        .replaceAll(RegExp(r'\.\$'), '');
     final dot = trimmed.indexOf('.');
     if (dot == -1) return trimmed;
     final dec = trimmed.substring(dot + 1);
@@ -670,7 +740,7 @@ class _ConverterPageState extends State<ConverterPage>
     final isDark = brightness == Brightness.dark;
     final primary = ColorsUI.getPrimary(brightness);
     final onPrimary = ColorsUI.getOnPrimary(brightness);
-    final bgColor  = ColorsUI.getBackground(brightness);
+    final bgColor = ColorsUI.getBackground(brightness);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -680,10 +750,7 @@ class _ConverterPageState extends State<ConverterPage>
         iconTheme: IconThemeData(color: onPrimary),
         title: Text(
           'Μετατροπή Μονάδων',
-          style: TextStyle(
-            color: onPrimary,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: onPrimary, fontWeight: FontWeight.bold),
         ),
         bottom: TabBar(
           controller: _tabController,
@@ -694,12 +761,42 @@ class _ConverterPageState extends State<ConverterPage>
           indicatorColor: onPrimary,
           indicatorWeight: 3,
           tabs: const [
-            Tab(icon: ExcludeSemantics(child: Icon(Icons.straighten_rounded, size: 18)), text: 'Μήκος'),
-            Tab(icon: ExcludeSemantics(child: Icon(Icons.fitness_center_rounded, size: 18)), text: 'Βάρος'),
-            Tab(icon: ExcludeSemantics(child: Icon(Icons.water_drop_rounded, size: 18)), text: 'Υγρά'),
-            Tab(icon: ExcludeSemantics(child: Icon(Icons.swap_horiz_rounded, size: 18)), text: 'Βάρος↔Υγρά'),
-            Tab(icon: ExcludeSemantics(child: Icon(Icons.currency_exchange_rounded, size: 18)), text: 'Νομίσματα'),
-            Tab(icon: ExcludeSemantics(child: Icon(Icons.currency_bitcoin_rounded, size: 18)), text: 'Crypto'),
+            Tab(
+              icon: ExcludeSemantics(
+                child: Icon(Icons.straighten_rounded, size: 18),
+              ),
+              text: 'Μήκος',
+            ),
+            Tab(
+              icon: ExcludeSemantics(
+                child: Icon(Icons.fitness_center_rounded, size: 18),
+              ),
+              text: 'Βάρος',
+            ),
+            Tab(
+              icon: ExcludeSemantics(
+                child: Icon(Icons.water_drop_rounded, size: 18),
+              ),
+              text: 'Υγρά',
+            ),
+            Tab(
+              icon: ExcludeSemantics(
+                child: Icon(Icons.swap_horiz_rounded, size: 18),
+              ),
+              text: 'Βάρος↔Υγρά',
+            ),
+            Tab(
+              icon: ExcludeSemantics(
+                child: Icon(Icons.currency_exchange_rounded, size: 18),
+              ),
+              text: 'Νομίσματα',
+            ),
+            Tab(
+              icon: ExcludeSemantics(
+                child: Icon(Icons.currency_bitcoin_rounded, size: 18),
+              ),
+              text: 'Crypto',
+            ),
           ],
         ),
       ),
@@ -707,51 +804,102 @@ class _ConverterPageState extends State<ConverterPage>
         controller: _tabController,
         children: [
           _buildUnitTab(
-            brightness: brightness, isDark: isDark,
-            fromUnit: _fromLength, toUnit: _toLength,
+            brightness: brightness,
+            isDark: isDark,
+            fromUnit: _fromLength,
+            toUnit: _toLength,
             units: _lengthUnits,
-            fromCtrl: _fromLengthCtrl, toCtrl: _toLengthCtrl,
+            fromCtrl: _fromLengthCtrl,
+            toCtrl: _toLengthCtrl,
             fromFocus: _lengthFromFocus,
-            onFromChanged: (v) { _lengthFromFocus = true; _calcLength(); },
-            onToChanged:   (v) { _lengthFromFocus = false; _calcLengthReverse(); },
-            onFromUnitChanged: (u) => setState(() { _fromLength = u; _calcLength(); }),
-            onToUnitChanged:   (u) => setState(() { _toLength = u; _calcLength(); }),
+            onFromChanged: (v) {
+              _lengthFromFocus = true;
+              _calcLength();
+            },
+            onToChanged: (v) {
+              _lengthFromFocus = false;
+              _calcLengthReverse();
+            },
+            onFromUnitChanged: (u) => setState(() {
+              _fromLength = u;
+              _calcLength();
+            }),
+            onToUnitChanged: (u) => setState(() {
+              _toLength = u;
+              _calcLength();
+            }),
             onSwap: () => setState(() {
-              final tmp = _fromLength; _fromLength = _toLength; _toLength = tmp;
+              final tmp = _fromLength;
+              _fromLength = _toLength;
+              _toLength = tmp;
               final tv = _fromLengthCtrl.text;
               _fromLengthCtrl.text = _toLengthCtrl.text;
               _toLengthCtrl.text = tv;
             }),
           ),
           _buildUnitTab(
-            brightness: brightness, isDark: isDark,
-            fromUnit: _fromWeight, toUnit: _toWeight,
+            brightness: brightness,
+            isDark: isDark,
+            fromUnit: _fromWeight,
+            toUnit: _toWeight,
             units: _weightUnits,
-            fromCtrl: _fromWeightCtrl, toCtrl: _toWeightCtrl,
+            fromCtrl: _fromWeightCtrl,
+            toCtrl: _toWeightCtrl,
             fromFocus: _weightFromFocus,
-            onFromChanged: (v) { _weightFromFocus = true; _calcWeight(); },
-            onToChanged:   (v) { _weightFromFocus = false; _calcWeightReverse(); },
-            onFromUnitChanged: (u) => setState(() { _fromWeight = u; _calcWeight(); }),
-            onToUnitChanged:   (u) => setState(() { _toWeight = u; _calcWeight(); }),
+            onFromChanged: (v) {
+              _weightFromFocus = true;
+              _calcWeight();
+            },
+            onToChanged: (v) {
+              _weightFromFocus = false;
+              _calcWeightReverse();
+            },
+            onFromUnitChanged: (u) => setState(() {
+              _fromWeight = u;
+              _calcWeight();
+            }),
+            onToUnitChanged: (u) => setState(() {
+              _toWeight = u;
+              _calcWeight();
+            }),
             onSwap: () => setState(() {
-              final tmp = _fromWeight; _fromWeight = _toWeight; _toWeight = tmp;
+              final tmp = _fromWeight;
+              _fromWeight = _toWeight;
+              _toWeight = tmp;
               final tv = _fromWeightCtrl.text;
               _fromWeightCtrl.text = _toWeightCtrl.text;
               _toWeightCtrl.text = tv;
             }),
           ),
           _buildUnitTab(
-            brightness: brightness, isDark: isDark,
-            fromUnit: _fromVol, toUnit: _toVol,
+            brightness: brightness,
+            isDark: isDark,
+            fromUnit: _fromVol,
+            toUnit: _toVol,
             units: _volumeUnits,
-            fromCtrl: _fromVolCtrl, toCtrl: _toVolCtrl,
+            fromCtrl: _fromVolCtrl,
+            toCtrl: _toVolCtrl,
             fromFocus: _volFromFocus,
-            onFromChanged: (v) { _volFromFocus = true; _calcVolume(); },
-            onToChanged:   (v) { _volFromFocus = false; _calcVolumeReverse(); },
-            onFromUnitChanged: (u) => setState(() { _fromVol = u; _calcVolume(); }),
-            onToUnitChanged:   (u) => setState(() { _toVol = u; _calcVolume(); }),
+            onFromChanged: (v) {
+              _volFromFocus = true;
+              _calcVolume();
+            },
+            onToChanged: (v) {
+              _volFromFocus = false;
+              _calcVolumeReverse();
+            },
+            onFromUnitChanged: (u) => setState(() {
+              _fromVol = u;
+              _calcVolume();
+            }),
+            onToUnitChanged: (u) => setState(() {
+              _toVol = u;
+              _calcVolume();
+            }),
             onSwap: () => setState(() {
-              final tmp = _fromVol; _fromVol = _toVol; _toVol = tmp;
+              final tmp = _fromVol;
+              _fromVol = _toVol;
+              _toVol = tmp;
               final tv = _fromVolCtrl.text;
               _fromVolCtrl.text = _toVolCtrl.text;
               _toVolCtrl.text = tv;
@@ -784,7 +932,7 @@ class _ConverterPageState extends State<ConverterPage>
     required ValueChanged<_Unit> onToUnitChanged,
     required VoidCallback onSwap,
   }) {
-    final primary   = ColorsUI.getPrimary(brightness);
+    final primary = ColorsUI.getPrimary(brightness);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -822,7 +970,11 @@ class _ConverterPageState extends State<ConverterPage>
                           shape: BoxShape.circle,
                         ),
                         child: ExcludeSemantics(
-                          child: Icon(Icons.swap_vert_rounded, color: primary, size: 26),
+                          child: Icon(
+                            Icons.swap_vert_rounded,
+                            color: primary,
+                            size: 26,
+                          ),
                         ),
                       ),
                     ),
@@ -858,21 +1010,21 @@ class _ConverterPageState extends State<ConverterPage>
     required Brightness brightness,
     required bool isDark,
   }) {
-    final primary       = ColorsUI.getPrimary(brightness);
-    final textPrimary   = ColorsUI.getTextPrimary(brightness);
-    final onPrimary     = ColorsUI.getOnPrimary(brightness);
+    final primary = ColorsUI.getPrimary(brightness);
+    final textPrimary = ColorsUI.getTextPrimary(brightness);
+    final onPrimary = ColorsUI.getOnPrimary(brightness);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-
           // Info card
           _InfoCard(
             brightness: brightness,
             icon: Icons.info_outline_rounded,
-            text: 'Μετατροπή μεταξύ βάρους και όγκου ανάλογα με την πυκνότητα '
+            text:
+                'Μετατροπή μεταξύ βάρους και όγκου ανάλογα με την πυκνότητα '
                 'της επιλεγμένης ουσίας.',
           ),
 
@@ -887,14 +1039,21 @@ class _ConverterPageState extends State<ConverterPage>
                 Row(
                   children: [
                     ExcludeSemantics(
-                      child: Icon(Icons.science_rounded, color: primary, size: 18),
+                      child: Icon(
+                        Icons.science_rounded,
+                        color: primary,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Text('Ουσία',
-                        style: TextStyle(
-                            color: textPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14)),
+                    Text(
+                      'Ουσία',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -903,23 +1062,30 @@ class _ConverterPageState extends State<ConverterPage>
                   items: _substances,
                   label: (s) => '${s.label}  (${s.density} kg/L)',
                   brightness: brightness,
-                  onChanged: (s) => setState(() { _substance = s; _calcCross(); }),
+                  onChanged: (s) => setState(() {
+                    _substance = s;
+                    _calcCross();
+                  }),
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     'Πυκνότητα: ${_substance.density} kg/L  '
-                        '→  1 kg = ${_fmt(1.0 / _substance.density)} L  |  '
-                        '1 L = ${_fmt(_substance.density)} kg',
+                    '→  1 kg = ${_fmt(1.0 / _substance.density)} L  |  '
+                    '1 L = ${_fmt(_substance.density)} kg',
                     style: TextStyle(
-                        color: primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600),
+                      color: primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -979,9 +1145,15 @@ class _ConverterPageState extends State<ConverterPage>
                   unit: _crossFromWeight ? _crossWeightUnit : _crossVolUnit,
                   units: _crossFromWeight ? _weightUnits : _volumeUnits,
                   brightness: brightness,
-                  onChanged: (v) { _calcCross(); },
+                  onChanged: (v) {
+                    _calcCross();
+                  },
                   onUnitChanged: (u) => setState(() {
-                    if (_crossFromWeight) { _crossWeightUnit = u; } else { _crossVolUnit = u; }
+                    if (_crossFromWeight) {
+                      _crossWeightUnit = u;
+                    } else {
+                      _crossVolUnit = u;
+                    }
                     _calcCross();
                   }),
                   isFocused: true,
@@ -991,15 +1163,20 @@ class _ConverterPageState extends State<ConverterPage>
 
                 Center(
                   child: ExcludeSemantics(
-                    child: Icon(Icons.arrow_downward_rounded,
-                        color: primary, size: 26),
+                    child: Icon(
+                      Icons.arrow_downward_rounded,
+                      color: primary,
+                      size: 26,
+                    ),
                   ),
                 ),
 
                 const SizedBox(height: 8),
 
                 _UnitField(
-                  label: _crossFromWeight ? 'Υγρά (αποτέλεσμα)' : 'Βάρος (αποτέλεσμα)',
+                  label: _crossFromWeight
+                      ? 'Υγρά (αποτέλεσμα)'
+                      : 'Βάρος (αποτέλεσμα)',
                   ctrl: _crossToCtrl,
                   unit: _crossFromWeight ? _crossVolUnit : _crossWeightUnit,
                   units: _crossFromWeight ? _volumeUnits : _weightUnits,
@@ -1007,7 +1184,11 @@ class _ConverterPageState extends State<ConverterPage>
                   readOnly: true,
                   onChanged: (_) {},
                   onUnitChanged: (u) => setState(() {
-                    if (_crossFromWeight) { _crossVolUnit = u; } else { _crossWeightUnit = u; }
+                    if (_crossFromWeight) {
+                      _crossVolUnit = u;
+                    } else {
+                      _crossWeightUnit = u;
+                    }
                     _calcCross();
                   }),
                   isFocused: false,
@@ -1028,17 +1209,17 @@ class _ConverterPageState extends State<ConverterPage>
     required Brightness brightness,
     required bool isDark,
   }) {
-    final primary       = ColorsUI.getPrimary(brightness);
-    final textPrimary   = ColorsUI.getTextPrimary(brightness);
+    final primary = ColorsUI.getPrimary(brightness);
+    final textPrimary = ColorsUI.getTextPrimary(brightness);
     final textSecondary = ColorsUI.getTextSecondary(brightness);
-    final successColor  = isDark ? ColorsUI.successDark : ColorsUI.successLight;
+    final successColor = isDark ? ColorsUI.successDark : ColorsUI.successLight;
     ColorsUI.getInputFill(brightness);
-    final cardColor     = ColorsUI.getCard(brightness);
-    final connectivity  = context.watch<ConnectivityService>();
+    final cardColor = ColorsUI.getCard(brightness);
+    final connectivity = context.watch<ConnectivityService>();
 
     // Τρέχον αποτέλεσμα για εμφάνιση
     final fromSymbol = _currencySymbols[_fromCurrency] ?? _fromCurrency;
-    final toName     = _currencyNames[_toCurrency]     ?? _toCurrency;
+    final toName = _currencyNames[_toCurrency] ?? _toCurrency;
     final resultText = _toCurrCtrl.text.isNotEmpty ? _toCurrCtrl.text : '—';
 
     return SingleChildScrollView(
@@ -1046,10 +1227,8 @@ class _ConverterPageState extends State<ConverterPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-
           // ── Offline banner ───────────────────────
-          if (connectivity.isOffline)
-            _OfflineBanner(brightness: brightness),
+          if (connectivity.isOffline) _OfflineBanner(brightness: brightness),
 
           // ── Status card ──────────────────────────
           Container(
@@ -1059,13 +1238,13 @@ class _ConverterPageState extends State<ConverterPage>
               color: _ratesUpdatedAt != null
                   ? successColor.withValues(alpha: 0.12)
                   : (isDark ? ColorsUI.warningDark : ColorsUI.warningLight)
-                  .withValues(alpha: 0.10),
+                        .withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _ratesUpdatedAt != null
                     ? successColor.withValues(alpha: 0.4)
                     : (isDark ? ColorsUI.warningDark : ColorsUI.warningLight)
-                    .withValues(alpha: 0.4),
+                          .withValues(alpha: 0.4),
               ),
             ),
             child: Row(
@@ -1077,7 +1256,9 @@ class _ConverterPageState extends State<ConverterPage>
                         : Icons.info_outline_rounded,
                     color: _ratesUpdatedAt != null
                         ? successColor
-                        : (isDark ? ColorsUI.warningDark : ColorsUI.warningLight),
+                        : (isDark
+                              ? ColorsUI.warningDark
+                              : ColorsUI.warningLight),
                     size: 18,
                   ),
                 ),
@@ -1086,22 +1267,23 @@ class _ConverterPageState extends State<ConverterPage>
                   child: Text(
                     _ratesUpdatedAt != null
                         ? 'Ισοτιμίες ενημερωμένες: '
-                        '${DateFormat('HH:mm').format(_ratesUpdatedAt!)} — '
-                        'Πηγή: open.er-api.com'
+                              '${DateFormat('HH:mm').format(_ratesUpdatedAt!)} — '
+                              'Πηγή: open.er-api.com'
                         : 'Πατήστε ανανέωση για φόρτωση ισοτιμιών',
                     style: TextStyle(
                       color: _ratesUpdatedAt != null
                           ? successColor
                           : (isDark
-                          ? ColorsUI.warningDark
-                          : ColorsUI.warningLight),
+                                ? ColorsUI.warningDark
+                                : ColorsUI.warningLight),
                       fontSize: 12,
                     ),
                   ),
                 ),
                 if (_currencyLoading)
                   const SizedBox(
-                    width: 20, height: 20,
+                    width: 20,
+                    height: 20,
                     child: ExcludeSemantics(
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
@@ -1111,12 +1293,13 @@ class _ConverterPageState extends State<ConverterPage>
                     button: true,
                     label: 'Ανανέωση ισοτιμιών',
                     child: IconButton(
-                      icon: Icon(Icons.refresh_rounded,
-                          color: _ratesUpdatedAt != null
-                              ? successColor
-                              : primary),
-                      onPressed:
-                      connectivity.isOffline ? null : _fetchCurrencyRates,
+                      icon: Icon(
+                        Icons.refresh_rounded,
+                        color: _ratesUpdatedAt != null ? successColor : primary,
+                      ),
+                      onPressed: connectivity.isOffline
+                          ? null
+                          : _fetchCurrencyRates,
                     ),
                   ),
               ],
@@ -1134,13 +1317,16 @@ class _ConverterPageState extends State<ConverterPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Ποσό προς μετατροπή',
-                    style: TextStyle(color: textSecondary, fontSize: 12)),
+                Text(
+                  'Ποσό προς μετατροπή',
+                  style: TextStyle(color: textSecondary, fontSize: 12),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _fromCurrCtrl,
-                  keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
                   ],
@@ -1149,9 +1335,10 @@ class _ConverterPageState extends State<ConverterPage>
                     fillColor: primary.withValues(alpha: 0.06),
                     prefixText: '$fromSymbol ',
                     prefixStyle: TextStyle(
-                        color: textSecondary,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w500),
+                      color: textSecondary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w500,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide.none,
@@ -1161,12 +1348,15 @@ class _ConverterPageState extends State<ConverterPage>
                       borderSide: BorderSide(color: primary, width: 2),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 16),
+                      horizontal: 14,
+                      vertical: 16,
+                    ),
                   ),
                   style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold),
+                    color: textPrimary,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
                   onChanged: (v) {
                     _currFromFocus = true;
                     _calcCurrency();
@@ -1186,9 +1376,10 @@ class _ConverterPageState extends State<ConverterPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Από',
-                      style:
-                      TextStyle(color: textSecondary, fontSize: 12)),
+                  Text(
+                    'Από',
+                    style: TextStyle(color: textSecondary, fontSize: 12),
+                  ),
                   const SizedBox(height: 8),
                   _CurrencySelector(
                     currency: _fromCurrency,
@@ -1227,11 +1418,13 @@ class _ConverterPageState extends State<ConverterPage>
                     decoration: BoxDecoration(
                       color: cardColor,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                          color: ColorsUI.getBorder(brightness)),
+                      border: Border.all(color: ColorsUI.getBorder(brightness)),
                     ),
-                    child: Icon(Icons.swap_vert_rounded,
-                        color: primary, size: 24),
+                    child: Icon(
+                      Icons.swap_vert_rounded,
+                      color: primary,
+                      size: 24,
+                    ),
                   ),
                 ),
               ),
@@ -1243,9 +1436,10 @@ class _ConverterPageState extends State<ConverterPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Σε',
-                      style:
-                      TextStyle(color: textSecondary, fontSize: 12)),
+                  Text(
+                    'Σε',
+                    style: TextStyle(color: textSecondary, fontSize: 12),
+                  ),
                   const SizedBox(height: 8),
                   _CurrencySelector(
                     currency: _toCurrency,
@@ -1268,19 +1462,22 @@ class _ConverterPageState extends State<ConverterPage>
               brightness: brightness,
               child: Column(
                 children: [
-                  Text('Αποτέλεσμα',
-                      style: TextStyle(
-                          color: textSecondary, fontSize: 13)),
+                  Text(
+                    'Αποτέλεσμα',
+                    style: TextStyle(color: textSecondary, fontSize: 13),
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     '$fromSymbol ${_fromCurrCtrl.text.isEmpty ? "1" : _fromCurrCtrl.text}',
-                    style: TextStyle(
-                        color: textSecondary, fontSize: 15),
+                    style: TextStyle(color: textSecondary, fontSize: 15),
                   ),
                   const SizedBox(height: 4),
                   ExcludeSemantics(
-                    child: Icon(Icons.arrow_downward_rounded,
-                        color: textSecondary, size: 18),
+                    child: Icon(
+                      Icons.arrow_downward_rounded,
+                      color: textSecondary,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Row(
@@ -1309,9 +1506,10 @@ class _ConverterPageState extends State<ConverterPage>
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(toName,
-                      style: TextStyle(
-                          color: textSecondary, fontSize: 13)),
+                  Text(
+                    toName,
+                    style: TextStyle(color: textSecondary, fontSize: 13),
+                  ),
                   const SizedBox(height: 14),
                   // Αντιγραφή button
                   Semantics(
@@ -1321,23 +1519,22 @@ class _ConverterPageState extends State<ConverterPage>
                       onPressed: resultText == '—'
                           ? null
                           : () {
-                        Clipboard.setData(
-                            ClipboardData(text: resultText));
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(const SnackBar(
-                          content: Text('Αντιγράφηκε!'),
-                          duration: Duration(seconds: 2),
-                        ));
-                      },
+                              Clipboard.setData(
+                                ClipboardData(text: resultText),
+                              );
+                              AppMessenger.info(context, 'Αντιγράφηκε!');
+                            },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: primary,
                         side: BorderSide(color: primary),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        minimumSize:
-                        const Size(double.infinity, 44),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        minimumSize: const Size(double.infinity, 44),
                       ),
-                      icon: const ExcludeSemantics(child: Icon(Icons.copy_rounded, size: 16)),
+                      icon: const ExcludeSemantics(
+                        child: Icon(Icons.copy_rounded, size: 16),
+                      ),
                       label: const Text('Αντιγραφή'),
                     ),
                   ),
@@ -1356,27 +1553,27 @@ class _ConverterPageState extends State<ConverterPage>
                   Row(
                     children: [
                       ExcludeSemantics(
-                        child: Icon(Icons.currency_exchange_rounded,
-                            color: primary, size: 16),
+                        child: Icon(
+                          Icons.currency_exchange_rounded,
+                          color: primary,
+                          size: 16,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         '1 $_fromCurrency = ...',
                         style: TextStyle(
-                            color: textPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14),
+                          color: textPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Divider(
-                      color: ColorsUI.getDivider(brightness), height: 1),
-                  ..._currencyCodes
-                      .where((c) => c != _fromCurrency)
-                      .map((c) {
-                    final rF =
-                        _currencyRates![_fromCurrency] ?? 1.0;
+                  Divider(color: ColorsUI.getDivider(brightness), height: 1),
+                  ..._currencyCodes.where((c) => c != _fromCurrency).map((c) {
+                    final rF = _currencyRates![_fromCurrency] ?? 1.0;
                     final rC = _currencyRates![c] ?? 1.0;
                     final rate = rC / rF;
                     final sym = _currencySymbols[c] ?? c;
@@ -1384,8 +1581,7 @@ class _ConverterPageState extends State<ConverterPage>
                     return Column(
                       children: [
                         Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 9),
+                          padding: const EdgeInsets.symmetric(vertical: 9),
                           child: Row(
                             children: [
                               // Symbol badge
@@ -1393,43 +1589,45 @@ class _ConverterPageState extends State<ConverterPage>
                                 width: 36,
                                 height: 36,
                                 decoration: BoxDecoration(
-                                  color:
-                                  primary.withValues(alpha: 0.1),
-                                  borderRadius:
-                                  BorderRadius.circular(8),
+                                  color: primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Center(
                                   child: Text(
                                     sym,
                                     style: TextStyle(
-                                        color: primary,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: sym.length <= 2
-                                            ? 16
-                                            : 11),
+                                      color: primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: sym.length <= 2 ? 16 : 11,
+                                    ),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Text(name,
-                                    style: TextStyle(
-                                        color: textSecondary,
-                                        fontSize: 13)),
+                                child: Text(
+                                  name,
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               ),
                               Text(
                                 '${_fmt(rate)} $c',
                                 style: TextStyle(
-                                    color: textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13),
+                                  color: textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
                         ),
                         Divider(
-                            color: ColorsUI.getDivider(brightness),
-                            height: 1),
+                          color: ColorsUI.getDivider(brightness),
+                          height: 1,
+                        ),
                       ],
                     );
                   }),
@@ -1442,8 +1640,11 @@ class _ConverterPageState extends State<ConverterPage>
               child: Column(
                 children: [
                   ExcludeSemantics(
-                    child: Icon(Icons.currency_exchange_rounded,
-                        size: 48, color: primary.withValues(alpha: 0.4)),
+                    child: Icon(
+                      Icons.currency_exchange_rounded,
+                      size: 48,
+                      color: primary.withValues(alpha: 0.4),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -1460,7 +1661,9 @@ class _ConverterPageState extends State<ConverterPage>
                       backgroundColor: primary,
                       foregroundColor: ColorsUI.getOnPrimary(brightness),
                     ),
-                    icon: const ExcludeSemantics(child: Icon(Icons.refresh_rounded)),
+                    icon: const ExcludeSemantics(
+                      child: Icon(Icons.refresh_rounded),
+                    ),
                     label: const Text('Φόρτωση Ισοτιμιών'),
                   ),
                 ],
@@ -1479,11 +1682,11 @@ class _ConverterPageState extends State<ConverterPage>
     required Brightness brightness,
     required bool isDark,
   }) {
-    final primary       = ColorsUI.getPrimary(brightness);
-    final textPrimary   = ColorsUI.getTextPrimary(brightness);
+    final primary = ColorsUI.getPrimary(brightness);
+    final textPrimary = ColorsUI.getTextPrimary(brightness);
     final textSecondary = ColorsUI.getTextSecondary(brightness);
-    final successColor  = isDark ? ColorsUI.successDark : ColorsUI.successLight;
-    final connectivity  = context.watch<ConnectivityService>();
+    final successColor = isDark ? ColorsUI.successDark : ColorsUI.successLight;
+    final connectivity = context.watch<ConnectivityService>();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -1513,55 +1716,67 @@ class _ConverterPageState extends State<ConverterPage>
               onTap: _catalogLoading
                   ? null
                   : () async {
-                if (_cryptoCatalog.isEmpty) await _fetchCryptoCatalog();
-                if (!mounted) return;
-                final picked = await showModalBottomSheet<String>(
-                  context: context,
-                  backgroundColor: ColorsUI.getCard(brightness),
-                  isScrollControlled: true,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(20)),
-                  ),
-                  builder: (_) => _CryptoSearchSheet(
-                    catalog: _cryptoCatalog,
-                    watchedIds: _watchedIds,
-                    brightness: brightness,
-                  ),
-                );
-                if (picked != null && !_watchedIds.contains(picked)) {
-                  setState(() => _watchedIds.add(picked));
-                  _saveWatchedIds();
+                      if (_cryptoCatalog.isEmpty) await _fetchCryptoCatalog();
+                      if (!mounted) return;
+                      final picked = await showModalBottomSheet<String>(
+                        context: context,
+                        backgroundColor: ColorsUI.getCard(brightness),
+                        isScrollControlled: true,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(20),
+                          ),
+                        ),
+                        builder: (_) => _CryptoSearchSheet(
+                          catalog: _cryptoCatalog,
+                          watchedIds: _watchedIds,
+                          brightness: brightness,
+                        ),
+                      );
+                      if (picked != null && !_watchedIds.contains(picked)) {
+                        setState(() => _watchedIds.add(picked));
+                        _saveWatchedIds();
 
-                  // Περίμενε την υπόλοιπη ώρα του cooldown αντί να το μηδενίζεις
-                  final now = DateTime.now();
-                  final waitMs = _lastRefresh == null
-                      ? 0
-                      : (30000 - now.difference(_lastRefresh!).inMilliseconds).clamp(0, 30000);
+                        // Περίμενε την υπόλοιπη ώρα του cooldown αντί να το μηδενίζεις
+                        final now = DateTime.now();
+                        final waitMs = _lastRefresh == null
+                            ? 0
+                            : (30000 -
+                                      now
+                                          .difference(_lastRefresh!)
+                                          .inMilliseconds)
+                                  .clamp(0, 30000);
 
-                  if (waitMs == 0) {
-                    _refreshWatchedPrices();
-                  } else {
-                    DebugConfig.print('⏳ Νέο coin — refresh σε ${waitMs}ms');
-                    Future.delayed(Duration(milliseconds: waitMs), () {
-                      if (mounted) _refreshWatchedPrices();
-                    });
-                  }
-                }
-              },
+                        if (waitMs == 0) {
+                          _refreshWatchedPrices();
+                        } else {
+                          DebugConfig.print(
+                            '⏳ Νέο coin — refresh σε ${waitMs}ms',
+                          );
+                          Future.delayed(Duration(milliseconds: waitMs), () {
+                            if (mounted) _refreshWatchedPrices();
+                          });
+                        }
+                      }
+                    },
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: ColorsUI.getCard(brightness),
                   borderRadius: BorderRadius.circular(12),
-                  border:
-                  Border.all(color: primary.withValues(alpha: 0.4)),
+                  border: Border.all(color: primary.withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   children: [
                     ExcludeSemantics(
-                      child: Icon(Icons.search_rounded, color: primary, size: 20),
+                      child: Icon(
+                        Icons.search_rounded,
+                        color: primary,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1572,13 +1787,20 @@ class _ConverterPageState extends State<ConverterPage>
                     ),
                     if (_catalogLoading)
                       SizedBox(
-                        width: 18, height: 18,
+                        width: 18,
+                        height: 18,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: primary),
+                          strokeWidth: 2,
+                          color: primary,
+                        ),
                       )
                     else
                       ExcludeSemantics(
-                        child: Icon(Icons.add_circle_outline_rounded, color: primary, size: 20),
+                        child: Icon(
+                          Icons.add_circle_outline_rounded,
+                          color: primary,
+                          size: 20,
+                        ),
                       ),
                   ],
                 ),
@@ -1610,7 +1832,8 @@ class _ConverterPageState extends State<ConverterPage>
                 ),
                 if (_watchedLoading)
                   const SizedBox(
-                    width: 18, height: 18,
+                    width: 18,
+                    height: 18,
                     child: ExcludeSemantics(
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
@@ -1620,8 +1843,11 @@ class _ConverterPageState extends State<ConverterPage>
                     button: true,
                     label: 'Ανανέωση τιμών',
                     child: IconButton(
-                      icon: Icon(Icons.refresh_rounded,
-                          color: primary, size: 20),
+                      icon: Icon(
+                        Icons.refresh_rounded,
+                        color: primary,
+                        size: 20,
+                      ),
                       onPressed: connectivity.isOffline
                           ? null
                           : _refreshWatchedPrices,
@@ -1641,14 +1867,16 @@ class _ConverterPageState extends State<ConverterPage>
               child: Column(
                 children: [
                   ExcludeSemantics(
-                    child: Icon(Icons.bookmark_border_rounded,
-                        size: 44,
-                        color: primary.withValues(alpha: 0.35)),
+                    child: Icon(
+                      Icons.bookmark_border_rounded,
+                      size: 44,
+                      color: primary.withValues(alpha: 0.35),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     'Δεν παρακολουθείτε κανένα crypto ακόμα.\n'
-                        'Χρησιμοποιήστε την αναζήτηση για να προσθέσετε.',
+                    'Χρησιμοποιήστε την αναζήτηση για να προσθέσετε.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: textSecondary, fontSize: 13),
                   ),
@@ -1701,7 +1929,6 @@ class _ConverterPageState extends State<ConverterPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 // Info
                 if (_watchedIds.isEmpty)
                   Padding(
@@ -1709,12 +1936,16 @@ class _ConverterPageState extends State<ConverterPage>
                     child: _InfoCard(
                       brightness: brightness,
                       icon: Icons.info_outline_rounded,
-                      text: 'Προσθέστε crypto από την αναζήτηση για να ενεργοποιήσετε τη μετατροπή.',
+                      text:
+                          'Προσθέστε crypto από την αναζήτηση για να ενεργοποιήσετε τη μετατροπή.',
                     ),
                   ),
 
                 // FROM row
-                Text('Από', style: TextStyle(color: textSecondary, fontSize: 12)),
+                Text(
+                  'Από',
+                  style: TextStyle(color: textSecondary, fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 _ConvCryptoSelector(
                   selectedId: _convFromId,
@@ -1740,7 +1971,11 @@ class _ConverterPageState extends State<ConverterPage>
                         shape: BoxShape.circle,
                       ),
                       child: ExcludeSemantics(
-                        child: Icon(Icons.swap_vert_rounded, color: primary, size: 22),
+                        child: Icon(
+                          Icons.swap_vert_rounded,
+                          color: primary,
+                          size: 22,
+                        ),
                       ),
                     ),
                   ),
@@ -1748,7 +1983,10 @@ class _ConverterPageState extends State<ConverterPage>
                 const SizedBox(height: 8),
 
                 // TO row
-                Text('Σε', style: TextStyle(color: textSecondary, fontSize: 12)),
+                Text(
+                  'Σε',
+                  style: TextStyle(color: textSecondary, fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 _ConvCryptoSelector(
                   selectedId: _convToId,
@@ -1761,7 +1999,10 @@ class _ConverterPageState extends State<ConverterPage>
 
                 const SizedBox(height: 14),
                 ExcludeSemantics(
-                  child: Divider(color: ColorsUI.getDivider(brightness), height: 1),
+                  child: Divider(
+                    color: ColorsUI.getDivider(brightness),
+                    height: 1,
+                  ),
                 ),
                 const SizedBox(height: 14),
 
@@ -1771,7 +2012,9 @@ class _ConverterPageState extends State<ConverterPage>
                     Expanded(
                       child: TextField(
                         controller: _convAmtCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
                         ],
@@ -1781,7 +2024,10 @@ class _ConverterPageState extends State<ConverterPage>
                           prefixText: _convFromId != null
                               ? '${(_watchedData[_convFromId]?.symbol ?? _convFromId!).toUpperCase()} '
                               : '€ ',
-                          prefixStyle: TextStyle(color: textSecondary, fontSize: 16),
+                          prefixStyle: TextStyle(
+                            color: textSecondary,
+                            fontSize: 16,
+                          ),
                           hintText: '0',
                           hintStyle: TextStyle(color: textSecondary),
                           border: OutlineInputBorder(
@@ -1793,12 +2039,15 @@ class _ConverterPageState extends State<ConverterPage>
                             borderSide: BorderSide(color: primary, width: 2),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 14),
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
                         ),
                         style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold),
+                          color: textPrimary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
@@ -1808,105 +2057,126 @@ class _ConverterPageState extends State<ConverterPage>
                 const SizedBox(height: 12),
 
                 // Αποτέλεσμα
-                Builder(builder: (ctx) {
-                  final result   = _calcConversion();
-                  final eurValue = _calcEurValue(); // null αν δεν είναι crypto→crypto
-                  final toLabel  = _convToId != null
-                      ? (_watchedData[_convToId]?.symbol ?? _convToId!).toUpperCase()
-                      : 'EUR';
+                Builder(
+                  builder: (ctx) {
+                    final result = _calcConversion();
+                    final eurValue =
+                        _calcEurValue(); // null αν δεν είναι crypto→crypto
+                    final toLabel = _convToId != null
+                        ? (_watchedData[_convToId]?.symbol ?? _convToId!)
+                              .toUpperCase()
+                        : 'EUR';
 
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: successColor.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: successColor.withValues(alpha: 0.35)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Αποτέλεσμα',
-                            style: TextStyle(color: textSecondary, fontSize: 12)),
-                        const SizedBox(height: 6),
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: successColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: successColor.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Αποτέλεσμα',
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
 
-                        // Γραμμή 1: τεμάχια TO
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                result,
-                                style: TextStyle(
-                                  color: successColor,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
+                          // Γραμμή 1: τεμάχια TO
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  result,
+                                  style: TextStyle(
+                                    color: successColor,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Text(
-                              toLabel,
-                              style: TextStyle(
-                                color: successColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        // Γραμμή 2: αξία σε € (ΜΟΝΟ για crypto→crypto)
-                        if (eurValue != null) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              ExcludeSemantics(
-                                child: Icon(Icons.euro_rounded, color: textSecondary, size: 14),
-                              ),
-                              const SizedBox(width: 4),
                               Text(
-                                eurValue,
+                                toLabel,
                                 style: TextStyle(
-                                  color: textSecondary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                  color: successColor,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
                           ),
-                        ],
 
-                        if (result != '—' && result != '0') ...[
-                          const SizedBox(height: 10),
-                          Semantics(
-                            button: true,
-                            label: 'Αντιγραφή αποτελέσματος',
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                Clipboard.setData(ClipboardData(text: result));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Αντιγράφηκε!'),
-                                    duration: Duration(seconds: 2),
+                          // Γραμμή 2: αξία σε € (ΜΟΝΟ για crypto→crypto)
+                          if (eurValue != null) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                ExcludeSemantics(
+                                  child: Icon(
+                                    Icons.euro_rounded,
+                                    color: textSecondary,
+                                    size: 14,
                                   ),
-                                );
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: primary,
-                                side: BorderSide(color: primary),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8)),
-                              ),
-                              icon: const ExcludeSemantics(child: Icon(Icons.copy_rounded, size: 14)),
-                              label: const Text('Αντιγραφή', style: TextStyle(fontSize: 13)),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  eurValue,
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
+                          ],
+
+                          if (result != '—' && result != '0') ...[
+                            const SizedBox(height: 10),
+                            Semantics(
+                              button: true,
+                              label: 'Αντιγραφή αποτελέσματος',
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: result),
+                                  );
+                                  AppMessenger.info(context, 'Αντιγράφηκε!');
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: primary,
+                                  side: BorderSide(color: primary),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                icon: const ExcludeSemantics(
+                                  child: Icon(Icons.copy_rounded, size: 14),
+                                ),
+                                label: const Text(
+                                  'Αντιγραφή',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  );
-                }),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -1975,19 +2245,22 @@ class _UnitField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary   = ColorsUI.getPrimary(brightness);
+    final primary = ColorsUI.getPrimary(brightness);
     final textPrimary = ColorsUI.getTextPrimary(brightness);
-    final textSec   = ColorsUI.getTextSecondary(brightness);
+    final textSec = ColorsUI.getTextSecondary(brightness);
     final inputFill = ColorsUI.getInputFill(brightness);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: TextStyle(
-                color: textSec,
-                fontSize: 12,
-                fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: TextStyle(
+            color: textSec,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         const SizedBox(height: 6),
         Row(
           children: [
@@ -2000,11 +2273,11 @@ class _UnitField extends StatelessWidget {
                 child: TextField(
                   controller: ctrl,
                   readOnly: readOnly,
-                  keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'[\d.,\-eE]')),
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d.,\-eE]')),
                   ],
                   decoration: InputDecoration(
                     filled: true,
@@ -2020,12 +2293,15 @@ class _UnitField extends StatelessWidget {
                       borderSide: BorderSide(color: primary, width: 2),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12),
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                   ),
                   style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold),
+                    color: textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                   onChanged: onChanged,
                 ),
               ),
@@ -2070,9 +2346,9 @@ class _DropdownField<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary     = ColorsUI.getPrimary(brightness);
+    final primary = ColorsUI.getPrimary(brightness);
     final textPrimary = ColorsUI.getTextPrimary(brightness);
-    final inputFill   = ColorsUI.getInputFill(brightness);
+    final inputFill = ColorsUI.getInputFill(brightness);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -2080,7 +2356,8 @@ class _DropdownField<T> extends StatelessWidget {
         color: inputFill,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-            color: ColorsUI.getBorder(brightness).withValues(alpha: 0.5)),
+          color: ColorsUI.getBorder(brightness).withValues(alpha: 0.5),
+        ),
       ),
       child: DropdownButton<T>(
         value: value,
@@ -2089,16 +2366,27 @@ class _DropdownField<T> extends StatelessWidget {
         style: TextStyle(color: textPrimary, fontSize: 13),
         dropdownColor: ColorsUI.getCard(brightness),
         icon: ExcludeSemantics(
-          child: Icon(Icons.keyboard_arrow_down_rounded,
-              color: primary, size: 18),
+          child: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: primary,
+            size: 18,
+          ),
         ),
-        items: items.map((u) => DropdownMenuItem<T>(
-          value: u,
-          child: Text(label(u),
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: textPrimary, fontSize: 13)),
-        )).toList(),
-        onChanged: (v) { if (v != null) onChanged(v); },
+        items: items
+            .map(
+              (u) => DropdownMenuItem<T>(
+                value: u,
+                child: Text(
+                  label(u),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: textPrimary, fontSize: 13),
+                ),
+              ),
+            )
+            .toList(),
+        onChanged: (v) {
+          if (v != null) onChanged(v);
+        },
       ),
     );
   }
@@ -2121,12 +2409,12 @@ class _CurrencySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary     = ColorsUI.getPrimary(brightness);
+    final primary = ColorsUI.getPrimary(brightness);
     final textPrimary = ColorsUI.getTextPrimary(brightness);
-    final textSec     = ColorsUI.getTextSecondary(brightness);
-    final inputFill   = ColorsUI.getInputFill(brightness);
-    final sym  = _currencySymbols[currency] ?? currency;
-    final name = _currencyNames[currency]   ?? currency;
+    final textSec = ColorsUI.getTextSecondary(brightness);
+    final inputFill = ColorsUI.getInputFill(brightness);
+    final sym = _currencySymbols[currency] ?? currency;
+    final name = _currencyNames[currency] ?? currency;
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -2152,7 +2440,8 @@ class _CurrencySelector extends StatelessWidget {
           color: inputFill,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: ColorsUI.getBorder(brightness).withValues(alpha: 0.6)),
+            color: ColorsUI.getBorder(brightness).withValues(alpha: 0.6),
+          ),
         ),
         child: Row(
           children: [
@@ -2168,9 +2457,10 @@ class _CurrencySelector extends StatelessWidget {
                 child: Text(
                   sym,
                   style: TextStyle(
-                      color: primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: sym.length <= 2 ? 17 : 11),
+                    color: primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: sym.length <= 2 ? 17 : 11,
+                  ),
                 ),
               ),
             ),
@@ -2180,19 +2470,24 @@ class _CurrencySelector extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(currency,
-                      style: TextStyle(
-                          color: textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16)),
-                  Text(name,
-                      style: TextStyle(color: textSec, fontSize: 12)),
+                  Text(
+                    currency,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(name, style: TextStyle(color: textSec, fontSize: 12)),
                 ],
               ),
             ),
             ExcludeSemantics(
-              child: Icon(Icons.keyboard_arrow_down_rounded,
-                  color: textSec, size: 22),
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: textSec,
+                size: 22,
+              ),
             ),
           ],
         ),
@@ -2222,10 +2517,10 @@ class _CurrencyPickerSheetState extends State<_CurrencyPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final primary     = ColorsUI.getPrimary(widget.brightness);
+    final primary = ColorsUI.getPrimary(widget.brightness);
     final textPrimary = ColorsUI.getTextPrimary(widget.brightness);
-    final textSec     = ColorsUI.getTextSecondary(widget.brightness);
-    final inputFill   = ColorsUI.getInputFill(widget.brightness);
+    final textSec = ColorsUI.getTextSecondary(widget.brightness);
+    final inputFill = ColorsUI.getInputFill(widget.brightness);
 
     final filtered = widget.currencies.where((c) {
       if (_search.isEmpty) return true;
@@ -2243,7 +2538,8 @@ class _CurrencyPickerSheetState extends State<_CurrencyPickerSheet> {
           // Handle
           Container(
             margin: const EdgeInsets.only(top: 10, bottom: 8),
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
               color: textSec.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(2),
@@ -2265,8 +2561,7 @@ class _CurrencyPickerSheetState extends State<_CurrencyPickerSheet> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding:
-                const EdgeInsets.symmetric(vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
               style: TextStyle(color: textPrimary),
               onChanged: (v) => setState(() => _search = v),
@@ -2277,13 +2572,14 @@ class _CurrencyPickerSheetState extends State<_CurrencyPickerSheet> {
               controller: ctrl,
               itemCount: filtered.length,
               itemBuilder: (_, i) {
-                final c    = filtered[i];
-                final sym  = _currencySymbols[c] ?? c;
-                final name = _currencyNames[c]   ?? c;
+                final c = filtered[i];
+                final sym = _currencySymbols[c] ?? c;
+                final name = _currencyNames[c] ?? c;
                 final isSelected = c == widget.selected;
                 return ListTile(
                   leading: Container(
-                    width: 40, height: 40,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: isSelected
                           ? primary.withValues(alpha: 0.2)
@@ -2291,25 +2587,36 @@ class _CurrencyPickerSheetState extends State<_CurrencyPickerSheet> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
-                      child: Text(sym,
-                          style: TextStyle(
-                              color: primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: sym.length <= 2 ? 15 : 10)),
+                      child: Text(
+                        sym,
+                        style: TextStyle(
+                          color: primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: sym.length <= 2 ? 15 : 10,
+                        ),
+                      ),
                     ),
                   ),
-                  title: Text(c,
-                      style: TextStyle(
-                          color: textPrimary,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal)),
-                  subtitle: Text(name,
-                      style: TextStyle(color: textSec, fontSize: 12)),
+                  title: Text(
+                    c,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  subtitle: Text(
+                    name,
+                    style: TextStyle(color: textSec, fontSize: 12),
+                  ),
                   trailing: isSelected
                       ? ExcludeSemantics(
-                    child: Icon(Icons.check_circle_rounded, color: primary),
-                  )
+                          child: Icon(
+                            Icons.check_circle_rounded,
+                            color: primary,
+                          ),
+                        )
                       : null,
                   onTap: () => Navigator.pop(context, c),
                 );
@@ -2357,23 +2664,29 @@ class _DirectionBtn extends StatelessWidget {
             color: selected ? primary : primary.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-                color: selected ? primary : primary.withValues(alpha: 0.3)),
+              color: selected ? primary : primary.withValues(alpha: 0.3),
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ExcludeSemantics(
-              child: Icon(icon,
-              size: 16,
-              color: selected ? onPrimary : textPrimary),
-        ),
+                child: Icon(
+                  icon,
+                  size: 16,
+                  color: selected ? onPrimary : textPrimary,
+                ),
+              ),
               const SizedBox(width: 6),
               Flexible(
-                child: Text(label,
-                    style: TextStyle(
-                        color: selected ? onPrimary : textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600)),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? onPrimary : textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
@@ -2389,8 +2702,11 @@ class _InfoCard extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _InfoCard(
-      {required this.brightness, required this.icon, required this.text});
+  const _InfoCard({
+    required this.brightness,
+    required this.icon,
+    required this.text,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2407,13 +2723,11 @@ class _InfoCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ExcludeSemantics(
-            child: Icon(icon, size: 16, color: color),
-          ),
+          ExcludeSemantics(child: Icon(icon, size: 16, color: color)),
           const SizedBox(width: 8),
           Expanded(
-              child: Text(text,
-                  style: TextStyle(color: color, fontSize: 12))),
+            child: Text(text, style: TextStyle(color: color, fontSize: 12)),
+          ),
         ],
       ),
     );
@@ -2445,7 +2759,9 @@ class _ErrorCard extends StatelessWidget {
             child: Icon(Icons.error_outline_rounded, size: 16, color: color),
           ),
           const SizedBox(width: 8),
-          Expanded(child: Text(message, style: TextStyle(color: color, fontSize: 12))),
+          Expanded(
+            child: Text(message, style: TextStyle(color: color, fontSize: 12)),
+          ),
         ],
       ),
     );
@@ -2496,19 +2812,30 @@ class _SectionHeader extends StatelessWidget {
   final String label;
   final IconData icon;
   final Brightness brightness;
-  const _SectionHeader({required this.label, required this.icon, required this.brightness});
+  const _SectionHeader({
+    required this.label,
+    required this.icon,
+    required this.brightness,
+  });
 
   @override
   Widget build(BuildContext context) {
     final primary = ColorsUI.getPrimary(brightness);
     final textPrimary = ColorsUI.getTextPrimary(brightness);
-    return Row(children: [
-      ExcludeSemantics(
-        child: Icon(icon, color: primary, size: 16),
-      ),
-      const SizedBox(width: 8),
-      Text(label, style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
-    ]);
+    return Row(
+      children: [
+        ExcludeSemantics(child: Icon(icon, color: primary, size: 16)),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            color: textPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -2536,8 +2863,8 @@ class _WatchedCryptoCard extends StatelessWidget {
 
   String _fmtPrice(double v) {
     if (v >= 1000) return NumberFormat('#,##0.00', 'el_GR').format(v);
-    if (v >= 1)    return NumberFormat('#,##0.0000', 'el_GR').format(v);
-    if (v <= 0)    return '0';
+    if (v >= 1) return NumberFormat('#,##0.0000', 'el_GR').format(v);
+    if (v <= 0) return '0';
     final s = v.toStringAsFixed(10).replaceAll(RegExp(r'0+$'), '');
     final dot = s.indexOf('.');
     if (dot == -1) return s;
@@ -2546,21 +2873,24 @@ class _WatchedCryptoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary       = ColorsUI.getPrimary(brightness);
-    final textPrimary   = ColorsUI.getTextPrimary(brightness);
+    final primary = ColorsUI.getPrimary(brightness);
+    final textPrimary = ColorsUI.getTextPrimary(brightness);
     final textSecondary = ColorsUI.getTextSecondary(brightness);
-    final successColor  = isDark ? ColorsUI.successDark : ColorsUI.successLight;
-    final errorColor    = isDark ? ColorsUI.errorDark   : ColorsUI.errorLight;
-    final infoColor     = isDark ? ColorsUI.infoDark    : ColorsUI.infoLight;
+    final successColor = isDark ? ColorsUI.successDark : ColorsUI.successLight;
+    final errorColor = isDark ? ColorsUI.errorDark : ColorsUI.errorLight;
+    final infoColor = isDark ? ColorsUI.infoDark : ColorsUI.infoLight;
 
-    final borderColor = isSelectedFrom ? primary
-        : isSelectedTo ? infoColor
+    final borderColor = isSelectedFrom
+        ? primary
+        : isSelectedTo
+        ? infoColor
         : ColorsUI.getBorder(brightness);
     final up = (item?.change24h ?? 0) >= 0;
     final chColor = up ? successColor : errorColor;
 
     return Semantics(
-      label: '${item?.name ?? id}, τιμή ${item != null ? _fmtPrice(item!.price) : "φόρτωση"} EUR',
+      label:
+          '${item?.name ?? id}, τιμή ${item != null ? _fmtPrice(item!.price) : "φόρτωση"} EUR',
       button: true,
       child: GestureDetector(
         onTap: onSelect,
@@ -2570,88 +2900,172 @@ class _WatchedCryptoCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: ColorsUI.getCard(brightness),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: borderColor, width: isSelectedFrom || isSelectedTo ? 2 : 1),
-            boxShadow: [BoxShadow(
-              color: isDark ? ColorsUI.shadowDark : ColorsUI.shadowLight,
-              blurRadius: 4, offset: const Offset(0, 1),
-            )],
-          ),
-          child: Row(children: [
-            if (item?.image != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: Image.network(item!.image!, width: 34, height: 34,
-                    errorBuilder: (_, _, _) => _CryptoFallbackIcon(
-                        symbol: item!.symbol.isNotEmpty ? item!.symbol[0] : '?',
-                        primary: primary)),
-              )
-            else
-              _CryptoFallbackIcon(
-                  symbol: (item?.symbol ?? id).isNotEmpty ? (item?.symbol ?? id)[0].toUpperCase() : '?',
-                  primary: primary),
-
-            const SizedBox(width: 10),
-
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(item?.name ?? id, style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
-              Text(item?.symbol ?? '', style: TextStyle(color: textSecondary, fontSize: 11)),
-            ])),
-
-            if (item != null)
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text('${_fmtPrice(item!.price)} €',
-                    style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  ExcludeSemantics(
-                    child: Icon(up ? Icons.arrow_drop_up_rounded : Icons.arrow_drop_down_rounded,
-                        color: chColor, size: 15),
-                  ),
-                  Text('${item!.change24h.abs().toStringAsFixed(2)}%',
-                      style: TextStyle(color: chColor, fontSize: 11, fontWeight: FontWeight.bold)),
-                ]),
-              ])
-            else
-              Text(
-                'Ενημέρωση...',
-                style: TextStyle(
-                  color: ColorsUI.getPrimary(brightness),
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-            const SizedBox(width: 6),
-
-            if (isSelectedFrom)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-                child: Text('ΑΠΟ', style: TextStyle(color: primary, fontSize: 10, fontWeight: FontWeight.bold)),
-              )
-            else if (isSelectedTo)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: infoColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-                child: Text('ΣΕ', style: TextStyle(color: infoColor, fontSize: 10, fontWeight: FontWeight.bold)),
-              ),
-
-            const SizedBox(width: 4),
-
-            Semantics(
-              button: true,
-              label: 'Αφαίρεση',
-              child: InkWell(
-                onTap: onRemove,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: ExcludeSemantics(
-                    child: Icon(Icons.close_rounded, size: 16, color: textSecondary.withValues(alpha: 0.6)),
-                  ),
-                ),
-              ),
+            border: Border.all(
+              color: borderColor,
+              width: isSelectedFrom || isSelectedTo ? 2 : 1,
             ),
-          ]),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? ColorsUI.shadowDark : ColorsUI.shadowLight,
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              if (item?.image != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Image.network(
+                    item!.image!,
+                    width: 34,
+                    height: 34,
+                    errorBuilder: (_, _, _) => _CryptoFallbackIcon(
+                      symbol: item!.symbol.isNotEmpty ? item!.symbol[0] : '?',
+                      primary: primary,
+                    ),
+                  ),
+                )
+              else
+                _CryptoFallbackIcon(
+                  symbol: (item?.symbol ?? id).isNotEmpty
+                      ? (item?.symbol ?? id)[0].toUpperCase()
+                      : '?',
+                  primary: primary,
+                ),
+
+              const SizedBox(width: 10),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item?.name ?? id,
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      item?.symbol ?? '',
+                      style: TextStyle(color: textSecondary, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (item != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${_fmtPrice(item!.price)} €',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ExcludeSemantics(
+                          child: Icon(
+                            up
+                                ? Icons.arrow_drop_up_rounded
+                                : Icons.arrow_drop_down_rounded,
+                            color: chColor,
+                            size: 15,
+                          ),
+                        ),
+                        Text(
+                          '${item!.change24h.abs().toStringAsFixed(2)}%',
+                          style: TextStyle(
+                            color: chColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              else
+                Text(
+                  'Ενημέρωση...',
+                  style: TextStyle(
+                    color: ColorsUI.getPrimary(brightness),
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+              const SizedBox(width: 6),
+
+              if (isSelectedFrom)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'ΑΠΟ',
+                    style: TextStyle(
+                      color: primary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+              else if (isSelectedTo)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: infoColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'ΣΕ',
+                    style: TextStyle(
+                      color: infoColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+              const SizedBox(width: 4),
+
+              Semantics(
+                button: true,
+                label: 'Αφαίρεση',
+                child: InkWell(
+                  onTap: onRemove,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: ExcludeSemantics(
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 16,
+                        color: textSecondary.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2667,10 +3081,22 @@ class _CryptoFallbackIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 34, height: 34,
-      decoration: BoxDecoration(color: primary.withValues(alpha: 0.15), shape: BoxShape.circle),
-      child: Center(child: Text(symbol,
-          style: TextStyle(color: primary, fontWeight: FontWeight.bold, fontSize: 14))),
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: primary.withValues(alpha: 0.15),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          symbol,
+          style: TextStyle(
+            color: primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -2695,46 +3121,85 @@ class _ConvCryptoSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary     = ColorsUI.getPrimary(brightness);
+    final primary = ColorsUI.getPrimary(brightness);
     final textPrimary = ColorsUI.getTextPrimary(brightness);
-    final textSec     = ColorsUI.getTextSecondary(brightness);
-    final inputFill   = ColorsUI.getInputFill(brightness);
+    final textSec = ColorsUI.getTextSecondary(brightness);
+    final inputFill = ColorsUI.getInputFill(brightness);
 
     final items = <DropdownMenuItem<String?>>[
       DropdownMenuItem<String?>(
         value: null,
-        child: Row(children: [
-          Container(
-            width: 28, height: 28,
-            decoration: BoxDecoration(color: primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-            child: Center(child: Text('€', style: TextStyle(color: primary, fontWeight: FontWeight.bold))),
-          ),
-          const SizedBox(width: 10),
-          Text(label, style: TextStyle(color: textPrimary, fontSize: 14)),
-        ]),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Center(
+                child: Text(
+                  '€',
+                  style: TextStyle(color: primary, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(label, style: TextStyle(color: textPrimary, fontSize: 14)),
+          ],
+        ),
       ),
       ...watchedIds.map((id) {
         final item = watchedData[id];
-        final sym  = item?.symbol ?? id.toUpperCase();
-        final name = item?.name   ?? id;
+        final sym = item?.symbol ?? id.toUpperCase();
+        final name = item?.name ?? id;
         return DropdownMenuItem<String?>(
           value: id,
-          child: Row(children: [
-            if (item?.image != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Image.network(item!.image!, width: 28, height: 28,
+          child: Row(
+            children: [
+              if (item?.image != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.network(
+                    item!.image!,
+                    width: 28,
+                    height: 28,
                     errorBuilder: (_, _, _) => _CryptoFallbackIcon(
-                        symbol: sym.isNotEmpty ? sym[0] : '?', primary: primary)),
-              )
-            else
-              _CryptoFallbackIcon(symbol: sym.isNotEmpty ? sym[0] : '?', primary: primary),
-            const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(sym, style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
-              Text(name, style: TextStyle(color: textSec, fontSize: 11), overflow: TextOverflow.ellipsis),
-            ])),
-          ]),
+                      symbol: sym.isNotEmpty ? sym[0] : '?',
+                      primary: primary,
+                    ),
+                  ),
+                )
+              else
+                _CryptoFallbackIcon(
+                  symbol: sym.isNotEmpty ? sym[0] : '?',
+                  primary: primary,
+                ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      sym,
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      name,
+                      style: TextStyle(color: textSec, fontSize: 11),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       }),
     ];
@@ -2744,7 +3209,9 @@ class _ConvCryptoSelector extends StatelessWidget {
       decoration: BoxDecoration(
         color: inputFill,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ColorsUI.getBorder(brightness).withValues(alpha: 0.6)),
+        border: Border.all(
+          color: ColorsUI.getBorder(brightness).withValues(alpha: 0.6),
+        ),
       ),
       child: DropdownButton<String?>(
         value: selectedId,
@@ -2782,84 +3249,113 @@ class _CryptoSearchSheetState extends State<_CryptoSearchSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final primary     = ColorsUI.getPrimary(widget.brightness);
+    final primary = ColorsUI.getPrimary(widget.brightness);
     final textPrimary = ColorsUI.getTextPrimary(widget.brightness);
-    final textSec     = ColorsUI.getTextSecondary(widget.brightness);
-    final inputFill   = ColorsUI.getInputFill(widget.brightness);
+    final textSec = ColorsUI.getTextSecondary(widget.brightness);
+    final inputFill = ColorsUI.getInputFill(widget.brightness);
 
     final filtered = widget.catalog.where((c) {
       if (_q.isEmpty) return true;
       final q = _q.toLowerCase();
-      return c.name.toLowerCase().contains(q) || c.symbol.toLowerCase().contains(q);
+      return c.name.toLowerCase().contains(q) ||
+          c.symbol.toLowerCase().contains(q);
     }).toList();
 
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.75,
       maxChildSize: 0.95,
-      builder: (_, ctrl) => Column(children: [
-        Container(
-          margin: const EdgeInsets.only(top: 10, bottom: 8),
-          width: 40, height: 4,
-          decoration: BoxDecoration(
-            color: textSec.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: TextField(
-            autofocus: true,
-            decoration: InputDecoration(
-              hintText: 'Αναζήτηση (Bitcoin, BTC, ETH...)',
-              hintStyle: TextStyle(color: textSec),
-              prefixIcon: ExcludeSemantics(
-                child: Icon(Icons.search_rounded, color: textSec),
-              ),
-              filled: true, fillColor: inputFill,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+      builder: (_, ctrl) => Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: textSec.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
             ),
-            style: TextStyle(color: textPrimary),
-            onChanged: (v) => setState(() => _q = v),
           ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            controller: ctrl,
-            itemCount: filtered.length,
-            itemBuilder: (_, i) {
-              final c = filtered[i];
-              final isWatched = widget.watchedIds.contains(c.id);
-              return ListTile(
-                leading: c.image != null
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: Image.network(c.image!, width: 36, height: 36,
-                      errorBuilder: (_, _, _) => _CryptoFallbackIcon(
-                          symbol: c.symbol[0], primary: primary)),
-                )
-                    : _CryptoFallbackIcon(symbol: c.symbol[0], primary: primary),
-                title: Text(c.name, style: TextStyle(
-                    color: textPrimary,
-                    fontWeight: isWatched ? FontWeight.bold : FontWeight.normal)),
-                subtitle: Text(c.symbol, style: TextStyle(color: textSec, fontSize: 12)),
-                trailing: isWatched
-                    ? ExcludeSemantics(
-                  child: Icon(Icons.check_circle_rounded, color: primary),
-                )
-                    : ExcludeSemantics(
-                  child: Icon(Icons.add_circle_outline_rounded, color: primary.withValues(alpha: 0.7)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: TextField(
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Αναζήτηση (Bitcoin, BTC, ETH...)',
+                hintStyle: TextStyle(color: textSec),
+                prefixIcon: ExcludeSemantics(
+                  child: Icon(Icons.search_rounded, color: textSec),
                 ),
-                onTap: isWatched ? null : () => Navigator.pop(context, c.id),
-              );
-            },
+                filled: true,
+                fillColor: inputFill,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              style: TextStyle(color: textPrimary),
+              onChanged: (v) => setState(() => _q = v),
+            ),
           ),
-        ),
-      ]),
+          Expanded(
+            child: ListView.builder(
+              controller: ctrl,
+              itemCount: filtered.length,
+              itemBuilder: (_, i) {
+                final c = filtered[i];
+                final isWatched = widget.watchedIds.contains(c.id);
+                return ListTile(
+                  leading: c.image != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: Image.network(
+                            c.image!,
+                            width: 36,
+                            height: 36,
+                            errorBuilder: (_, _, _) => _CryptoFallbackIcon(
+                              symbol: c.symbol[0],
+                              primary: primary,
+                            ),
+                          ),
+                        )
+                      : _CryptoFallbackIcon(
+                          symbol: c.symbol[0],
+                          primary: primary,
+                        ),
+                  title: Text(
+                    c.name,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontWeight: isWatched
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  subtitle: Text(
+                    c.symbol,
+                    style: TextStyle(color: textSec, fontSize: 12),
+                  ),
+                  trailing: isWatched
+                      ? ExcludeSemantics(
+                          child: Icon(
+                            Icons.check_circle_rounded,
+                            color: primary,
+                          ),
+                        )
+                      : ExcludeSemantics(
+                          child: Icon(
+                            Icons.add_circle_outline_rounded,
+                            color: primary.withValues(alpha: 0.7),
+                          ),
+                        ),
+                  onTap: isWatched ? null : () => Navigator.pop(context, c.id),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

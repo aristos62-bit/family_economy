@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'tank_type.dart';
 import 'utils.dart' as oil_utils;
 
@@ -118,12 +119,9 @@ class _CurrentLevelCardState extends State<CurrentLevelCard> {
                                   _heightCtrl.text,
                                 );
                                 if (value == null || value < 0) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Δώστε έγκυρο αριθμό πόντων.',
-                                      ),
-                                    ),
+                                  AppMessenger.warning(
+                                    context,
+                                    'Δώστε έγκυρο αριθμό πόντων.',
                                   );
                                   return;
                                 }

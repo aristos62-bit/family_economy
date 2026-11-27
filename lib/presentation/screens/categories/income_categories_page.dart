@@ -17,6 +17,8 @@ import 'package:family_economy/providers/categories_provider.dart';
 import 'package:family_economy/presentation/dialogs/category_actions_dialog.dart';
 import 'package:family_economy/presentation/dialogs/edit_category_dialog.dart';
 import 'package:family_economy/presentation/dialogs/create_type_selector_dialog.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 
 class IncomeCategoriesPage extends StatefulWidget {
   const IncomeCategoriesPage({super.key});
@@ -288,19 +290,12 @@ class _IncomeCategoriesPageState extends State<IncomeCategoriesPage> {
           });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Η κατηγορία ενημερώθηκε επιτυχώς'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppMessenger.success(context, 'Η κατηγορία ενημερώθηκε επιτυχώς');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Σφάλμα: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+      AppMessenger.error(
+        context,
+        MessagePolicy.fromError(e, action: 'ενημέρωσης κατηγορίας'),
       );
     }
   }
@@ -338,19 +333,12 @@ class _IncomeCategoriesPageState extends State<IncomeCategoriesPage> {
           });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Η υποκατηγορία ενημερώθηκε επιτυχώς'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppMessenger.success(context, 'Η υποκατηγορία ενημερώθηκε επιτυχώς');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Σφάλμα: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+      AppMessenger.error(
+        context,
+        MessagePolicy.fromError(e, action: 'ενημέρωσης υποκατηγορίας'),
       );
     }
   }
@@ -395,19 +383,12 @@ class _IncomeCategoriesPageState extends State<IncomeCategoriesPage> {
           });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Η κατηγορία διαγράφηκε επιτυχώς'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppMessenger.success(context, 'Η κατηγορία διαγράφηκε επιτυχώς');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Σφάλμα: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+      AppMessenger.error(
+        context,
+        MessagePolicy.fromError(e, action: 'διαγραφής κατηγορίας'),
       );
     }
   }
@@ -455,19 +436,12 @@ class _IncomeCategoriesPageState extends State<IncomeCategoriesPage> {
           });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Η υποκατηγορία διαγράφηκε επιτυχώς'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppMessenger.success(context, 'Η υποκατηγορία διαγράφηκε επιτυχώς');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Σφάλμα: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+      AppMessenger.error(
+        context,
+        MessagePolicy.fromError(e, action: 'διαγραφής υποκατηγορίας'),
       );
     }
   }
@@ -597,7 +571,10 @@ class _IncomeCategoriesPageState extends State<IncomeCategoriesPage> {
       _showSuccess(ctx, 'Η κατηγορία δημιουργήθηκε');
     } catch (e) {
       if (!context.mounted) return;
-      _showError(ctx, 'Σφάλμα δημιουργίας: ${e.toString()}');
+      _showError(
+        ctx,
+        MessagePolicy.fromError(e, action: 'δημιουργίας κατηγορίας'),
+      );
     }
   }
 
@@ -670,7 +647,10 @@ class _IncomeCategoriesPageState extends State<IncomeCategoriesPage> {
       _showSuccess(ctx, 'Η υποκατηγορία δημιουργήθηκε');
     } catch (e) {
       if (!context.mounted) return;
-      _showError(ctx, 'Σφάλμα δημιουργίας: ${e.toString()}');
+      _showError(
+        ctx,
+        MessagePolicy.fromError(e, action: 'δημιουργίας υποκατηγορίας'),
+      );
     }
   }
 
@@ -740,22 +720,15 @@ class _IncomeCategoriesPageState extends State<IncomeCategoriesPage> {
   // ============================================================
 
   void _showSuccess(BuildContext ctx, String message) {
-    ScaffoldMessenger.of(ctx).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
+    AppMessenger.success(ctx, message);
   }
 
   void _showInfo(BuildContext ctx, String message) {
-    ScaffoldMessenger.of(ctx).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.orange),
-    );
+    AppMessenger.warning(ctx, message);
   }
 
   void _showError(BuildContext ctx, String message) {
-    AccessibilityService.announceError(message);
-    ScaffoldMessenger.of(ctx).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+    AppMessenger.error(ctx, message);
   }
 }
 

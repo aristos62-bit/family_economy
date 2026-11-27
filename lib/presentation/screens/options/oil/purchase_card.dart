@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 import 'tank_type.dart';
 import 'tank_calculations.dart';
 import 'utils.dart' as oil_utils;
@@ -14,7 +16,7 @@ import 'package:family_economy/core/session/session_scope.dart';
 class PurchaseCard extends StatefulWidget {
   final TankSettings settings;
   final TankCalculator calculator;
-  final void Function(TankSettings) onPurchaseSaved;  // changed
+  final void Function(TankSettings) onPurchaseSaved; // changed
   final Future<void> Function(String userId) recalculateAvgCost;
 
   const PurchaseCard({
@@ -59,36 +61,29 @@ class _PurchaseCardState extends State<PurchaseCard> {
   double get tankCapacity => widget.calculator.capacity;
 
   Future<void> _savePurchase() async {
-
     // Κλείνουμε το πληκτρολόγιο για να ενημερωθούν τυχόν επεξεργαζόμενα πεδία
     FocusScope.of(context).unfocus();
-    await Future.delayed(Duration.zero); // δίνουμε χρόνο να ολοκληρωθεί το unfocus
+    await Future.delayed(
+      Duration.zero,
+    ); // δίνουμε χρόνο να ολοκληρωθεί το unfocus
 
     final liters = oil_utils.parseDouble(_litersCtrl.text) ?? 0;
     final price = oil_utils.parseDouble(_priceCtrl.text) ?? 0;
 
     if (liters <= 0 || price <= 0) {
-      if (!mounted)return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Συμπληρώστε τιμή ανά λίτρο και λίτρα αγοράς.'),
-        ),
-      );
-      AccessibilityService.announceError(
+      if (!mounted) return;
+      AppMessenger.warning(
+        context,
         'Συμπληρώστε τιμή ανά λίτρο και λίτρα αγοράς.',
       );
       return;
     }
-    if (!mounted)return;
+    if (!mounted) return;
     final connectivity = context.read<ConnectivityService>();
     if (connectivity.isOffline) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Εκτός σύνδεσης — δεν είναι δυνατή η αποθήκευση.'),
-        ),
-      );
-      AccessibilityService.announceError(
-        'Εκτός σύνδεσης. Δεν είναι δυνατή η αποθήκευση.',
+      AppMessenger.warning(
+        context,
+        'Εκτός σύνδεσης — δεν είναι δυνατή η αποθήκευση.',
       );
       return;
     }
@@ -158,26 +153,19 @@ class _PurchaseCardState extends State<PurchaseCard> {
         _selectedDate = DateTime.now();
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Αγορά καταχωρήθηκε! '
-            '${cappedTotal.toStringAsFixed(1)} λίτρα στη δεξαμενή | '
-            '${newAvgCost.toStringAsFixed(3)} €/λίτρο (μέσο)',
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
-      AccessibilityService.announcePolite(
-        'Αγορά καταχωρήθηκε. Νέα ποσότητα ${cappedTotal.toStringAsFixed(1)} λίτρα. '
-        'Μέσο κόστος ${newAvgCost.toStringAsFixed(3)} ευρώ ανά λίτρο.',
+      AppMessenger.success(
+        context,
+        'Αγορά καταχωρήθηκε! '
+        '${cappedTotal.toStringAsFixed(1)} λίτρα στη δεξαμενή | '
+        '${newAvgCost.toStringAsFixed(3)} €/λίτρο (μέσο)',
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      final msg = 'Αποτυχία καταχώρησης αγοράς: ${e.toString()}';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      AccessibilityService.announceError(msg);
+      AppMessenger.error(
+        context,
+        MessagePolicy.fromError(e, action: 'καταχώρησης αγοράς'),
+      );
     }
   }
 
@@ -286,18 +274,18 @@ class _PurchaseCardState extends State<PurchaseCard> {
               ),
               icon: _isSaving
                   ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: ExcludeSemantics(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                ),
-              )
+                      width: 18,
+                      height: 18,
+                      child: ExcludeSemantics(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                    )
                   : const ExcludeSemantics(
-                child: Icon(Icons.add_circle_rounded, size: 20),
-              ),
+                      child: Icon(Icons.add_circle_rounded, size: 20),
+                    ),
               label: Text(_isSaving ? 'Αποθήκευση...' : 'Καταχώρηση Αγοράς'),
             ),
           ],

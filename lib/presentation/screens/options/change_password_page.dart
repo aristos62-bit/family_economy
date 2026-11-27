@@ -2,8 +2,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/session/session_scope.dart';
+import 'package:family_economy/core/utils/debug_config.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -118,14 +121,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
       if (!mounted) return;
 
-      AccessibilityService.announceSuccess('Ο κωδικός άλλαξε επιτυχώς');
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Ο κωδικός άλλαξε επιτυχώς'),
-          backgroundColor: ColorsUI.getIncomeColor(context.brightness),
-        ),
-      );
+      AppMessenger.success(context, 'Ο κωδικός άλλαξε επιτυχώς');
 
       Navigator.of(context).maybePop();
     } on FirebaseAuthException catch (e) {
@@ -135,7 +131,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         setState(() => _error = msg);
       }
     } catch (e) {
-      final msg = 'Σφάλμα: $e';
+      final msg = MessagePolicy.fromError(e, action: 'αλλαγής κωδικού');
       if (mounted) {
         AccessibilityService.announceError(msg);
         setState(() => _error = msg);
@@ -155,7 +151,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       case 'requires-recent-login':
         return 'Για λόγους ασφαλείας, κάντε ξανά σύνδεση και δοκιμάστε';
       default:
-        return 'Αποτυχία αλλαγής κωδικού (${e.code})';
+        DebugConfig.print('❌ change password error: ${e.code}');
+        return 'Αποτυχία αλλαγής κωδικού. Δοκιμάστε ξανά.';
     }
   }
 
@@ -277,15 +274,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               onPressed: _saving ? null : _changePassword,
                               child: _saving
                                   ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: ExcludeSemantics(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(Colors.white),
-                                  ),
-                                ),
-                              )
+                                      height: 20,
+                                      width: 20,
+                                      child: ExcludeSemantics(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    )
                                   : const Text('Αλλαγή κωδικού'),
                             ),
                           ),
