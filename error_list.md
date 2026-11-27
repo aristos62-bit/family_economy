@@ -19,6 +19,8 @@
 > **E58/E59** ✅ διορθώθηκαν 25/11/2026 (`2.3.10+17`): όλη η εκκίνηση (theme/notifications/connectivity) μπήκε σε δοχείο σφάλματος με per-step timeouts και η άδεια ειδοποιήσεων ζητείται μετά το πρώτο frame· το `Phoenix` + `flutter_phoenix` αφαιρέθηκαν.
 > **E15/L6** ✅ διορθώθηκαν 25/11/2026 (χωρίς version bump, κεφ. 40): νεκρός κώδικας + no-op sync hook αφαιρέθηκαν· το χρέος των άμεσων `SnackBar` (**L11**) μεταφέρθηκε στον `AppMessenger` 27/11/2026 (`2.3.14+21`)· όλα τα σχετικά ευρήματα **E77–E84** έκλεισαν.
 
+> **E67/L37** ✅ διορθώθηκε 27/11/2026 (`2.3.15+22`): το `ColorsUI.getAccessibleTextColor` εγγυάται πλέον αντίθεση ≥ 4.5:1 (tokens του theme → fallback black/white) + sweep test 256 γκρι· αφαιρέθηκε νεκρή έκφραση στο `stats_page`. Τα follow-ups **E85** (αδρανές `fg`, ημιδιαφανές `bg`) έκλεισαν ως 🚫 **WON'T FIX** (καμία ορατή επίπτωση).
+
 > Τα E6 και E8 είναι κλειστά (σκόπιμη συμπεριφορά / εγγενής περιορισμός) — δεν περιμένουν ενέργεια.
 > Τα **E11**, **E13**, **E24** διορθώθηκαν μαζί (έκδοση `2.2.0+6`, 21/11/2026)· τα **E18/E21/E23/E25** είναι ℹ️ INFO.
 > Τα **E12**, **E16**, **E26** διορθώθηκαν με την **αρχειοθέτηση λογαριασμών** (έκδοση `2.3.0+7`, 21/11/2026).
@@ -106,7 +108,7 @@
 | E64 | `createUserDocumentIfNeeded` τρέχει πριν το E5 gate: offline `set` + poll ~7.5s πριν την είσοδο | F5 | ✅ FIXED | 2026-11-26 |
 | E65 | AppStart offline + κενό Firestore cache: το `BiometricSettingsService.load` πετάει `unavailable` → `StartupErrorView` (fail-closed) | — | ✅ FIXED | 2026-11-26 |
 | E66 | L11: 89 άμεσα `SnackBar(` σε 28 αρχεία + raw τεχνικά σφάλματα σε UI + διπλές ανακοινώσεις + ασυνεπής inline validation | — | ✅ FIXED | 2026-11-27 |
-| E67 | L37: `ColorsUI.getAccessibleTextColor` επιλέγει text token με threshold 0.5 χωρίς εγγύηση 4.5:1 (2 call sites στα stats) | — | ℹ️ INFO | 2026-11-27 |
+| E67 | L37: `ColorsUI.getAccessibleTextColor` επιλέγει text token με threshold 0.5 χωρίς εγγύηση 4.5:1 (2 call sites στα stats) | — | ✅ FIXED | 2026-11-27 |
 | E68 | `accounts_page._buildErrorState`: εμφανίζει αυτούσιο το `AccountsProvider.error` σε `Semantics.label` και `Text` | — | ✅ FIXED | 2026-11-27 |
 | E69 | `change_password_page`: το γενικό `catch` εμφανίζει `'Σφάλμα: $e'` αυτούσιο σε page-level error | — | ✅ FIXED | 2026-11-27 |
 | E70 | `options_page`: 4 σημεία γράφουν raw `e`/`stackTrace` σε `_errorMessage`/`_error` που εμφανίζονται αυτούσια στην οθόνη | — | ✅ FIXED | 2026-11-27 |
@@ -124,6 +126,7 @@
 | E82 | Guard D10 ανά γραμμή → δεν πιάνει raw μέσω μεταβλητής (`_error = e.toString(); Text(_error)`) | — | ✅ FIXED | 2026-11-27 |
 | E83 | Device test L11 άκυρο: η συσκευή είχε `2.3.13+20` (πριν το L11)· δεν υπάρχει build `2.3.14+21` | — | ✅ FIXED | 2026-11-27 |
 | E84 | Docs overstate: E66 FIXED/«καμία εκκρεμότητα», «raw μόνο σε logs», κεφ. 47 «Χωρίς commit» + άκυρο device test | — | ✅ FIXED | 2026-11-27 |
+| E85 | E67 follow-ups: (α) το `fg` των καρτών «Περίληψη Επιλογών» δεν φτάνει σε ορατό στοιχείο (όλα τα παιδιά ορίζουν χρώμα), (β) ημιδιαφανές `bg` αξιολογείται ως αδιαφανές | — | 🚫 WON'T FIX | 2026-11-27 |
 
 ### Λεπτομέρειες
 
@@ -482,12 +485,20 @@
 - **Commit:** `7ed135e` — E77–E84 + docs.
 - **Κατάσταση:** ✅ FIXED 27/11/2026.
 
-**E67 — L37: contrast helper με threshold (ℹ️ INFO 27/11/2026)**
+**E67 — L37: contrast helper με threshold (✅ FIXED 27/11/2026, `2.3.15+22`)**
 
-- `ColorsUI.getAccessibleTextColor` (`ui_tokens.dart:279`) επιλέγει `textPrimaryLight/Dark` με βάση luminance > 0.5· δεν εγγυάται 4.5:1 (π.χ. warning `#ED6C02` → ανοιχτό κείμενο, ~2.5:1).
-- Χρήση: `stats_page.dart:1770`, `tag_stats_page.dart:1986` (foreground καρτών stats).
-- **Απόφαση:** δεν αλλάζει στο L11. Το νέο δημόσιο `ColorsUI.contrastRatio` επιτρέπει έλεγχο· ο presenter χρησιμοποιεί max-contrast black/white, όχι αυτόν τον helper.
-- **Σημείωση:** `stats_page.dart:1771` `fg.withValues(alpha: 0.78);` — το αποτέλεσμα πετιέται (unused expression). Καταγράφεται, χωρίς διόρθωση στο L11.
+- **Τι ήταν:** `ColorsUI.getAccessibleTextColor` (`ui_tokens.dart:279` πριν) επέλεγε `textPrimaryLight/Dark` με βάση luminance > 0.5 → καμία εγγύηση 4.5:1 (π.χ. warning `#ED6C02` → ανοιχτό κείμενο ~3.1:1· μεσαίο γκρι → ~3.5:1).
+- **Διόρθωση:** νέο `ColorsUI.minContrastRatio = 4.5`· η μέθοδος δοκιμάζει **και** τα δύο tokens του theme και επιστρέφει όποιο περνά (το καλύτερο, αν περνούν και τα δύο)· αν **κανένα** δεν φτάνει το όριο, πέφτει σε καθαρό black/white — το max των δύο είναι πάντα ≥ 4.58:1. Η εγγύηση αφορά **αδιαφανές** background (τεκμηριώνεται στο doc comment).
+- **Νεκρή έκφραση:** αφαιρέθηκε το `fg.withValues(alpha: 0.78);` (`stats_page.dart:1707` πριν) — το αποτέλεσμα πετιόταν (και θα **χαμήλωνε** την αντίθεση αν ανατίθετο).
+- **Tests:** `ui_tokens_test.dart` 4 → **9** (λευκό/μαύρο, warning light, μεσαίο γκρι με fallback, sweep 256 αποχρώσεων γκρι ≥ 4.5:1) → σύνολο **336/336**, `flutter analyze` 0/0/0.
+- **Επίπτωση:** μηδενική οπτική αλλαγή στα 2 call sites (`stats_page.dart:1706`, `tag_stats_page.dart:2103`) — τα tokens περνούν ήδη και το `fg` δεν φτάνει σε ορατό στοιχείο (βλ. E85).
+- **Έκδοση:** `2.3.15+22` (PATCH — UI/a11y fix· BUILD για το device test).
+
+**E85 — E67 follow-ups (🚫 WON'T FIX 27/11/2026)**
+
+- **(α) Αδρανές `fg`:** στις κάρτες «Περίληψη Επιλογών» (`stats_page`, `tag_stats_page`) το `fg` περνά μόνο σε `IconTheme.merge`/`DefaultTextStyle.merge`, αλλά **κάθε** εσωτερικό `Text`/`Icon` ορίζει δικό του χρώμα (`cPrimary`, `cText2`) → κανένα ορατό στοιχείο δεν το χρησιμοποιεί. Άρα το E67 είχε μηδενική πραγματική επίπτωση στον χρήστη.
+- **(β) Ημιδιαφανές background:** τα 2 call sites περνούν `cPrimary.withValues(alpha: 0.08)` (light) — ο υπολογισμός γίνεται στα RGB χωρίς ανάμειξη με το υπόβαθρο. Ακίνδυνο σήμερα λόγω (α)· ο περιορισμός τεκμηριώνεται στο doc comment του helper.
+- **Απόφαση χρήστη (27/11/2026):** κλείσιμο ως **🚫 WON'T FIX** — καμία ορατή επίπτωση, δεν αξίζει αλλαγή κώδικα.
 
 **E68 — `accounts_page`: raw `provider.error` στην οθόνη (FIXED 27/11/2026)**
 

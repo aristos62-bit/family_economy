@@ -277,15 +277,32 @@ class ColorsUI {
   }
 
   /// Λόγος αντίθεσης WCAG (1–21) μεταξύ [foreground] και [background].
-  ///
-  /// Χρήσιμο για έλεγχο 4.5:1· δεν αλλάζει τη συμπεριφορά του
-  /// [getAccessibleTextColor] (βλ. E67).
   static double contrastRatio(Color foreground, Color background) =>
       _calculateContrastRatio(foreground, background);
 
+  /// Ελάχιστη αντίθεση κειμένου (WCAG AA).
+  static const double minContrastRatio = 4.5;
+
+  /// Foreground με **εγγυημένη** αντίθεση ≥ [minContrastRatio] στο [background].
+  ///
+  /// Προτιμώνται τα tokens του theme (`textPrimaryLight`/`textPrimaryDark`)·
+  /// αν κανένα δεν φτάνει το όριο (μεσαία φωτεινότητα), χρησιμοποιείται καθαρό
+  /// μαύρο/λευκό — το καλύτερο από τα δύο είναι πάντα ≥ 4.5:1.
+  ///
+  /// Η εγγύηση αφορά το χρώμα όπως δίνεται: για ημιδιαφανές [background] ο
+  /// υπολογισμός γίνεται στα RGB **χωρίς** ανάμειξη με το υπόβαθρο, άρα
+  /// περνάμε το τελικό (αδιαφανές) χρώμα του στοιχείου.
   static Color getAccessibleTextColor(Color background) {
-    final luminance = _getRelativeLuminance(background);
-    return luminance > 0.5 ? textPrimaryLight : textPrimaryDark;
+    final onLight = contrastRatio(textPrimaryLight, background);
+    final onDark = contrastRatio(textPrimaryDark, background);
+
+    if (onLight >= minContrastRatio || onDark >= minContrastRatio) {
+      return onLight >= onDark ? textPrimaryLight : textPrimaryDark;
+    }
+
+    final onBlack = contrastRatio(Colors.black, background);
+    final onWhite = contrastRatio(Colors.white, background);
+    return onBlack >= onWhite ? Colors.black : Colors.white;
   }
 }
 

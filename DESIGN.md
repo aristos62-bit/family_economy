@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 331 tests
+flutter test                       # 336 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -60,7 +60,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Gradle / AGP / Kotlin | **9.5.0 / 9.3.1 / 2.4.20** (βλ. §2.1) |
 | Visual Studio | Community **2026 18.1.1** · Windows SDK **10.0.26100.0** — ✅ Windows release build επιβεβαιωμένο 24/11/2026· ⚠️ με **2022 17.10.1** + SDK 10.0.22621.0 αποτυγχάνει (§2.5, §11 L33) |
-| App version | **`2.3.14+21`** (`pubspec.yaml`, επαληθεύτηκε 27/11/2026) |
+| App version | **`2.3.15+22`** (`pubspec.yaml`, επαληθεύτηκε 27/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -128,17 +128,17 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.14+21)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.15+22)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.3.14 · BUILD_NO=21   (από pubspec, STEP 0)
-         ├── APK      FamilyBudget_v2.3.14.apk
+   └── build_and_setup_final.bat  APP_VER=2.3.15 · BUILD_NO=22   (από pubspec, STEP 0)
+         ├── APK      FamilyBudget_v2.3.15.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.3.14.exe   (FileVersion 2.3.14.21)
+               └── FamilyBudgetSetup_v2.3.15.exe   (FileVersion 2.3.15.22)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -151,7 +151,7 @@ pubspec.yaml  (version: 2.3.14+21)        ← ΜΟΝΟ εδώ αλλάζει η 
 | **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.14 (build 21)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.15 (build 22)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -260,7 +260,7 @@ pubspec.yaml  (version: 2.3.14+21)        ← ΜΟΝΟ εδώ αλλάζει η 
 | `flutter build windows --debug` | ❌ LNK2019/LNK1120 — **μόνο με VS 2022** 17.10.1 + SDK 10.0.22621.0 (βλ. §11 L33) |
 | `flutter build windows --release` | ✅ `√ Built build\windows\x64\runner\Release\family_economy.exe` — **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026, επιβεβαιωμένο· το ❌ ισχύει μόνο με VS 2022) |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ **331/331** |
+| `flutter test` | ✅ **336/336** |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -277,7 +277,7 @@ pubspec.yaml  (version: 2.3.14+21)        ← ΜΟΝΟ εδώ αλλάζει η 
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 23 αρχεία · **331** `test()`/`testWidgets()` |
+| Tests | 23 αρχεία · **336** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -899,6 +899,7 @@ schema_version (int), schema_updated_at (Timestamp)
 
 - `AccessibilityService` σε 59 αρχεία (semantics, ανακοινώσεις).
 - `AnnouncementOverlay` τυλίγει όλο το app.
+- `ColorsUI.getAccessibleTextColor` (`ui_tokens.dart:295`) εγγυάται αντίθεση **≥ 4.5:1** (WCAG AA) για αδιαφανές background — tokens του theme, με fallback black/white σε μεσαία φωτεινότητα (E67, `2.3.15+22`).
 
 ---
 
@@ -908,11 +909,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (331 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (336 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 331/331 |
+| `flutter test` | ✅ 336/336 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 > Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
@@ -933,7 +934,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `onboarding_defaults_test.dart` | 18 | E5: σταθερά ids (`default-account`, `cat-*`, `sub-*`), πλήθη 6+8 κατηγοριών / 24+71 υποκατηγοριών, μοναδικότητα, μη κενά ονόματα, sequential icons, χρώματα |
 | `user_doc_policy_test.dart` | 14 | E64: cache hit/miss, offline gate, server exists/create, timeout & offline codes, permission-denied, σταθερές 8s / 3 κωδικοί |
 | `startup_error_view_test.dart` | 6 | Κείμενα, ενέργειες, λεπτομέρειες, `primaryEnabled=false`, `textScale 1.45` χωρίς overflow |
-| `ui_tokens_test.dart` | 4 | `ColorsUI.contrastRatio` (E67): λόγος αντίθεσης, όρια 4.5:1, έλεγχος warning χωρίς εγγύηση |
+| `ui_tokens_test.dart` | 9 | `ColorsUI.contrastRatio` (E67): λόγος αντίθεσης, όρια 4.5:1· `getAccessibleTextColor` (E67): tokens, fallback black/white σε μεσαία φωτεινότητα, sweep 256 γκρι ≥ 4.5:1 |
 | `message_policy_test.dart` | 20 | L11: χρόνοι 3/3/5/6s, semantic χρώματα + contrast ≥4.5:1 (light/dark), persist ανά action, πλάτος 560, `fromError`/`fromProvider` με allowlist |
 | `app_messenger_test.dart` | 10 | L11: floating/πλάτος/χρώματα, action, persist, ουρά (replace μη-persist, προστασία persistent), nested `ScaffoldMessengerState` |
 | `l11_guard_test.dart` | 2 | L11 guard (D10): 0 άμεσα `SnackBar(` έξω από τον presenter· 0 raw `$e`/`$error` σε `Text(`/`content:`/`label:`/`hintText:` (στενός — βλ. E82) |
@@ -1069,7 +1070,7 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L34 | **KGP:** `file_picker`, `firebase_auth`, `firebase_core`, `package_info_plus`, `shared_preferences_android` εφαρμόζουν ακόμα Kotlin Gradle Plugin· μελλοντική Flutter θα αποτύχει μέχρι να υιοθετήσουν Built-in Kotlin | §2.1 |
 | L35 | **✅ Διορθώθηκε 25/11/2026 (E56)** — migration σε `material_ui` **1.11.1**: 70 imports (`lib/` + `test/`) → `package:material_ui/material_ui.dart` + `GlobalMaterialLocalizations.delegates` στο `main.dart`. Το `package:flutter/material.dart` παραμένει deprecated στο SDK, αλλά **δεν** χρησιμοποιείται πλέον από τον κώδικα της εφαρμογής | §9.1 |
 | L36 | `ConnectivityService`: το `dispose()` (ακύρωση debounce timer + stream subscription, `connectivity_service.dart:111-116`) **δεν καλείται** πουθενά — ο provider χρησιμοποιεί `.value` (`main.dart:181-183`) και το `MyApp` είναι πλέον `StatelessWidget` (χωρίς `dispose`). Σκόπιμο singleton που ζει όσο η διεργασία· επίπτωση μόνο σε hot-restart/tests, καμία στη λειτουργία | §4.1, §5.9 |
-| L37 | **ℹ️ INFO (E67, 27/11/2026):** `ColorsUI.getAccessibleTextColor` (`ui_tokens.dart:279`) επιλέγει foreground με threshold luminance 0.5 και **δεν** εγγυάται 4.5:1 (π.χ. warning `#ED6C02` → ~2.5:1). Χρήση μόνο σε foreground καρτών stats (`stats_page.dart:1770`, `tag_stats_page.dart:1986`)· ο presenter δεν το χρησιμοποιεί (max-contrast black/white). Δεν αλλάζει στο L11 | §5.5 |
+| L37 | **✅ Διορθώθηκε 27/11/2026 (`2.3.15+22`, E67):** `ColorsUI.getAccessibleTextColor` (`ui_tokens.dart:295`) προτιμά τα tokens του theme και, αν κανένα δεν φτάνει το όριο (μεσαία φωτεινότητα), πέφτει σε καθαρό black/white → **εγγυημένη** αντίθεση ≥ `ColorsUI.minContrastRatio` (4.5:1, WCAG AA). Η εγγύηση αφορά **αδιαφανές** background. Χρήση: `stats_page.dart:1706`, `tag_stats_page.dart:2103` — εκεί το `fg` δεν φτάνει σε ορατό στοιχείο (E85, 🚫 WON'T FIX) | §5.5, §8.10 |
 
 ---
 

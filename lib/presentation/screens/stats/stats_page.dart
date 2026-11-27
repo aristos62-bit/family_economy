@@ -1704,7 +1704,6 @@ class _StatsPageState extends State<StatsPage> {
         : context.cPrimary.withValues(alpha: 0.08);
 
     final fg = ColorsUI.getAccessibleTextColor(bg);
-    fg.withValues(alpha: 0.78);
 
     return Card(
       elevation: 3,

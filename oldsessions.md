@@ -21,10 +21,10 @@
 
 | | |
 |---|---|
-| Έκδοση | **2.3.14+21** |
-| Τελευταίο κεφάλαιο | **47** — L11: κεντρικός presenter μηνυμάτων (**✅ FIXED**, 2026-11-27) |
-| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **331/331** |
-| Επόμενη εκκρεμότητα | **Καμία** — τα **E77–E84** έκλεισαν 27/11/2026· μένει μόνο **E67** ℹ️ INFO |
+| Έκδοση | **2.3.15+22** |
+| Τελευταίο κεφάλαιο | **48** — E67: contrast helper ≥ 4.5:1 (**✅ FIXED**, 2026-11-27) |
+| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **336/336** |
+| Επόμενη εκκρεμότητα | **Καμία διόρθωση** — E67/E85 έκλεισαν 27/11/2026· μένει μόνο **E60** ℹ️ INFO (απόφαση χρήστη) |
 
 ## Κεφάλαια
 
@@ -77,14 +77,15 @@
 | 45 | 2026-11-26 | 39b | [E65: βιομετρικό από το doc του E64](oldsessions/45-session-39b-e65-biometric-from-user-doc.md) | Αφαίρεση δεύτερου `get()`· `fingerprint_enabled`/`biometric_mode`/`biometric_remember` από το `ensured.data` (**0 επιπλέον reads**)· offline + κενό cache → fail-closed με καθαρό ελληνικό μήνυμα (χωρίς bypass)· analyze 0/0/0, **292/292**, apk ✅· device tests POCO X3 (D3 καθαρό μήνυμα ✅, D4 online restore ✅)· v2.3.13+20· E65 FIXED |
 | 46 | 2026-11-26 | 39c | [E55: Windows artifact εκτός git](oldsessions/46-session-39c-e55-desktop-ini.md) | `git rm` του tracked `desktop.ini` + `.gitignore`· δεν μπαίνει πλέον στο APK· DESIGN §3.1 277→276· E55 FIXED· E60 μένει ως έχει (απόφαση χρήστη)· χωρίς version bump |
 | 47 | 2026-11-27 | 40 | [L11: κεντρικός presenter μηνυμάτων](oldsessions/47-session-40-l11-message-presenter.md) | `AppMessenger` + `MessagePolicy` + `UserMessageException`· 89/89 sites, **0** άμεσα `SnackBar(` στο `lib/`· inline validation σε λογαριασμούς/κατηγορίες/tags/oil/notification· αφαίρεση 5 `hideCurrentSnackBar` + 6 διπλών `announce`· `ErrorApp` χωρίς raw error· E68–E76 FIXED· **post-commit E77–E84 → όλα FIXED** (commit `7ed135e`): guard v2 (taint tracking), raw μέσω providers/μεταβλητών, regressions E65/προγραμματισμένων· **331/331**, analyze 0/0/0· v2.3.14+21· **device test POCO X3 ✅**· E67 ℹ️ μένει |
+| 48 | 2026-11-27 | 41 | [E67: contrast helper ≥ 4.5:1](oldsessions/48-session-41-e67-contrast-helper.md) | `ColorsUI.getAccessibleTextColor`: tokens του theme → fallback black/white, εγγύηση ≥ 4.5:1 (WCAG AA)· διαγραφή νεκρής `fg.withValues(alpha: 0.78)` στο `stats_page`· `ui_tokens_test` 4→**9** (sweep 256 γκρι)· **336/336**, analyze 0/0/0· v2.3.15+22· **device test POCO X3 ✅** (footer, κάρτα «Περίληψη Επιλογών»)· E67 ✅ FIXED· E85 🚫 WON'T FIX |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **47** (01–47) |
+| Κεφάλαια στον φάκελο | **48** (01–48) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **2412** |
+| Σύνολο γραμμών κεφαλαίων | **2470** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 
