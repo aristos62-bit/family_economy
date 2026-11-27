@@ -48,4 +48,4 @@
 
 ### Κλείσιμο session
 
-- **Commit:** _συμπληρώνεται μετά το commit/push._
+- **Commit:** `1171db9` — `fix(a11y): E67 contrast helper guarantees 4.5:1 (2.3.15+22)` (9 αρχεία: κώδικας, tests, docs, κεφάλαιο 48).
