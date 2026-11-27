@@ -306,7 +306,7 @@ class CategoriesProvider extends ChangeNotifier {
       _signalFirstLoadIfNeeded();
     } catch (e) {
       DebugConfig.print('🔴 Error parsing categories: $e');
-      _error = e.toString();
+      _error = 'Αποτυχία φόρτωσης κατηγοριών. Δοκιμάστε ξανά.';
       _isLoading = false;
       notifyListeners();
 
@@ -429,7 +429,7 @@ class CategoriesProvider extends ChangeNotifier {
 
     // ✅ Real error (not permission-denied)
     DebugConfig.print('🔴 Categories listener error: $error');
-    _error = msg;
+    _error = 'Αποτυχία φόρτωσης κατηγοριών. Δοκιμάστε ξανά.';
     _isLoading = false;
     notifyListeners();
 

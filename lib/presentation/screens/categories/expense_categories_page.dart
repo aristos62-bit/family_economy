@@ -66,7 +66,7 @@ class _ExpenseCategoriesPageState extends State<ExpenseCategoriesPage> {
                 }
 
                 if (provider.error != null) {
-                  return _buildErrorState(provider.error!);
+                  return _buildErrorState();
                 }
 
                 final categories = provider.getCategoriesByType('expense');
@@ -116,7 +116,7 @@ class _ExpenseCategoriesPageState extends State<ExpenseCategoriesPage> {
     );
   }
 
-  Widget _buildErrorState(String error) {
+  Widget _buildErrorState() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -138,7 +138,11 @@ class _ExpenseCategoriesPageState extends State<ExpenseCategoriesPage> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(error, style: context.bodyMd, textAlign: TextAlign.center),
+            Text(
+              'Δοκιμάστε ξανά αργότερα.',
+              style: context.bodyMd,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

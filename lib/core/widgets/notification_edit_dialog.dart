@@ -30,6 +30,8 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
   late final TextEditingController _messageController;
   late TimeOfDay _selectedTime;
   bool _isSaving = false;
+  String? _messageError;
+  String? _stopError;
 
   // ✅ Recurring state - daily/weekly/monthly only
   bool _isRecurring = false;
@@ -169,6 +171,7 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
     if (picked != null && mounted) {
       setState(() {
         _recurringEndAt = DateTime(picked.year, picked.month, picked.day);
+        _stopError = null;
       });
       AccessibilityService.announcePolite(
         'Ημερομηνία λήξης: ${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}',
@@ -180,6 +183,18 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
     final dd = d.day.toString().padLeft(2, '0');
     final mm = d.month.toString().padLeft(2, '0');
     return '$dd/$mm/${d.year}';
+  }
+
+  Widget _buildStopErrorText() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Text(
+        _stopError!,
+        style: TypographyUI.bodySmall(context.brightness).copyWith(
+          color: ColorsUI.getError(context.brightness),
+        ),
+      ),
+    );
   }
 
   // ============================================================
@@ -226,9 +241,9 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
     final message = _messageController.text.trim();
 
     if (message.isEmpty) {
-      AccessibilityService.announceError(
-        'Παρακαλώ γράψτε ένα μήνυμα υπενθύμισης',
-      );
+      const error = 'Παρακαλώ γράψτε ένα μήνυμα υπενθύμισης';
+      setState(() => _messageError = error);
+      AccessibilityService.announceError(error);
       return;
     }
 
@@ -256,9 +271,9 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
       // ✅ REQUIRED stop condition: end date OR max occurrences
       if (_stopMode == 'end_date') {
         if (_recurringEndAt == null) {
-          AccessibilityService.announceError(
-            'Ορίστε ημερομηνία λήξης για την επανάληψη',
-          );
+          const error = 'Ορίστε ημερομηνία λήξης για την επανάληψη';
+          setState(() => _stopError = error);
+          AccessibilityService.announceError(error);
           return;
         }
         // end date cannot be before the first scheduled date (date-only compare)
@@ -273,9 +288,11 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
           scheduledFor.day,
         );
         if (endOnly.isBefore(firstOnly)) {
-          AccessibilityService.announceError(
-            'Η ημερομηνία λήξης δεν μπορεί να είναι πριν από την πρώτη εμφάνιση',
-          );
+          const error =
+              'Η ημερομηνία λήξης δεν μπορεί να είναι πριν από την πρώτη '
+              'εμφάνιση';
+          setState(() => _stopError = error);
+          AccessibilityService.announceError(error);
           return;
         }
         // ensure maxOccurrences is null in this mode
@@ -283,16 +300,16 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
       } else {
         final mo = (_maxOccurrences ?? 0);
         if (mo <= 0) {
-          AccessibilityService.announceError(
-            'Ορίστε μέγιστο αριθμό επαναλήψεων',
-          );
+          const error = 'Ορίστε μέγιστο αριθμό επαναλήψεων';
+          setState(() => _stopError = error);
+          AccessibilityService.announceError(error);
           return;
         }
         // root is occurrenceIndex=0, so min total is 1
         if (mo < 1) {
-          AccessibilityService.announceError(
-            'Ο μέγιστος αριθμός επαναλήψεων πρέπει να είναι ≥ 1',
-          );
+          const error = 'Ο μέγιστος αριθμός επαναλήψεων πρέπει να είναι ≥ 1';
+          setState(() => _stopError = error);
+          AccessibilityService.announceError(error);
           return;
         }
         // ensure end date is null in this mode
@@ -427,9 +444,15 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
                     controller: _messageController,
                     maxLines: 3,
                     style: TypographyUI.bodyMedium(context.brightness),
+                    onChanged: (_) {
+                      if (_messageError != null) {
+                        setState(() => _messageError = null);
+                      }
+                    },
                     decoration: InputDecoration(
                       labelText: 'Μήνυμα υπενθύμισης',
                       hintText: 'π.χ. Να πληρώσω τον λογαριασμό ρεύματος',
+                      errorText: _messageError,
                       labelStyle: TypographyUI.bodyMedium(context.brightness),
                       hintStyle: TypographyUI.bodySmall(context.brightness)
                           .copyWith(
@@ -949,6 +972,7 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
 
                 setState(() {
                   _stopMode = v;
+                  _stopError = null;
 
                   if (_stopMode == 'end_date') {
                     _recurringEndAt ??= DateTime(
@@ -1041,6 +1065,7 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
                 context.brightness,
               ).copyWith(color: ColorsUI.getTextSecondary(context.brightness)),
             ),
+            if (_stopError != null) _buildStopErrorText(),
           ] else ...[
             Row(
               children: [
@@ -1097,6 +1122,7 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
                 context.brightness,
               ).copyWith(color: ColorsUI.getTextSecondary(context.brightness)),
             ),
+            if (_stopError != null) _buildStopErrorText(),
           ],
         ],
       ),

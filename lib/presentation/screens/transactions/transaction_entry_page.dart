@@ -16,6 +16,7 @@ import 'package:family_economy/providers/categories_provider.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 
 class TransactionEntryPage extends StatelessWidget {
   const TransactionEntryPage({super.key, this.onGoToAccounts});
@@ -119,7 +120,9 @@ class _TransactionEntryView extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             child: Text(
-                              'Σφάλμα: ${accountsProvider.error}',
+                              MessagePolicy.actionError(
+                                'φόρτωσης λογαριασμών',
+                              ),
                               style: TypographyUI.bodyMedium(brightness),
                             ),
                           ),
@@ -167,7 +170,9 @@ class _TransactionEntryView extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             child: Text(
-                              'Σφάλμα: ${categoriesProvider.error}',
+                              MessagePolicy.actionError(
+                                'φόρτωσης κατηγοριών',
+                              ),
                               style: TypographyUI.bodyMedium(brightness),
                             ),
                           ),

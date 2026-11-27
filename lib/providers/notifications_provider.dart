@@ -137,7 +137,7 @@ class NotificationsProvider extends ChangeNotifier {
       }
     } catch (e) {
       DebugConfig.print('🔴 Error parsing notifications: $e');
-      _error = e.toString();
+      _error = 'Αποτυχία φόρτωσης ειδοποιήσεων. Δοκιμάστε ξανά.';
       _isLoading = false;
       notifyListeners();
     }
@@ -145,7 +145,7 @@ class NotificationsProvider extends ChangeNotifier {
 
   void _onError(Object error) {
     DebugConfig.print('🔴 Notifications listener error: $error');
-    _error = error.toString();
+    _error = 'Αποτυχία φόρτωσης ειδοποιήσεων. Δοκιμάστε ξανά.';
     _isLoading = false;
     notifyListeners();
   }

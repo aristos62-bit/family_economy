@@ -1,7 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
-import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'tank_type.dart';
 import 'utils.dart' as oil_utils;
 
@@ -94,43 +93,64 @@ class _CurrentLevelCardState extends State<CurrentLevelCard> {
                     final result = await showDialog<double>(
                       context: context,
                       builder: (ctx) {
-                        return AlertDialog(
-                          title: const Text('Εισαγωγή ύψους (πόντοι)'),
-                          content: TextField(
-                            controller: _heightCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: false,
-                              signed: false,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Πόντοι',
-                              hintText: 'π.χ. 45',
-                            ),
-                            autofocus: true,
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              child: const Text('Άκυρο'),
-                            ),
-                            FilledButton(
-                              onPressed: () {
-                                final value = oil_utils.parseDouble(
-                                  _heightCtrl.text,
-                                );
-                                if (value == null || value < 0) {
-                                  AppMessenger.warning(
-                                    context,
-                                    'Δώστε έγκυρο αριθμό πόντων.',
-                                  );
-                                  return;
-                                }
-                                final clamped = value.clamp(0.0, maxForSlider);
-                                Navigator.of(ctx).pop(clamped.toDouble());
-                              },
-                              child: const Text('OK'),
-                            ),
-                          ],
+                        String? heightError;
+                        return StatefulBuilder(
+                          builder: (ctx, setDialogState) {
+                            return AlertDialog(
+                              title: const Text('Εισαγωγή ύψους (πόντοι)'),
+                              content: TextField(
+                                controller: _heightCtrl,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: false,
+                                      signed: false,
+                                    ),
+                                decoration: InputDecoration(
+                                  labelText: 'Πόντοι',
+                                  hintText: 'π.χ. 45',
+                                  errorText: heightError,
+                                ),
+                                onChanged: (_) {
+                                  if (heightError != null) {
+                                    setDialogState(() => heightError = null);
+                                  }
+                                },
+                                autofocus: true,
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(),
+                                  child: const Text('Άκυρο'),
+                                ),
+                                FilledButton(
+                                  onPressed: () {
+                                    final value = oil_utils.parseDouble(
+                                      _heightCtrl.text,
+                                    );
+                                    if (value == null || value < 0) {
+                                      const message =
+                                          'Δώστε έγκυρο αριθμό πόντων.';
+                                      setDialogState(
+                                        () => heightError = message,
+                                      );
+                                      AccessibilityService.announceError(
+                                        message,
+                                      );
+                                      return;
+                                    }
+                                    final clamped = value.clamp(
+                                      0.0,
+                                      maxForSlider,
+                                    );
+                                    Navigator.of(
+                                      ctx,
+                                    ).pop(clamped.toDouble());
+                                  },
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            );
+                          },
                         );
                       },
                     );

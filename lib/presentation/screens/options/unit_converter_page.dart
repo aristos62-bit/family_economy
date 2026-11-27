@@ -478,9 +478,10 @@ class _ConverterPageState extends State<ConverterPage>
         throw Exception('HTTP ${response.statusCode}');
       }
     } catch (e) {
+      DebugConfig.print('❌ Currency rates error: $e');
       if (!mounted) return;
       setState(() {
-        _currencyError = 'Σφάλμα λήψης ισοτιμιών: $e';
+        _currencyError = 'Αποτυχία λήψης ισοτιμιών. Δοκιμάστε ξανά.';
         _currencyLoading = false;
       });
     }
@@ -516,9 +517,11 @@ class _ConverterPageState extends State<ConverterPage>
         throw Exception('HTTP \${response.statusCode}');
       }
     } catch (e) {
+      DebugConfig.print('❌ Crypto catalog error: $e');
       if (!mounted) return;
       setState(() {
-        _cryptoError = 'Σφάλμα: \$e';
+        _cryptoError = 'Αποτυχία φόρτωσης λίστας κρυπτονομισμάτων. '
+            'Δοκιμάστε ξανά.';
         _catalogLoading = false;
       });
     }
@@ -654,7 +657,7 @@ class _ConverterPageState extends State<ConverterPage>
       if (!mounted) return;
 
       setState(() {
-        _cryptoError = 'Σφάλμα ανανέωσης: $e';
+        _cryptoError = 'Αποτυχία ανανέωσης τιμών. Δοκιμάστε ξανά.';
         _watchedLoading = false;
       });
     } finally {

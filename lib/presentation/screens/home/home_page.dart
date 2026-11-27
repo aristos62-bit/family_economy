@@ -141,6 +141,7 @@ class _HomePageState extends State<HomePage> {
           : 'Εκτελέστηκαν $count προγραμματισμένες κινήσεις',
       actionLabel: 'ΟΚ',
       onAction: () {},
+      persist: false,
     );
   }
 

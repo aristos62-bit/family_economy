@@ -213,7 +213,7 @@ class TransactionsProvider extends ChangeNotifier {
       DebugConfig.print('✅ TransactionsProvider: Listener setup complete for $period');
     } catch (e) {
       DebugConfig.print('❌ TransactionsProvider: Error setting up listener for $period: $e');
-      _errorStates[period] = e.toString();
+      _errorStates[period] = 'Αποτυχία φόρτωσης συναλλαγών. Δοκιμάστε ξανά.';
       _loadingStates[period] = false;
       if (!_disposed) notifyListeners();
     }
@@ -291,7 +291,7 @@ class TransactionsProvider extends ChangeNotifier {
     }
 
     DebugConfig.print('❌ TransactionsProvider: Listener error for $period: $error');
-    _errorStates[period] = msg;
+    _errorStates[period] = 'Αποτυχία φόρτωσης συναλλαγών. Δοκιμάστε ξανά.';
     _loadingStates[period] = false;
     notifyListeners();
   }

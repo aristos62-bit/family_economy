@@ -41,7 +41,7 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
 
   List<Map<String, dynamic>> _transactions = [];
   bool _isLoading = true;
-  String? _error;
+  bool _hasError = false;
   DateTimeRange? _selectedDateRange;
   bool _showScheduled = false; // ✅ Εμφάνιση προγραμματισμένων κινήσεων
 
@@ -90,7 +90,7 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
 
     setState(() {
       _isLoading = true;
-      _error = null;
+      _hasError = false;
     });
 
     try {
@@ -162,7 +162,7 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
       if (!mounted) return;
 
       setState(() {
-        _error = e.toString();
+        _hasError = true;
         _isLoading = false;
       });
     }
@@ -462,8 +462,8 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
               Expanded(
                 child: _isLoading
                     ? _buildLoadingState(brightness)
-                    : _error != null
-                    ? _buildErrorState(brightness, _error!)
+                    : _hasError
+                    ? _buildErrorState(brightness)
                     : _transactions.isEmpty
                     ? _buildEmptyState(brightness)
                     : _buildTransactionsList(brightness, horizontalPadding),
@@ -564,7 +564,7 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
     );
   }
 
-  Widget _buildErrorState(Brightness brightness, String error) {
+  Widget _buildErrorState(Brightness brightness) {
     return Semantics(
       liveRegion: true,
       child: Center(
@@ -587,7 +587,7 @@ class _TransactionsShowPageState extends State<TransactionsShowPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                error,
+                'Δοκιμάστε ξανά αργότερα.',
                 style: TypographyUI.bodyMedium(brightness),
                 textAlign: TextAlign.center,
               ),

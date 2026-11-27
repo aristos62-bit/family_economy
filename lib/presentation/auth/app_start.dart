@@ -5,11 +5,13 @@ import 'package:provider/provider.dart';
 import 'package:family_economy/core/data/schema.dart';
 import 'package:family_economy/core/data/schema_service.dart';
 import 'package:family_economy/core/data/user_doc_policy.dart';
+import 'package:family_economy/core/errors/user_message_exception.dart';
 import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/biometric_auth_service.dart';
 import 'package:family_economy/core/services/biometric_settings_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 import 'package:family_economy/core/widgets/startup_error_view.dart';
 
 import 'package:family_economy/core/session/session.dart';
@@ -97,12 +99,12 @@ class _AppStartState extends State<AppStart> {
       // επαληθεύσουμε το βιομετρικό gate → fail-closed με καθαρό μήνυμα.
       if (userData == null) {
         if (ensured.outcome == UserDocOutcome.skippedOffline) {
-          throw Exception(
+          throw const UserMessageException(
             'Χωρίς σύνδεση δεν είναι δυνατός ο έλεγχος ασφαλείας. '
             'Συνδεθείτε στο internet και πατήστε «Ξανά».',
           );
         }
-        throw Exception(
+        throw const UserMessageException(
           'Δεν ήταν δυνατή η ανάγνωση των ρυθμίσεων ασφαλείας. '
           'Δοκιμάστε ξανά.',
         );
@@ -123,7 +125,7 @@ class _AppStartState extends State<AppStart> {
 
         if (!ok) {
           DebugConfig.print('🔴 Biometric authentication failed for uid=$uid');
-          throw Exception('Αποτυχία βιομετρικής ταυτοποίησης');
+          throw const UserMessageException('Αποτυχία βιομετρικής ταυτοποίησης');
         }
       }
 
@@ -205,13 +207,12 @@ class _AppStartState extends State<AppStart> {
     } catch (e) {
       DebugConfig.print('❌ AppStart error: $e');
       if (!mounted) return;
+      final message = MessagePolicy.fromError(e, action: 'φόρτωσης στοιχείων');
       setState(() {
-        _error = 'Αποτυχία φόρτωσης στοιχείων. Δοκιμάστε ξανά.';
+        _error = message;
         _loading = false;
       });
-      AccessibilityService.announceError(
-        'Αποτυχία φόρτωσης στοιχείων. Δοκιμάστε ξανά.',
-      );
+      AccessibilityService.announceError(message);
     }
   }
 

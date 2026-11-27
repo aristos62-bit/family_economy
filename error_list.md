@@ -9,15 +9,15 @@
 
 | # | Ενέργεια | ID |
 |---|---|---|
-| — | **Καμία** — το L11 ολοκληρώθηκε 27/11/2026 (`2.3.14+21`): E66 + E68–E76 FIXED· μένει μόνο το ℹ️ E67 | — |
+| — | Καμία εκκρεμότητα — τα **E77–E84** έκλεισαν 27/11/2026 | — |
 
-> **L11** ✅ διορθώθηκε 27/11/2026 (`2.3.14+21`): κεντρικός presenter `AppMessenger` + `MessagePolicy`, 0 άμεσα `SnackBar(` στο `lib/`, guard test (D10), σταθερά μηνύματα αντί raw σφαλμάτων (E66, E68–E76). Λεπτομέρειες παρακάτω.
+> **L11** ✅ **FIXED** 27/11/2026 (`2.3.14+21`): ο κεντρικός presenter `AppMessenger` + `MessagePolicy` ολοκληρώθηκε και τα 89 sites μεταφέρθηκαν (0 άμεσα `SnackBar(`). Ο post-commit έλεγχος βρήκε **E77–E83**· **όλα διορθώθηκαν** και το νέο device test πέρασε. Λεπτομέρειες παρακάτω.
 
 > **E5** ✅ διορθώθηκε 26/11/2026 (`2.3.11+18`): σταθερά ids onboarding + server-truth gate + καμία εγγραφή offline (λεπτομέρειες παρακάτω). **E63** ✅ διορθώθηκε μαζί του (σταθερό `cat-transfer`). **E64** ✅ διορθώθηκε 26/11/2026 (`2.3.12+19`): server-truth `ensureUserDocument`, καμία εγγραφή offline, χωρίς poll. **E65** ✅ διορθώθηκε 26/11/2026 (`2.3.13+20`): βιομετρικό από το ίδιο doc, fail-closed χωρίς δεύτερο read.
 
 > **L18** ✅ διορθώθηκε 25/11/2026 (`2.3.8+15`) — το «Δοκιμή ξανά» ξανατρέχει την αρχικοποίηση (λεπτομέρειες: `DESIGN.md` §4.4, §11 L18). **Hardening `2.3.9+16`:** timeout 20s, disabled κουμπί όσο τρέχει, debug log σε αποτυχία/λήξη.
 > **E58/E59** ✅ διορθώθηκαν 25/11/2026 (`2.3.10+17`): όλη η εκκίνηση (theme/notifications/connectivity) μπήκε σε δοχείο σφάλματος με per-step timeouts και η άδεια ειδοποιήσεων ζητείται μετά το πρώτο frame· το `Phoenix` + `flutter_phoenix` αφαιρέθηκαν.
-> **E15/L6** ✅ διορθώθηκαν 25/11/2026 (χωρίς version bump, κεφ. 40): νεκρός κώδικας + no-op sync hook αφαιρέθηκαν· το χρέος των άμεσων `SnackBar` (**L11**) έκλεισε 27/11/2026 (`2.3.14+21`).
+> **E15/L6** ✅ διορθώθηκαν 25/11/2026 (χωρίς version bump, κεφ. 40): νεκρός κώδικας + no-op sync hook αφαιρέθηκαν· το χρέος των άμεσων `SnackBar` (**L11**) μεταφέρθηκε στον `AppMessenger` 27/11/2026 (`2.3.14+21`)· όλα τα σχετικά ευρήματα **E77–E84** έκλεισαν.
 
 > Τα E6 και E8 είναι κλειστά (σκόπιμη συμπεριφορά / εγγενής περιορισμός) — δεν περιμένουν ενέργεια.
 > Τα **E11**, **E13**, **E24** διορθώθηκαν μαζί (έκδοση `2.2.0+6`, 21/11/2026)· τα **E18/E21/E23/E25** είναι ℹ️ INFO.
@@ -116,6 +116,14 @@
 | E74 | `app_start.dart`: το γενικό `catch` θέτει raw `e.toString()` ως `_error` → εμφανίζεται ως `message` και ανακοινώνεται | — | ✅ FIXED | 2026-11-27 |
 | E75 | `delete_account_page`: raw `$e`/`e.code` σε `Text` και announcements του διαλόγου αποτυχίας | — | ✅ FIXED | 2026-11-27 |
 | E76 | `change_password_page._mapAuthError`: το default επιστρέφει το τεχνικό `e.code` στον χρήστη | — | ✅ FIXED | 2026-11-27 |
+| E77 | L11 regression: `UserMessageException` δεν πετιέται πουθενά → τα ειδικά μηνύματα E65/αλλαγής κωδικού γίνονται generic | — | ✅ FIXED | 2026-11-27 |
+| E78 | `home_page`: `AppMessenger.info(..., actionLabel: 'ΟΚ')` → `persist` από `hasAction`· μένει μόνιμα και μπλοκάρει τα επόμενα | — | ✅ FIXED | 2026-11-27 |
+| E79 | Providers αποθηκεύουν raw `e.toString()` στο `error` → σταθερό ελληνικό μήνυμα | — | ✅ FIXED | 2026-11-27 |
+| E80 | Raw σφάλματα σε UI sinks: unit_converter, transactions_show, scheduled, stats4, transaction_entry, categories, tags_management, tag_selector, login_page, auth_service | — | ✅ FIXED | 2026-11-27 |
+| E81 | Inline validation ελλιπής: edit_category, current_level (snackbar πίσω από dialog), tags (μόνο announce), notification_edit (καμία αλλαγή) | — | ✅ FIXED | 2026-11-27 |
+| E82 | Guard D10 ανά γραμμή → δεν πιάνει raw μέσω μεταβλητής (`_error = e.toString(); Text(_error)`) | — | ✅ FIXED | 2026-11-27 |
+| E83 | Device test L11 άκυρο: η συσκευή είχε `2.3.13+20` (πριν το L11)· δεν υπάρχει build `2.3.14+21` | — | ✅ FIXED | 2026-11-27 |
+| E84 | Docs overstate: E66 FIXED/«καμία εκκρεμότητα», «raw μόνο σε logs», κεφ. 47 «Χωρίς commit» + άκυρο device test | — | ✅ FIXED | 2026-11-27 |
 
 ### Λεπτομέρειες
 
@@ -167,6 +175,7 @@
 - Αν το doc δεν είναι διαθέσιμο (offline + κενό cache ή σφάλμα), η είσοδος μπλοκάρει **fail-closed** με σαφές ελληνικό μήνυμα («Χωρίς σύνδεση δεν είναι δυνατός ο έλεγχος ασφαλείας…»). **Δεν** χρησιμοποιούνται defaults, ώστε να μην παρακάμπτεται το βιομετρικό gate. Το `BiometricSettingsService.load` παραμένει για την οθόνη Ρυθμίσεων.
 - Tests: κανένα νέο (καθαρή αλλαγή ροής)· `flutter analyze` 0/0/0, **292/292**.
 - Device test (POCO X3, `2.3.13+20`): D3 → καθαρό ελληνικό μήνυμα fail-closed (χωρίς raw Firestore error), D4 online relaunch → πλήρης αποκατάσταση δεδομένων.
+- ⚠️ **27/11/2026 (L11 regression):** το μήνυμα αυτό χάθηκε από το `AppStart` (generic catch) — βλ. **E77**.
 
 **E6 — Soft-deleted account (WON'T FIX)**
 - Ο έλεγχος `accounts.limit(1)` δεν φιλτράρει `deleted` — **σκόπιμα**: αν λείπει το user doc αλλά μένουν accounts, η φραγή εμποδίζει διπλό default.
@@ -462,14 +471,15 @@
 - **Ανά χρήστη:** `aristos62@yahoo.com` 67 groups (66 πλήρη, 1 πλήρως διαγραμμένο) · `demo@yahoo.com` 6 groups (2 πλήρη, 4 πλήρως διαγραμμένα) · οι υπόλοιποι 4 χρήστες 0 transfer legs. **0 προβληματικά groups παντού** — τα «πλήρως διαγραμμένα» ζεύγη είναι κανονικές διαγραφές, όχι μισά ζεύγη.
 - **Απόφαση χρήστη (26/11/2026):** κλείσιμο ως **🚫 WON'T FIX** — το fail-closed guard κρίνεται **υπερβολή** (κανένα πραγματικό περιστατικό· η κανονική ροή καλύπτεται από E11). Καμία αλλαγή κώδικα, καμία επισκευή δεδομένων, κανένα version bump.
 
-**E66 — L11: κεντρικός presenter μηνυμάτων (FIXED 27/11/2026)**
+**E66 — L11: κεντρικός presenter μηνυμάτων (✅ FIXED 27/11/2026)**
 
 - **Τι είναι:** 89 άμεσα `SnackBar(...)` σε 28 αρχεία, 5 `hideCurrentSnackBar`, 12 `SnackBarBehavior.fixed`, 1 `SnackBarAction` — χωρίς ενιαίο χρόνο/χρώμα/a11y. Παράλληλα εμφανίζονται raw τεχνικά σφάλματα (`e.toString()`, `e.message`, `provider.error`, `snapshot.error`) και αρκετά dialog validation είναι snackbar αντί inline.
 - **Στόχος:** `MessagePolicy` (3/5/6s, semantic χρώματα, contrast, πλάτος 560 σε >600px) + `AppMessenger` (ουρά ανά `ScaffoldMessengerState`, replace μόνο μη-persist) + `UserMessageException`/allowlist + inline validation + guard test.
 - **Εμβέλεια:** 28 αρχεία UI + `auth_service.dart`/`main.dart`/`app_start.dart`· νέα `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`· tests.
-- **Αποτέλεσμα (27/11/2026):** 89/89 sites → `AppMessenger`· **0** άμεσα `SnackBar(` στο `lib/`· `MessagePolicy` (3/3/5/6s, semantic χρώματα + contrast, πλάτος 560, `fromError`/`fromProvider` allowlist)· `UserMessageException`· inline validation στους διαλόγους· αφαίρεση 5 `hideCurrentSnackBar` και 6 διπλών `announce` δίπλα σε snackbar· guard test (D10, 2 tests). `flutter analyze` 0/0/0, **328/328** tests.
-- **Device test (27/11/2026):** ✅ όλα σωστά (εκτέλεση από τον χρήστη).
-- **Κατάσταση:** ✅ FIXED 27/11/2026 (`2.3.14+21`).
+- **Αποτέλεσμα (27/11/2026):** 89/89 sites → `AppMessenger`· **0** άμεσα `SnackBar(` στο `lib/`· `MessagePolicy` (3/3/5/6s, semantic χρώματα + contrast, πλάτος 560, `fromError`/`fromProvider` allowlist)· inline validation σε λογαριασμούς, κατηγορίες, tags, oil και notification· αφαίρεση 5 `hideCurrentSnackBar` και 6 διπλών `announce` δίπλα σε snackbar· guard v2 (D10, 5 tests). `flutter analyze` 0/0/0, **331/331** tests.
+- **Post-commit έλεγχος (27/11/2026):** βρήκε **E77–E83** — 2 regressions (E77, E78), raw σφάλματα μέσω providers/μεταβλητών (E79, E80), ελλιπές inline validation (E81), κενό του guard (E82) και άκυρο device test (E83). **Όλα διορθώθηκαν** 27/11/2026· τα docs με **E84**.
+- **Device test (27/11/2026):** ✅ νέο release `2.3.14+21` (89 MB) → POCO X3 (`9593c01e`, `versionCode=21`)· footer «Έκδοση 2.3.14 (build 21)»· E81 inline validation (κενό όνομα κατηγορίας, χωρίς αποθήκευση) ✅· επιβεβαιώθηκαν από τον χρήστη και οι ροές E77/E78/E79/E80.
+- **Κατάσταση:** ✅ FIXED 27/11/2026.
 
 **E67 — L37: contrast helper με threshold (ℹ️ INFO 27/11/2026)**
 
@@ -547,6 +557,81 @@
 - **Γιατί μετράει:** αγγλικός τεχνικός κωδικός προς χρήστη.
 - **Προτεινόμενη διόρθωση (μετά το L11):** σταθερό μήνυμα, `e.code` μόνο σε `DebugConfig.print`.
 - **Κατάσταση:** ✅ FIXED 27/11/2026 — διορθώθηκε στο τέλος του L11.
+
+**E77 — L11 regression: χάθηκαν τα ειδικά μηνύματα εκκίνησης & αλλαγής κωδικού (✅ FIXED 27/11/2026)**
+
+- **Τι είναι:** `app_start.dart:100-108` και `:126` πετούν σκέτο `Exception('...')`· το γενικό `catch` (`:205-214`) δείχνει πάντα «Αποτυχία φόρτωσης στοιχείων». Το ίδιο και `change_password_page.dart:102`, `:107-110` → `catch` `:133-138` → generic.
+- **Αιτία:** το `UserMessageException` ορίστηκε και ελέγχεται στο `MessagePolicy.fromError`, αλλά **δεν πετιέται πουθενά** στο `lib/`.
+- **Γιατί μετράει:** regression του L11· χάνονται τα μηνύματα του E65 (offline fail-closed / βιομετρικό).
+- **Διόρθωση (27/11/2026):** `app_start.dart` → 3 `throw const UserMessageException(...)` + `MessagePolicy.fromError(e, action: 'φόρτωσης στοιχείων')` στο catch· `change_password_page.dart` → 2 `throw const UserMessageException(...)` (το catch ήδη χρησιμοποιεί `fromError`). Νέο guard test στο `l11_guard_test.dart`.
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — `flutter analyze` 0/0/0, **329/329** tests.
+
+**E78 — Persistent info μήνυμα προγραμματισμένων κινήσεων (✅ FIXED 27/11/2026)**
+
+- **Τι είναι:** `home_page.dart:137-144` — `AppMessenger.info(..., actionLabel: 'ΟΚ', onAction: () {})`.
+- **Αιτία:** `MessagePolicy.build` (`message_policy.dart:72`) θέτει `persist = hasAction`· το μήνυμα δεν έκλεινε ποτέ και (λόγω `app_messenger.dart:139-142`) τα επόμενα περίμεναν.
+- **Διόρθωση (27/11/2026):** `persist: false` στην κλήση → info 3s, με το «ΟΚ» να παραμένει για άμεσο κλείσιμο. Η συμπεριφορά `persist:false` + action καλύπτεται ήδη από `message_policy_test` και `app_messenger_test` (δεν προστέθηκε duplicate test).
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — `flutter analyze` 0/0/0, **329/329** tests.
+
+**E79 — Providers: raw `e.toString()` στο `error` (✅ FIXED 27/11/2026)**
+
+- **Τι είναι:** `accounts_provider.dart:269/305`, `budgets_provider.dart:132/141`, `categories_provider.dart:309/432`, `notifications_provider.dart:140/148`, `tags_provider.dart:204`, `transactions_provider.dart:216/294` — το `_error`/`_errorStates` έπαιρνε raw `e.toString()`/`msg`. (Το `categories_provider.dart:343` κρατά το raw **μόνο** τοπικά για τον έλεγχο `permission-denied`.)
+- **Γιατί μετράει:** κάθε οθόνη που δείχνει `provider.error` (categories, tags, tag selector, transaction entry, charts) εκθέτει τεχνικό κείμενο.
+- **Διόρθωση (27/11/2026):** 11 σημεία → σταθερό ελληνικό μήνυμα ανά provider («Αποτυχία φόρτωσης λογαριασμών/προϋπολογισμών/κατηγοριών/ειδοποιήσεων/ετικετών/συναλλαγών. Δοκιμάστε ξανά.»). Το raw παραμένει μόνο στο `DebugConfig.print`· ο έλεγχος `permission-denied` χρησιμοποιεί την τοπική `msg`. Χωρίς `dart format` στα αρχεία, για να μη δημιουργηθεί θόρυβος σε μη-formatted κώδικα.
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — `flutter analyze` 0/0/0, **329/329** tests.
+
+**E80 — Raw σφάλματα σε UI sinks (✅ FIXED 27/11/2026)**
+
+- **Τι ήταν:** `unit_converter_page.dart:483/521/657` (το `:521` έδειχνε κυριολεκτικά `$e`), `transactions_show_page.dart:165`, `scheduled_transactions_page.dart:78` (`snapshot.error`), `stats4_budget_page.dart:419`, `transaction_entry_page.dart:122/170`, `expense_categories_page.dart:69/141`, `income_categories_page.dart:68`, `tags_management_page.dart:188`, `tag_selector_widget.dart:112/520`, `login_page.dart:260/302`, `auth_service.dart:247`.
+- **Διόρθωση (27/11/2026):**
+  - Σταθερά ελληνικά μηνύματα: unit converter (3), transactions_show, stats4, scheduled.
+  - `transaction_entry`: `MessagePolicy.actionError('φόρτωσης λογαριασμών/κατηγοριών')`.
+  - Categories pages: αφαίρεση της παραμέτρου `error` από το `_buildErrorState`· σταθερό «Δοκιμάστε ξανά αργότερα.»
+  - Tags: `MessagePolicy.fromProvider(...)` σε banner, tag selector και announcement.
+  - `auth_service`: τα 3 `throw Exception(mapFirebaseError(e))` → `UserMessageException(...)`· default → σταθερό «Αποτυχία ελέγχου ταυτότητας. Δοκιμάστε ξανά.»
+  - `login_page`: οι δύο `catch` → `MessagePolicy.fromError(...)`· «Οι κωδικοί δεν ταιριάζουν» → `UserMessageException`. Το `SchemaBlockedException` εξακολουθεί να περνά το φιλικό του `message` αυτούσιο (όπως πριν).
+  - `transactions_show_page`: `String? _error` → `bool _hasError` (η οθόνη δεν δείχνει πια το κείμενο).
+  - Raw μόνο σε `DebugConfig.print`· το `AccessibilityService.announceError` δεν άλλαξε (παίρνει ήδη φιλικό μήνυμα από τους callers).
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — `flutter analyze` 0/0/0, **329/329** tests.
+
+**E81 — Inline validation σε διαλόγους (✅ FIXED 27/11/2026)**
+
+- **Τι ήταν:** `edit_category_dialog.dart:340` και `current_level_card.dart:122`: `AppMessenger.warning` με page context → το μήνυμα έβγαινε πίσω από το barrier του διαλόγου και το πεδίο δεν μαρκάρονταν. `tags_management_page.dart:589-594` (και το αντίστοιχο edit dialog): κενό όνομα → μόνο `announceError`. `notification_edit_dialog.dart:229-311`: message/stop-condition validations μόνο announcements.
+- **Διόρθωση (27/11/2026):**
+  - `edit_category_dialog`: `errorText: _nameError` + καθαρισμός στο `onChanged`· κενό όνομα → inline + `announceError`.
+  - `current_level_card`: `StatefulBuilder` με `heightError` στο `errorText`· άκυρος αριθμός → inline + `announceError`.
+  - `tags_management_page` (create **και** edit): `nameError` στο `_TagFormContent` (`errorText`/`onNameChanged`)· κενό όνομα → inline + `announceError`.
+  - `notification_edit_dialog`: `errorText: _messageError` στο μήνυμα· `_stopError` με ορατό μήνυμα (`_buildStopErrorText`) στην ενότητα τερματισμού· καθαρισμός σε αλλαγή ημερομηνίας/mode. Η «ώρα στο παρελθόν» είχε ήδη ορατό διάλογο και έμεινε ως έχει.
+  - Αφαιρέθηκαν τα `AppMessenger` imports από τα 2 αρχεία που δεν τα χρειάζονται πλέον.
+- **Tests:** νέο source-guard στο `l11_guard_test.dart` («E81: inline validation στους διαλόγους»).
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — `flutter analyze` 0/0/0, **330/330** tests.
+
+**E82 — Guard D10: κενό μέσω μεταβλητής (✅ FIXED 27/11/2026)**
+
+- **Τι ήταν:** `test/unit/core/messaging/l11_guard_test.dart`: έλεγχος μόνο στην ίδια γραμμή με `Text(`/`content:`/`label:`/`hintText:`. Περνούσαν `_error = e.toString();` + `Text(_error)`, `Text(error)`, `'${snapshot.error}'`, `Text(provider.error)`.
+- **Διόρθωση (27/11/2026):**
+  - **Taint tracking** ανά αρχείο: συλλέγονται οι μεταβλητές που παίρνουν raw έκφραση (`e.toString()`, `$e`, `${provider.error}`, `snapshot.error` κ.λπ.) και ελέγχεται αν φτάνουν σε sink — ακόμη και σε επόμενες γραμμές (block μέχρι 8 γραμμές).
+  - **`.error` unwrapped:** `Text(accountsProvider.error)`, `${snapshot.error}`, `.error.toString()` → παράβαση.
+  - **Allowlist:** οι κλήσεις `MessagePolicy.fromError/fromProvider/actionError` αφαιρούνται πριν τον έλεγχο — τα σημεία του E80 δεν σημαίνονται.
+  - **Fixtures αυτοελέγχου:** το test αποδεικνύει ότι πιάνει το παράδειγμα του E82 και ότι αφήνει ήσυχα τα `MessagePolicy` και τις φιλικές σταθερές.
+  - Δεν έγινε heuristic «όνομα μεταβλητής περιέχει error»: θα σημάδευε τα νόμιμα `_errorMessage` (`input_budget_page`) και `_error` (`options_page`, `account_duplicate_service`) που κρατούν ήδη φιλικά μηνύματα.
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — `flutter analyze` 0/0/0, **331/331** tests.
+
+**E83 — Άκυρο device test L11 (✅ FIXED 27/11/2026)**
+
+- **Τι ήταν:** συσκευή POCO X3: `versionCode=20`, `versionName=2.3.13`· τοπικό APK `2.3.13` (build 03:56), ενώ `app_messenger.dart` δημιουργήθηκε 12:30. Άρα το build που δοκιμάστηκε **δεν περιείχε το L11**· το «device test ✅» αφαιρέθηκε από τα docs (E84).
+- **Διόρθωση (27/11/2026):**
+  - `flutter build apk --release` ✅ (89 MB, 17:17) — μόνο Kotlin/KGP warnings, κανένα error.
+  - Εγκατάσταση σε POCO X3 (`9593c01e`) ✅ — `versionCode=21`, `versionName=2.3.14`· footer «Έκδοση 2.3.14 (build 21)» ✅· εκκίνηση χωρίς crash ✅.
+  - **E81 σε συσκευή:** νέα κατηγορία με κενό όνομα → inline «Το όνομα δεν μπορεί να είναι κενό», ο διάλογος έμεινε ανοιχτός, δεν αποθηκεύτηκε τίποτα ✅. Επιστροφή στην Αρχική, δεδομένα ανέπαφα.
+  - **E77/E78/E79/E80:** επιβεβαιώθηκαν από τον χρήστη στη συσκευή (φιλικά μηνύματα, χωρίς raw, χωρίς μόνιμο/μπλοκαριστό μήνυμα).
+- **Κατάσταση:** ✅ FIXED 27/11/2026.
+
+**E84 — Docs overstate (✅ FIXED 27/11/2026)**
+
+- E66 → `🔵 OPEN (partial)`· «Σειρά εκκρεμοτήτων» → E77–E83· κεφ. 47: διορθώθηκε το «Χωρίς commit» (commits `11a6bf8`, `880d616`), αφαιρέθηκε το άκυρο device test και η φράση «raw μόνο σε logs»· `DESIGN.md` §11 L11 → partial.
+  - **Μεταγενέστερη ενημέρωση (ίδια ημέρα, μετά το E83):** E66/L11 → ✅ FIXED, «Σειρά εκκρεμοτήτων» → καμία, test count → **331/331**, device test ✅ σε `2.3.14+21`.
+- **Κατάσταση:** ✅ FIXED 27/11/2026 (docs-only, χωρίς version bump).
 
 ## Πώς προσθέτω εύρημα
 

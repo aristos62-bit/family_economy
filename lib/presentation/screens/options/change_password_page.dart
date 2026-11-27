@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/errors/user_message_exception.dart';
 import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/session/session_scope.dart';
@@ -99,12 +100,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       final user = FirebaseAuth.instance.currentUser;
 
       if (user == null) {
-        throw Exception('Δεν βρέθηκε ενεργός χρήστης');
+        throw const UserMessageException('Δεν βρέθηκε ενεργός χρήστης');
       }
 
       final email = user.email;
       if (email == null || email.isEmpty) {
-        throw Exception(
+        throw const UserMessageException(
           'Ο λογαριασμός δεν έχει email. Δεν γίνεται αλλαγή κωδικού.',
         );
       }

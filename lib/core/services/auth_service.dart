@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:family_economy/core/data/schema.dart';
 import 'package:family_economy/core/data/user_doc_policy.dart';
+import 'package:family_economy/core/errors/user_message_exception.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 
 /// E64: αποτέλεσμα της εξασφάλισης του user document.
@@ -34,7 +35,7 @@ class AuthService {
       );
       return credential.user;
     } on FirebaseAuthException catch (e) {
-      throw Exception(mapFirebaseError(e));
+      throw UserMessageException(mapFirebaseError(e));
     }
   }
 
@@ -48,7 +49,7 @@ class AuthService {
       );
       return credential.user;
     } on FirebaseAuthException catch (e) {
-      throw Exception(mapFirebaseError(e));
+      throw UserMessageException(mapFirebaseError(e));
     }
   }
 
@@ -204,7 +205,7 @@ class AuthService {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
     } on FirebaseAuthException catch (e) {
-      throw Exception(mapFirebaseError(e));
+      throw UserMessageException(mapFirebaseError(e));
     }
   }
 
@@ -244,7 +245,7 @@ class AuthService {
       case 'network-request-failed':
         return 'Πρόβλημα σύνδεσης. Ελέγξτε το διαδίκτυο σας.';
       default:
-        return 'Σφάλμα: ${e.message ?? 'Άγνωστο σφάλμα.'}';
+        return 'Αποτυχία ελέγχου ταυτότητας. Δοκιμάστε ξανά.';
     }
   }
 }

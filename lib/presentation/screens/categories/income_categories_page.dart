@@ -65,7 +65,7 @@ class _IncomeCategoriesPageState extends State<IncomeCategoriesPage> {
                 }
 
                 if (provider.error != null) {
-                  return _buildErrorState(provider.error!);
+                  return _buildErrorState();
                 }
 
                 final categories = provider.getCategoriesByType('income');
@@ -115,7 +115,7 @@ class _IncomeCategoriesPageState extends State<IncomeCategoriesPage> {
     );
   }
 
-  Widget _buildErrorState(String error) {
+  Widget _buildErrorState() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -137,7 +137,11 @@ class _IncomeCategoriesPageState extends State<IncomeCategoriesPage> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(error, style: context.bodyMd, textAlign: TextAlign.center),
+            Text(
+              'Δοκιμάστε ξανά αργότερα.',
+              style: context.bodyMd,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

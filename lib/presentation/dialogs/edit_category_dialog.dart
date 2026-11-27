@@ -7,7 +7,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
-import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/utils/icon_mapper.dart';
 
 class EditCategoryDialog extends StatefulWidget {
@@ -32,6 +31,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
   late TextEditingController _nameController;
   int? _selectedIconIndex;
   bool _showIconPicker = false;
+  String? _nameError;
 
   @override
   void initState() {
@@ -129,9 +129,15 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
                   child: TextField(
                     controller: _nameController,
                     autofocus: true,
+                    onChanged: (_) {
+                      if (_nameError != null) {
+                        setState(() => _nameError = null);
+                      }
+                    },
                     decoration: InputDecoration(
                       labelText: 'Όνομα',
                       hintText: 'π.χ. Μισθοί, Σούπερ Μάρκετ, κλπ.',
+                      errorText: _nameError,
                       prefixIcon: Icon(
                         Icons.label_outline_rounded,
                         color: context.cPrimary,
@@ -337,10 +343,9 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
                           final newName = _nameController.text.trim();
 
                           if (newName.isEmpty) {
-                            AppMessenger.warning(
-                              context,
-                              'Το όνομα δεν μπορεί να είναι κενό',
-                            );
+                            const message = 'Το όνομα δεν μπορεί να είναι κενό';
+                            setState(() => _nameError = message);
+                            AccessibilityService.announceError(message);
                             return;
                           }
 

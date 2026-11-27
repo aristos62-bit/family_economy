@@ -75,7 +75,7 @@ class _ScheduledTransactionsPageState extends State<ScheduledTransactionsPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${snapshot.error}',
+                      'Δοκιμάστε ξανά αργότερα.',
                       style: TypographyUI.bodySmall(brightness),
                       textAlign: TextAlign.center,
                     ),

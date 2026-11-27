@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:family_economy/providers/tags_provider.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 
 // ============================================================
 // TAG SELECTOR WIDGET
@@ -109,7 +110,10 @@ class _TagSelectorWidgetState extends State<TagSelectorWidget> {
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              tagsProvider.error!,
+              MessagePolicy.fromProvider(
+                tagsProvider.error,
+                action: 'φόρτωσης ετικετών',
+              ),
               style: TypographyUI.error(brightness),
             ),
           ),
@@ -517,7 +521,10 @@ class _TagSelectorWidgetState extends State<TagSelectorWidget> {
                         );
                       } else {
                         AccessibilityService.announceError(
-                          tagsProvider.error ?? 'Σφάλμα δημιουργίας tag',
+                          MessagePolicy.fromProvider(
+                            tagsProvider.error,
+                            action: 'δημιουργίας tag',
+                          ),
                         );
                       }
                     },

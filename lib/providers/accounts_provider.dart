@@ -266,7 +266,7 @@ class AccountsProvider extends ChangeNotifier {
       );
     } catch (e) {
       DebugConfig.print('🔴 Error parsing accounts: $e');
-      _error = e.toString();
+      _error = 'Αποτυχία φόρτωσης λογαριασμών. Δοκιμάστε ξανά.';
       _isLoading = false;
       notifyListeners();
     }
@@ -302,7 +302,7 @@ class AccountsProvider extends ChangeNotifier {
     }
 
     DebugConfig.print('🔴 Accounts listener error: $error');
-    _error = msg;
+    _error = 'Αποτυχία φόρτωσης λογαριασμών. Δοκιμάστε ξανά.';
     _isLoading = false;
     notifyListeners();
   }

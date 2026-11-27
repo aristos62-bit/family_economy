@@ -1,8 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:family_economy/core/data/schema.dart';
 import 'package:family_economy/core/data/schema_service.dart';
 import 'package:family_economy/core/data/user_doc_policy.dart';
+import 'package:family_economy/core/errors/user_message_exception.dart';
 import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/services/onboarding_service.dart';
@@ -10,6 +12,7 @@ import 'package:family_economy/presentation/screens/home/home_page.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
+import 'package:family_economy/core/utils/message_policy.dart';
 import 'package:family_economy/core/session/session.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/providers/accounts_provider.dart';
@@ -114,7 +117,7 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         user = await _authService.signIn(email, password);
       } else {
         if (password != confirmPassword) {
-          throw Exception('Οι κωδικοί δεν ταιριάζουν.');
+          throw const UserMessageException('Οι κωδικοί δεν ταιριάζουν.');
         }
         user = await _authService.register(email, password);
       }
@@ -257,11 +260,9 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
       DebugConfig.print('ERROR TYPE: ${e.runtimeType}');
       DebugConfig.print('ERROR MESSAGE: ${e.toString()}');
 
-      String errorMessage = e.toString().replaceFirst('Exception: ', '').trim();
-
-      if (errorMessage.isEmpty) {
-        errorMessage = 'Προέκυψε άγνωστο σφάλμα. Δοκιμάστε ξανά.';
-      }
+      final errorMessage = e is SchemaBlockedException
+          ? e.message
+          : MessagePolicy.fromError(e, action: 'σύνδεσης');
 
       if (mounted) {
         setState(() {
@@ -299,7 +300,10 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         setState(() => _errorMessage = message);
       }
     } catch (e) {
-      final errorMessage = e.toString().replaceFirst('Exception: ', '').trim();
+      final errorMessage = MessagePolicy.fromError(
+        e,
+        action: 'αποστολής email επαναφοράς',
+      );
       if (mounted) {
         setState(() => _errorMessage = errorMessage);
       }

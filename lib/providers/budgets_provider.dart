@@ -129,7 +129,7 @@ class BudgetsProvider extends ChangeNotifier {
 
     } catch (e) {
       DebugConfig.print('🔴 Error parsing budgets: $e');
-      _error = e.toString();
+      _error = 'Αποτυχία φόρτωσης προϋπολογισμών. Δοκιμάστε ξανά.';
       _isLoading = false;
       notifyListeners();
     }
@@ -138,7 +138,7 @@ class BudgetsProvider extends ChangeNotifier {
 
   void _onError(Object error) {
     DebugConfig.print('🔴 Budgets listener error: $error');
-    _error = error.toString();
+    _error = 'Αποτυχία φόρτωσης προϋπολογισμών. Δοκιμάστε ξανά.';
     _isLoading = false;
     notifyListeners();
   }

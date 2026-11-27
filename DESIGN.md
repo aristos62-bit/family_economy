@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 328 tests
+flutter test                       # 331 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -260,7 +260,7 @@ pubspec.yaml  (version: 2.3.14+21)        ← ΜΟΝΟ εδώ αλλάζει η 
 | `flutter build windows --debug` | ❌ LNK2019/LNK1120 — **μόνο με VS 2022** 17.10.1 + SDK 10.0.22621.0 (βλ. §11 L33) |
 | `flutter build windows --release` | ✅ `√ Built build\windows\x64\runner\Release\family_economy.exe` — **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026, επιβεβαιωμένο· το ❌ ισχύει μόνο με VS 2022) |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ **328/328** |
+| `flutter test` | ✅ **331/331** |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -277,7 +277,7 @@ pubspec.yaml  (version: 2.3.14+21)        ← ΜΟΝΟ εδώ αλλάζει η 
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 23 αρχεία · **328** `test()`/`testWidgets()` |
+| Tests | 23 αρχεία · **331** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -388,7 +388,7 @@ lib/
 
 **Κανένα γνωστό νεκρό αρχείο** (25/11/2026). Τα `core/widgets/biometric_gate.dart` (195 γρ.), `core/services/message_service.dart` (288 γρ.), `core/widgets/offline_banner.dart` (η αχρησιμοποίητη κλάση `OfflineBanner`, 94 γρ.) και `services/recurring_notifications_service.dart` (296 γρ.) **αφαιρέθηκαν** — 0 imports/call sites, βλ. `error_list.md` E15/L6.
 
-> **L11 ✅ 27/11/2026:** όλα τα μηνύματα περνούν πλέον από `core/messaging/app_messenger.dart` (0 άμεσα `SnackBar(` έξω από τον presenter· guard test στο `test/unit/core/messaging/l11_guard_test.dart`).
+> **L11 ✅ FIXED 27/11/2026:** όλα τα μηνύματα περνούν πλέον από `core/messaging/app_messenger.dart` (0 άμεσα `SnackBar(` έξω από τον presenter· guard test v2 στο `test/unit/core/messaging/l11_guard_test.dart`). Ο post-commit έλεγχος βρήκε **E77–E83**· όλα διορθώθηκαν και το νέο device test σε `2.3.14+21` πέρασε — βλ. `error_list.md`.
 
 ---
 
@@ -524,7 +524,7 @@ lib/
 | `core/utils/message_policy.dart` | Καθαρή πολιτική: `MessageKind` (success/info/warning/error), χρόνοι **3/3/5/6s**, semantic χρώματα + max-contrast foreground, πλάτος **560** σε οθόνες >600px, `fromError(e, action:)`, `fromProvider(message, action:)` (allowlist μόνο για τα γνωστά μηνύματα `TagsProvider`), `genericError` |
 | `core/messaging/app_messenger.dart` | Presenter: `success` / `info` / `warning` / `error`, προαιρετικό `actionLabel`+`onAction`, `persist`, `messenger:` για στοχευμένο `ScaffoldMessengerState`. Ουρά ανά messenger (`Expando`)· μη-persist αντικαθίσταται, persistent προστατεύεται. `liveRegion: true` για screen readers |
 | `core/errors/user_message_exception.dart` | `UserMessageException`: μήνυμα ασφαλές για χρήστη· οτιδήποτε άλλο → `MessagePolicy` generic |
-| Guard test | `test/unit/core/messaging/l11_guard_test.dart`: (1) κανένα `SnackBar(` έξω από το `app_messenger.dart`, (2) κανένα raw `$e`/`$error` σε `Text(`/`content:`/`label:`/`hintText:` (εξαιρούνται σχόλια/logging) |
+| Guard test | `test/unit/core/messaging/l11_guard_test.dart`: (1) κανένα `SnackBar(` έξω από το `app_messenger.dart`, (2) κανένα raw `$e`/`$error` σε UI sinks (taint tracking ανά αρχείο: πιάνει και `_error = e.toString(); Text(_error)`), εξαιρούνται σχόλια/logging/allowlist `MessagePolicy` και fixtures αυτοελέγχου (E82) |
 
 | Μέτρηση | Τιμή |
 |---|---|
@@ -908,11 +908,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (328 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (331 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 328/328 |
+| `flutter test` | ✅ 331/331 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 > Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
@@ -936,7 +936,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `ui_tokens_test.dart` | 4 | `ColorsUI.contrastRatio` (E67): λόγος αντίθεσης, όρια 4.5:1, έλεγχος warning χωρίς εγγύηση |
 | `message_policy_test.dart` | 20 | L11: χρόνοι 3/3/5/6s, semantic χρώματα + contrast ≥4.5:1 (light/dark), persist ανά action, πλάτος 560, `fromError`/`fromProvider` με allowlist |
 | `app_messenger_test.dart` | 10 | L11: floating/πλάτος/χρώματα, action, persist, ουρά (replace μη-persist, προστασία persistent), nested `ScaffoldMessengerState` |
-| `l11_guard_test.dart` | 2 | L11 guard (D10): 0 άμεσα `SnackBar(` έξω από τον presenter· 0 raw `$e`/`$error` σε `Text(`/`content:`/`label:`/`hintText:` |
+| `l11_guard_test.dart` | 2 | L11 guard (D10): 0 άμεσα `SnackBar(` έξω από τον presenter· 0 raw `$e`/`$error` σε `Text(`/`content:`/`label:`/`hintText:` (στενός — βλ. E82) |
 | `account_delete_guard_test.dart` | 41 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) + `targetIsVisible` αρχειοθετημένου στόχου (E32) + πεδία budgets στο πλάνο (L26) |
 | `account_budget_usage_test.dart` | 13 | Μέτρηση όλων των μη διαγραμμένων budgets (L26): soft-deleted, legacy χωρίς `is_active`/`deleted`, «Όλοι», άλλος λογαριασμός, ανενεργά, trim, κενά |
 | `account_restore_policy_test.dart` | 24 | Κανόνας επαναφοράς (E19/E14): μόνο marked ζεύγη, κρυφές κινήσεις χρήστη, εκκρεμή, missing/deleted peers, απόλυτο υπόλοιπο σε cents, chunks ≤499, fingerprint, μηνύματα |
@@ -1043,7 +1043,7 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L8 | iOS/macOS χωρίς `Podfile` → builds ανεπιβεβαίωτα | §2.3 |
 | L9 | Καμία CI (analyze/test/build χειροκίνητα) | §2.6 |
 | L10 | Android release υπογράφεται με **debug key**, minify/shrink off | §2.1 |
-| L11 | **✅ Διορθώθηκε 27/11/2026 (`2.3.14+21`, E66)** — 89 άμεσα `SnackBar(...)` → `AppMessenger` (+ `MessagePolicy`, `UserMessageException`, inline validation), **0** άμεσα constructors στο `lib/`· guard test (D10) για `SnackBar(` και raw σφάλματα σε UI sinks | §5.5 |
+| L11 | **✅ Διορθώθηκε 27/11/2026 (E66, `2.3.14+21`)** — 89 άμεσα `SnackBar(...)` → `AppMessenger` (+ `MessagePolicy`, `UserMessageException`, inline validation σε λογαριασμούς/κατηγορίες/tags/oil/notification), **0** άμεσα constructors στο `lib/`· guard test v2 για `SnackBar(` και raw σφάλματα σε UI sinks (taint tracking ανά αρχείο). Τα **E77–E83** διορθώθηκαν και το device test πέρασε | §5.5 |
 | L12 | Budgets spent με **3** διαδρομές υπολογισμού | §5.6 |
 | L13 | *(λύθηκε 19/11/2026)* Web title/manifest τοπικοποιήθηκαν | §2.4 |
 | L14 | *(λύθηκε 19/11/2026)* Installer με σχετικές διαδρομές | §2.6 |

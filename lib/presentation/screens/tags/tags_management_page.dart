@@ -185,7 +185,10 @@ class _TagsManagementPageState extends State<TagsManagementPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        tagsProvider.error!,
+                        MessagePolicy.fromProvider(
+                          tagsProvider.error,
+                          action: 'φόρτωσης ετικετών',
+                        ),
                         style: TypographyUI.bodySmall(
                           brightness,
                         ).copyWith(color: ColorsUI.getError(brightness)),
@@ -527,6 +530,7 @@ class _TagsManagementPageState extends State<TagsManagementPage> {
     final brightness = Theme.of(context).brightness;
     final nameController = TextEditingController();
     String selectedColor = TagColorUtil.defaultColors.first;
+    String? nameError;
 
     AccessibilityService.announcePolite('Δημιουργία νέου tag');
 
@@ -551,6 +555,12 @@ class _TagsManagementPageState extends State<TagsManagementPage> {
                 nameController: nameController,
                 selectedColor: selectedColor,
                 brightness: brightness,
+                errorText: nameError,
+                onNameChanged: (_) {
+                  if (nameError != null) {
+                    setDialogState(() => nameError = null);
+                  }
+                },
                 onColorChanged: (hex) =>
                     setDialogState(() => selectedColor = hex),
               ),
@@ -587,9 +597,9 @@ class _TagsManagementPageState extends State<TagsManagementPage> {
                     onPressed: () async {
                       final name = nameController.text.trim();
                       if (name.isEmpty) {
-                        AccessibilityService.announceError(
-                          'Συμπληρώστε όνομα tag',
-                        );
+                        const message = 'Συμπληρώστε όνομα tag';
+                        setDialogState(() => nameError = message);
+                        AccessibilityService.announceError(message);
                         return;
                       }
                       Navigator.of(dialogContext).pop();
@@ -639,6 +649,7 @@ class _TagsManagementPageState extends State<TagsManagementPage> {
     final brightness = Theme.of(context).brightness;
     final nameController = TextEditingController(text: tag.name);
     String selectedColor = tag.color;
+    String? nameError;
 
     AccessibilityService.announcePolite('Επεξεργασία tag: ${tag.name}');
 
@@ -663,6 +674,12 @@ class _TagsManagementPageState extends State<TagsManagementPage> {
                 nameController: nameController,
                 selectedColor: selectedColor,
                 brightness: brightness,
+                errorText: nameError,
+                onNameChanged: (_) {
+                  if (nameError != null) {
+                    setDialogState(() => nameError = null);
+                  }
+                },
                 onColorChanged: (hex) =>
                     setDialogState(() => selectedColor = hex),
               ),
@@ -699,9 +716,9 @@ class _TagsManagementPageState extends State<TagsManagementPage> {
                     onPressed: () async {
                       final name = nameController.text.trim();
                       if (name.isEmpty) {
-                        AccessibilityService.announceError(
-                          'Συμπληρώστε όνομα tag',
-                        );
+                        const message = 'Συμπληρώστε όνομα tag';
+                        setDialogState(() => nameError = message);
+                        AccessibilityService.announceError(message);
                         return;
                       }
                       Navigator.of(dialogContext).pop();
@@ -1196,6 +1213,8 @@ class _TagFormContent extends StatelessWidget {
   final TextEditingController nameController;
   final String selectedColor;
   final Brightness brightness;
+  final String? errorText;
+  final ValueChanged<String>? onNameChanged;
   final ValueChanged<String> onColorChanged;
 
   const _TagFormContent({
@@ -1203,6 +1222,8 @@ class _TagFormContent extends StatelessWidget {
     required this.selectedColor,
     required this.brightness,
     required this.onColorChanged,
+    this.errorText,
+    this.onNameChanged,
   });
 
   Color _contrastColor(Color bg) {
@@ -1229,9 +1250,11 @@ class _TagFormContent extends StatelessWidget {
               autofocus: true,
               textCapitalization: TextCapitalization.sentences,
               style: TypographyUI.bodyMedium(brightness),
+              onChanged: onNameChanged,
               decoration: InputDecoration(
                 labelText: 'Όνομα tag *',
                 labelStyle: TypographyUI.labelMedium(brightness),
+                errorText: errorText,
                 filled: true,
                 fillColor: ColorsUI.getInputFill(brightness),
                 border: OutlineInputBorder(

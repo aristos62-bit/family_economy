@@ -416,7 +416,7 @@ class _Stats4BudgetPageState extends State<Stats4BudgetPage> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMsg = 'Σφάλμα υπολογισμού: $e';
+        _errorMsg = 'Αποτυχία υπολογισμού. Δοκιμάστε ξανά.';
       });
       AccessibilityService.announceAssertive('Σφάλμα κατά τον υπολογισμό.');
     }

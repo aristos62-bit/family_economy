@@ -201,7 +201,7 @@ class TagsProvider extends ChangeNotifier {
   void _onError(dynamic error) {
     if (_disposed) return;
     DebugConfig.print('❌ TagsProvider error: $error');
-    _error = error.toString();
+    _error = 'Αποτυχία φόρτωσης ετικετών. Δοκιμάστε ξανά.';
     _loading = false;
     if (!_disposed) notifyListeners();
   }
