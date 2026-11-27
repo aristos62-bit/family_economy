@@ -33,9 +33,9 @@
 > Τα **E22/E54** διορθώθηκαν ως **καθαρισμός νεκρού κώδικα + κείμενο διαλόγου** (έκδοση `2.3.7+14`, 23/11/2026).
 > Το **E56** διορθώθηκε με τη **migration σε `material_ui` 1.11.1** (70 imports + `GlobalMaterialLocalizations.delegates`, χωρίς version bump — 25/11/2026)· `flutter analyze` πλέον **0/0/0**.
 > Το **E57** διορθώθηκε με **self-healing ανάγνωση της περιόδου γραφημάτων** (`PeriodPrefs`: επιδιόρθωση CP437/CP1252 + επανεγγραφή, 13 tests — 25/11/2026).
-> **Εκτός σειράς (τεχνικό χρέος, χωρίς ορισμένη προτεραιότητα):** **E60** — ℹ️ INFO · **E61** — 🚫 WON'T FIX (26/11/2026) · **L23** — 🚫 WON'T FIX / κλειστό (26/11/2026 — read-only έλεγχος: 0 ευρήματα).
+> **Εκτός σειράς (τεχνικό χρέος, χωρίς ορισμένη προτεραιότητα):** **E60** — 🚫 WON'T FIX (27/11/2026, μένει ως έχει) · **E61** — 🚫 WON'T FIX (26/11/2026) · **L23** — 🚫 WON'T FIX / κλειστό (26/11/2026 — read-only έλεγχος: 0 ευρήματα).
 > Το **E10** έκλεισε ως **μη εφαρμόσιμο** (η λειτουργία `MessageBubble`/`ChatMessagesList` αφαιρέθηκε από την εφαρμογή — 23/11/2026).
-> Τα **E58/E59** προέκυψαν από την ανάλυση του **L18** (25/11/2026) και ✅ διορθώθηκαν στην `2.3.10+17` (λεπτομέρειες παρακάτω· νέο **E60** ℹ️ INFO από τον ίδιο έλεγχο).
+> Τα **E58/E59** προέκυψαν από την ανάλυση του **L18** (25/11/2026) και ✅ διορθώθηκαν στην `2.3.10+17` (λεπτομέρειες παρακάτω· νέο **E60** από τον ίδιο έλεγχο → 🚫 WON'T FIX 27/11/2026).
 > **L23** ✅ έκλεισε 26/11/2026 (🚫 WON'T FIX — κρίθηκε υπερβολή): read-only έλεγχος σε **όλα** τα δεδομένα (6 χρήστες, 2.312 κινήσεις, 146 transfer legs, 73 groups — μόνο GET) → **0** σπασμένα/ημιτελή ζεύγη μεταφοράς. Δεν χρειάζεται επισκευή δεδομένων ούτε fail-closed guard. Ισχύει: (α) ✅ deployed rules = repo rules (23/11/2026 — semantic diff 57=57).
 
 ## Ευρήματα
@@ -101,7 +101,7 @@
 | E57 | Χαλασμένη τιμή περιόδου γραφήματος στο SharedPreferences (`╬£╬«╬╜╬▒╧é` αντί `Μήνας` — UTF-8 bytes ως CP437) | — | ✅ FIXED | 2026-11-25 |
 | E58 | `ThemeProvider.initialize()` / `NotificationsService().initialize()` τρέχουν **έξω** από το `try` της εκκίνησης → αποτυχία = uncaught exception χωρίς οθόνη σφάλματος | — | ✅ FIXED | 2026-11-25 |
 | E59 | Μετά τη διόρθωση του L18 το `Phoenix` (`main.dart`, πριν την αφαίρεση) και η εξάρτηση `flutter_phoenix` δεν είχαν καμία χρήση (νεκρός κώδικας) | — | ✅ FIXED | 2026-11-25 |
-| E60 | `DebugConfig._debug = false` σταθερό → `DebugConfig.print/startup` δεν τυπώνουν τίποτα, σε κανένα build (και τα logs του L18 hardening) | — | ℹ️ INFO | 2026-11-25 |
+| E60 | `DebugConfig._debug = false` σταθερό → `DebugConfig.print/startup` δεν τυπώνουν τίποτα, σε κανένα build (και τα logs του L18 hardening) | — | 🚫 WON'T FIX | 2026-11-27 |
 | E61 | Αφαιρέθηκε το `MessageService` χωρίς αντικαταστάτη· η αρχική ιδέα «offline → θα συγχρονιστεί» και το κεντρικό μήνυμα συγχρονισμού δεν υλοποιήθηκαν ποτέ | — | 🚫 WON'T FIX | 2026-11-26 |
 | E62 | `DESIGN.md` §5.5: «186 άμεσα SnackBar σε 28 αρχεία» έναντι μέτρησης 25/11/2026 | — | ✅ FIXED | 2026-11-25 |
 | E63 | Διπλή κατηγορία «Μεταφορά» από 2 συσκευές: `_getOrCreateTransferCategory` έγραφε τυχαίο uuid | F5 | ✅ FIXED | 2026-11-26 |
@@ -459,9 +459,10 @@
 - Διόρθωση: αφαιρέθηκαν και τα δύο — το `MyApp.build` επιστρέφει απευθείας το `MaterialApp`· `pubspec.lock` έχασε μόνο το `flutter_phoenix` (−8 γραμμές, το transitive `nested` προέρχεται από άλλο πακέτο).
 - Επαλήθευση: `flutter analyze` 0/0/0, `flutter test` 260/260, release APK + device smoke (rotation χωρίς crash, `Phoenix` 0 στο logcat).
 
-**E60 — `DebugConfig` σιωπηλό σε όλα τα builds (INFO 25/11/2026)**
-- `_debug = false` σταθερό (`lib/core/utils/debug_config.dart:6`) → `DebugConfig.print`/`startup` **δεν τυπώνουν τίποτα**, άρα και τα logs του L18 hardening / E58 είναι σιωπηλά.
-- Καμία επίπτωση σε λειτουργία· προτείνεται διακόπτης ανά build (`kDebugMode` ή `--dart-define`) όταν χρειαστεί διάγνωση σε device.
+**E60 — `DebugConfig` σιωπηλό σε όλα τα builds (🚫 WON'T FIX 27/11/2026)**
+- `_debug = false` σταθερό (`lib/core/utils/debug_config.dart:6`) → `DebugConfig.print`/`startup` **δεν τυπώνουν τίποτα**, άρα και τα logs του L18 hardening / E58 είναι σιωπηλά. Το `isDebug` επηρεάζει και το `FirebaseFirestore.setLoggingEnabled` (`main.dart:169`).
+- Καμία επίπτωση σε λειτουργία· αν χρειαστεί διάγνωση, η αλλαγή της γραμμής σε `true` γίνεται **τοπικά** (δεν μπαίνει σε commit) ή προτείνεται διακόπτης ανά build (`kDebugMode` ή `--dart-define`).
+- **Απόφαση χρήστη (27/11/2026):** κλείσιμο ως **🚫 WON'T FIX** — μένει ως έχει· καμία αλλαγή κώδικα.
 
 **E61 — Κεντρικό μήνυμα συγχρονισμού (🚫 WON'T FIX 26/11/2026)**
 - Δεν είναι bug αλλά ιδέα: μετά την αφαίρεση του `MessageService` (E15) κανένα σημείο του κώδικα δεν παράγει μήνυμα συγχρονισμού (έλεγχος 26/11/2026: `waitForPendingWrites` / `onSyncComplete` / «Συγχρονισμός ολοκληρώθηκε» → **0** αναφορές· μόνο debug log `hasPendingWrites` στο `notifications_provider.dart:125`).
