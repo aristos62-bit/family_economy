@@ -4,7 +4,7 @@ description: "Οικογενειακός Προϋπολογισμός: έσοδ�
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 
-version: 2.3.15+22
+version: 2.3.16+23
 
 environment:
   sdk: ^3.10.4

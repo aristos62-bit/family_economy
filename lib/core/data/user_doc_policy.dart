@@ -28,7 +28,15 @@ enum UserDocAction {
 }
 
 /// Αποτέλεσμα της ροής, όπως το βλέπει η οθόνη εισόδου.
-enum UserDocOutcome { exists, created, skippedOffline, skippedError }
+enum UserDocOutcome {
+  exists,
+  created,
+  skippedOffline,
+  skippedError,
+
+  /// SEC-005: το doc έχει `deleted: true` → ημιτελής διαγραφή, κλείδωμα.
+  deletionPending,
+}
 
 /// E64: ο κανόνας «τι κάνουμε με το user document» χωρίς I/O.
 class UserDocPolicy {
@@ -47,6 +55,12 @@ class UserDocPolicy {
   /// true όταν ο κωδικός σημαίνει «δεν έχουμε δίκτυο».
   static bool isOfflineCode(String? code) =>
       code != null && offlineCodes.contains(code);
+
+  /// SEC-005: το user doc σημαδεύτηκε για διαγραφή (`deleted: true`).
+  /// Είναι το μόνο σημείο αλήθειας για το marker — το χρησιμοποιεί και
+  /// το `AccountDeletionPolicy`.
+  static bool isDeletionPending(Map<String, dynamic>? data) =>
+      data?['deleted'] == true;
 
   /// Απόφαση μετά την ανάγνωση του τοπικού cache.
   static UserDocAction afterCache({

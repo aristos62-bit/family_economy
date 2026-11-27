@@ -10,6 +10,7 @@ import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/biometric_auth_service.dart';
 import 'package:family_economy/core/services/biometric_settings_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
+import 'package:family_economy/core/utils/account_deletion_policy.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/utils/message_policy.dart';
 import 'package:family_economy/core/widgets/startup_error_view.dart';
@@ -87,6 +88,14 @@ class _AppStartState extends State<AppStart> {
         confirmedOffline: _isConfirmedOffline(),
       );
       if (!mounted) return;
+
+      // SEC-005: ημιτελής διαγραφή → κλείδωμα πριν από βιομετρικό/schema.
+      // Η συνέχιση γίνεται από τη σελίδα σύνδεσης (reauth + resume).
+      if (ensured.outcome == UserDocOutcome.deletionPending) {
+        throw const UserMessageException(
+          AccountDeletionPolicy.pendingStartupMessage,
+        );
+      }
 
       final userData = ensured.data;
       final currency = (userData?['default_currency'] as String?) ?? 'EUR';

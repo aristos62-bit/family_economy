@@ -6,14 +6,18 @@
 
 import 'package:material_ui/material_ui.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
+import 'package:family_economy/core/errors/user_message_exception.dart';
+import 'package:family_economy/core/services/account_deletion_service.dart';
+import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
+import 'package:family_economy/core/utils/account_deletion_policy.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
+import 'package:family_economy/services/notifications_service.dart';
 
 class DeleteAccountPage extends StatefulWidget {
   const DeleteAccountPage({super.key});
@@ -23,6 +27,8 @@ class DeleteAccountPage extends StatefulWidget {
 }
 
 class _DeleteAccountPageState extends State<DeleteAccountPage> {
+  final AuthService _authService = AuthService();
+
   bool _isDeleting = false;
 
   @override
@@ -77,7 +83,8 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Επιβεβαίωση'),
         content: const Text(
-          'Είστε σίγουροι ότι θέλετε να διαγράψετε τον λογαριασμό σας;\n\n'
+          'Είστε σίγουροι ότι θέλετε να διαγράψετε τον λογαριασμό σας '
+          'και όλα τα δεδομένα σας;\n\n'
           'Η ενέργεια είναι μη αναστρέψιμη.',
         ),
         actions: [
@@ -108,7 +115,8 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
         ),
         content: const Text(
           'Τελευταία προειδοποίηση:\n'
-          'Αν πατήσετε "Διαγραφή", ο λογαριασμός θα διαγραφεί οριστικά.',
+          'Αν πατήσετε "Διαγραφή", ο λογαριασμός και όλα τα δεδομένα σας '
+          'θα διαγραφούν οριστικά.',
         ),
         actions: [
           TextButton(
@@ -128,218 +136,338 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
 
     if (confirm2 != true || !mounted) return;
 
-    await _performDelete();
+    // SEC-005: reauth-first — ο κωδικός ζητείται πριν από κάθε διαγραφή.
+    final password = await _askPassword();
+    if (password == null || !mounted) return;
+
+    await _performDelete(password);
   }
 
-  Future<void> _performDelete() async {
+  /// Ζητά τον κωδικό πρόσβασης για reauthentication.
+  ///
+  /// Επιστρέφει `null` όταν ο χρήστης ακυρώσει· κενός κωδικός → μήνυμα.
+  Future<String?> _askPassword() async {
+    var typedPassword = '';
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(AccountDeletionPolicy.passwordPromptTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(AccountDeletionPolicy.passwordPromptMessage),
+            const SizedBox(height: 16),
+            TextField(
+              obscureText: true,
+              autofocus: true,
+              onChanged: (value) => typedPassword = value,
+              decoration: const InputDecoration(
+                labelText: AccountDeletionPolicy.passwordLabel,
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (value) =>
+                  Navigator.of(dialogContext).pop(value),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text(AccountDeletionPolicy.cancelAction),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(typedPassword),
+            child: Text(
+              AccountDeletionPolicy.deleteAction,
+              style: TextStyle(color: ColorsUI.getError(context.brightness)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final password = result?.trim();
+
+    if (password == null) return null;
+    if (password.isEmpty) {
+      if (mounted) {
+        AccessibilityService.announceError(
+          AccountDeletionPolicy.passwordEmptyMessage,
+        );
+        await _showInfoDialog(
+          title: AccountDeletionPolicy.failedTitle,
+          message: AccountDeletionPolicy.passwordEmptyMessage,
+        );
+      }
+      return null;
+    }
+    return password;
+  }
+
+  /// SEC-005: reauth → marker → cascade → root → notifications → Auth delete.
+  Future<void> _performDelete(String password) async {
     if (_isDeleting) return;
 
     setState(() => _isDeleting = true);
 
     final userId = context.session.userId;
-    final auth = FirebaseAuth.instance;
-    final user = auth.currentUser;
 
     try {
-      // ✅ (1) Σημείωσε τον χρήστη ως deleted στη Firestore (ασφαλές και γρήγορο)
-      await FirebaseFirestore.instance.collection('users').doc(userId).set({
-        'deleted': true,
-        'deleted_at': DateTime.now().toUtc().toIso8601String(),
-      }, SetOptions(merge: true));
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw const UserMessageException(
+          'Η συνεδρία έληξε. Συνδεθείτε ξανά.',
+        );
+      }
 
-      // ✅ (2) Προσπάθησε να διαγράψεις τον Auth user
-      if (user != null) {
-        await user.delete();
+      // 1) Reauth-first: καμία εγγραφή πριν επιβεβαιωθεί η ταυτότητα.
+      await _authService.reauthenticateWithPassword(password);
+      if (!mounted) return;
+
+      // 2) Marker + cascade + root doc. Σε μερική αποτυχία το root μένει
+      // και ο χρήστης μπορεί να συνεχίσει χωρίς νέο login.
+      final service = AccountDeletionService(userId: userId);
+      while (true) {
+        final report = await service.deleteAccountData();
+        if (!mounted) return;
+
+        if (report.isFailed) {
+          await _showInfoDialog(
+            title: AccountDeletionPolicy.failedTitle,
+            message: AccountDeletionPolicy.failedMessage,
+          );
+          return;
+        }
+
+        if (report.isComplete) break;
+
+        final retry = await _showPartialDialog(report);
+        if (retry != true || !mounted) return;
+      }
+
+      // 3) Τοπικές ειδοποιήσεις — best effort, δεν ακυρώνει τη διαγραφή.
+      // Χωρίς αίτημα άδειας: η διαγραφή δεν πρέπει να ανοίγει διάλογο.
+      try {
+        final notifications = NotificationsService();
+        await notifications.initialize(requestPermissions: false);
+        await notifications.cancelAllNotifications();
+      } catch (e) {
+        DebugConfig.print('⚠️ cancelAllNotifications failed: $e');
+      }
+
+      // 4) Auth user — μία επανάληψη reauth αν ζητηθεί πρόσφατη σύνδεση.
+      try {
+        await _authService.deleteCurrentUser();
+      } on AuthFlowException catch (e) {
+        if (!e.requiresRecentLogin) rethrow;
+        await _authService.reauthenticateWithPassword(password);
+        await _authService.deleteCurrentUser();
       }
 
       if (!mounted) return;
 
       AccessibilityService.announceSuccess('Ο λογαριασμός διαγράφηκε');
-
-      // ✅ (3) Κλείνουμε τη σελίδα πίσω (η ροή logout/navigation θα μπει στο επόμενο βήμα)
       Navigator.of(context).pop(true);
-    } on FirebaseAuthException catch (e) {
+    } on AuthFlowException catch (e) {
       if (!mounted) return;
-
-      // Πολύ συχνό: requires-recent-login
-      if (e.code == 'requires-recent-login') {
+      if (e.requiresRecentLogin) {
         AccessibilityService.announceError(
-          'Για λόγους ασφαλείας απαιτείται πρόσφατη σύνδεση',
+          AccountDeletionPolicy.recentLoginMessage,
         );
-
-        await showDialog(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('Απαιτείται σύνδεση'),
-            content: const Text(
-              'Για λόγους ασφαλείας, πρέπει να συνδεθείτε ξανά και μετά να δοκιμάσετε διαγραφή λογαριασμού.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
+        await _showInfoDialog(
+          title: 'Απαιτείται σύνδεση',
+          message: AccountDeletionPolicy.recentLoginMessage,
         );
       } else {
-        DebugConfig.print('❌ delete account error: ${e.code}');
-        AccessibilityService.announceError(
-          'Αποτυχία διαγραφής λογαριασμού. Δοκιμάστε ξανά.',
-        );
-
-        await showDialog(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('Σφάλμα'),
-            content: const Text(
-              'Αποτυχία διαγραφής λογαριασμού. Δοκιμάστε ξανά.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
+        await _showInfoDialog(
+          title: AccountDeletionPolicy.failedTitle,
+          message: e.message,
         );
       }
+    } on UserMessageException catch (e) {
+      if (!mounted) return;
+      await _showInfoDialog(
+        title: AccountDeletionPolicy.failedTitle,
+        message: e.message,
+      );
     } catch (e) {
       DebugConfig.print('❌ delete account error: $e');
       if (!mounted) return;
-
-      AccessibilityService.announceError(
-        'Αποτυχία διαγραφής λογαριασμού. Δοκιμάστε ξανά.',
-      );
-
-      await showDialog(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Σφάλμα'),
-          content: const Text(
-            'Αποτυχία διαγραφής λογαριασμού. Δοκιμάστε ξανά.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+      await _showInfoDialog(
+        title: AccountDeletionPolicy.failedTitle,
+        message: AccountDeletionPolicy.failedMessage,
       );
     } finally {
       if (mounted) setState(() => _isDeleting = false);
     }
   }
 
+  Future<void> _showInfoDialog({
+    required String title,
+    required String message,
+  }) async {
+    AccessibilityService.announceError(message);
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _showPartialDialog(AccountDeletionReport report) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(AccountDeletionPolicy.partialTitle),
+        content: Text(
+          '${AccountDeletionPolicy.partialMessage}\n\n'
+          '${AccountDeletionPolicy.partialFailuresLabel}: '
+          '${report.failures.length}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text(AccountDeletionPolicy.closeAction),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text(AccountDeletionPolicy.retryAction),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Διαγραφή Λογαριασμού')),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final maxWidth = _getMaxWidth(constraints.maxWidth);
+    return PopScope(
+      canPop: !_isDeleting,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        AccessibilityService.announcePolite(
+          AccountDeletionPolicy.runningMessage,
+        );
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Διαγραφή Λογαριασμού')),
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final maxWidth = _getMaxWidth(constraints.maxWidth);
 
-            return Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxWidth),
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: _getHorizontalPadding(constraints.maxWidth),
-                    vertical: 16.0,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Semantics(
-                        header: true,
-                        child: Text('Προσοχή', style: context.h2),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Η διαγραφή λογαριασμού είναι μη αναστρέψιμη.\n'
-                        'Θα χαθούν τα δεδομένα πρόσβασης και ο λογαριασμός δεν θα μπορεί να επανέλθει.',
-                        style: context.bodyMd.copyWith(color: context.cText2),
-                      ),
-                      const SizedBox(height: 20),
+              return Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: _getHorizontalPadding(constraints.maxWidth),
+                      vertical: 16.0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Semantics(
+                          header: true,
+                          child: Text('Προσοχή', style: context.h2),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Η διαγραφή λογαριασμού είναι μη αναστρέψιμη.\n'
+                          'Θα διαγραφούν οριστικά ο λογαριασμός και όλα τα '
+                          'δεδομένα σας (κινήσεις, λογαριασμοί, κατηγορίες, '
+                          'ειδοποιήσεις).',
+                          style: context.bodyMd.copyWith(color: context.cText2),
+                        ),
+                        const SizedBox(height: 20),
 
-                      Card(
-                        elevation: 0,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                children: [
-                                  ExcludeSemantics(
-                                    child: Icon(
-                                      Icons.warning_rounded,
-                                      color: ColorsUI.getError(
-                                        context.brightness,
+                        Card(
+                          elevation: 0,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    ExcludeSemantics(
+                                      child: Icon(
+                                        Icons.warning_rounded,
+                                        color: ColorsUI.getError(
+                                          context.brightness,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'Θα σας ζητηθεί διπλή επιβεβαίωση.',
-                                      style: context.bodyMd.copyWith(
-                                        fontWeight: FontWeight.w600,
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'Θα σας ζητηθεί διπλή επιβεβαίωση '
+                                        'και ο κωδικός σας.',
+                                        style: context.bodyMd.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 14),
-
-                              ElevatedButton(
-                                onPressed: _isDeleting
-                                    ? null
-                                    : _startDeleteFlow,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: ColorsUI.getError(
-                                    context.brightness,
-                                  ),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
+                                  ],
                                 ),
-                                child: _isDeleting
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: ExcludeSemantics(
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation(
-                                              Colors.white,
+                                const SizedBox(height: 14),
+
+                                ElevatedButton(
+                                  onPressed: _isDeleting
+                                      ? null
+                                      : _startDeleteFlow,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: ColorsUI.getError(
+                                      context.brightness,
+                                    ),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                  ),
+                                  child: _isDeleting
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: ExcludeSemantics(
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation(
+                                                Colors.white,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      )
-                                    : const Text('Διαγραφή Λογαριασμού'),
-                              ),
-                              const SizedBox(height: 10),
+                                        )
+                                      : const Text('Διαγραφή Λογαριασμού'),
+                                ),
+                                const SizedBox(height: 10),
 
-                              OutlinedButton(
-                                onPressed: _isDeleting
-                                    ? null
-                                    : () => Navigator.of(context).maybePop(),
-                                child: const Text('Άκυρο'),
-                              ),
-                            ],
+                                OutlinedButton(
+                                  onPressed: _isDeleting
+                                      ? null
+                                      : () => Navigator.of(context).maybePop(),
+                                  child: const Text('Άκυρο'),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );

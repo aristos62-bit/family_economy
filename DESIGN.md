@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 336 tests
+flutter test                       # 358 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -60,7 +60,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Gradle / AGP / Kotlin | **9.5.0 / 9.3.1 / 2.4.20** (βλ. §2.1) |
 | Visual Studio | Community **2026 18.1.1** · Windows SDK **10.0.26100.0** — ✅ Windows release build επιβεβαιωμένο 24/11/2026· ⚠️ με **2022 17.10.1** + SDK 10.0.22621.0 αποτυγχάνει (§2.5, §11 L33) |
-| App version | **`2.3.15+22`** (`pubspec.yaml`, επαληθεύτηκε 27/11/2026) |
+| App version | **`2.3.16+23`** (`pubspec.yaml`, επαληθεύτηκε 27/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -128,17 +128,17 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.15+22)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.16+23)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.3.15 · BUILD_NO=22   (από pubspec, STEP 0)
-         ├── APK      FamilyBudget_v2.3.15.apk
+   └── build_and_setup_final.bat  APP_VER=2.3.16 · BUILD_NO=23   (από pubspec, STEP 0)
+         ├── APK      FamilyBudget_v2.3.16.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.3.15.exe   (FileVersion 2.3.15.22)
+               └── FamilyBudgetSetup_v2.3.16.exe   (FileVersion 2.3.16.23)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -151,7 +151,7 @@ pubspec.yaml  (version: 2.3.15+22)        ← ΜΟΝΟ εδώ αλλάζει η 
 | **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.15 (build 22)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.16 (build 23)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -260,7 +260,7 @@ pubspec.yaml  (version: 2.3.15+22)        ← ΜΟΝΟ εδώ αλλάζει η 
 | `flutter build windows --debug` | ❌ LNK2019/LNK1120 — **μόνο με VS 2022** 17.10.1 + SDK 10.0.22621.0 (βλ. §11 L33) |
 | `flutter build windows --release` | ✅ `√ Built build\windows\x64\runner\Release\family_economy.exe` — **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026, επιβεβαιωμένο· το ❌ ισχύει μόνο με VS 2022) |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ **336/336** |
+| `flutter test` | ✅ **358/358** |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -272,12 +272,12 @@ pubspec.yaml  (version: 2.3.15+22)        ← ΜΟΝΟ εδώ αλλάζει η 
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **112** (κανένα `*.backup` στο τρέχον clone· +`onboarding_defaults.dart`, `user_doc_policy.dart`, `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`) |
+| Dart αρχεία στο `lib/` | **114** (κανένα `*.backup` στο τρέχον clone· +`onboarding_defaults.dart`, `user_doc_policy.dart`, `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`, `account_deletion_policy.dart`, `account_deletion_service.dart`) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 23 αρχεία · **336** `test()`/`testWidgets()` |
+| Tests | 24 αρχεία · **358** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -305,6 +305,7 @@ lib/
       biometric_settings_service.dart          # Mode ανά χρήστη: always / on_demand
       connectivity_service.dart                # Online/offline, 2s debounce
       database_cleanup_service.dart            # Καθαρισμός παλιών / soft-deleted (chunked, E34)
+      account_deletion_service.dart            # Πλήρης διαγραφή δεδομένων λογαριασμού: marker → cascade → root (SEC-005)
       account_restore_service.dart             # I/O επαναφοράς διαγραμμένου λογαριασμού (E19/E14/E29-E31)
       transactions_actions_service.dart        # CRUD transactions + ενημέρωση υπολοίπων (batch)
     session/
@@ -320,6 +321,7 @@ lib/
       account_restore_policy.dart              # Πλάνο επαναφοράς λογαριασμού: skip reasons, απόλυτο υπόλοιπο, chunks (E19/E14, καθαρό Dart)
       account_totals.dart                      # Ένα σημείο αλήθειας για το συνολικό υπόλοιπο (E26, εξαιρέσεις E27)
       database_cleanup_policy.dart             # Κανόνας καθαρισμού: ηλικία, soft-deleted, chunks, μηνύματα (E34, καθαρό Dart)
+      account_deletion_policy.dart             # Κανόνας πλήρους διαγραφής: σειρά 12 συλλογών, chunks, μηνύματα (SEC-005, καθαρό Dart)
       app_info.dart                            # έκδοση από package_info_plus (footer Επιλογών)
       chart_helpers.dart
       currency_formatter.dart
@@ -644,6 +646,23 @@ lib/
 | Επίπτωση | Hard delete κατηγορίας: οι κινήσεις δείχνουν ήδη «Χωρίς κατηγορία»· μόνο `ScheduledTransactionsService.getCategoryName` → «Άγνωστη Κατηγορία/Υποκατηγορία» (L32) |
 | Έκδοση | `2.3.5+12` (PATCH — μόνο διόρθωση συμπεριφοράς) |
 
+### 5.15 Πλήρης διαγραφή λογαριασμού (SEC-005)
+
+| Στοιχείο | Τιμή |
+|---|---|
+| Κανόνας | `core/utils/account_deletion_policy.dart` — καθαρό Dart, **0 I/O**, 19 unit tests |
+| I/O | `core/services/account_deletion_service.dart` (`users/{uid}/...`, `Source.server`) |
+| Σειρά | offline guard → διπλή επιβεβαίωση → **reauth** (κωδικός) → marker `deleted:true` + `deleted_at` → cascade 12 συλλογών → root doc → `cancelAll` (best effort) → `user.delete()` |
+| Συλλογές | `transaction_tags`, `transaction_splits`, `attachments`, `account_snapshots`, `settings`, `oil_purchases`, `tags`, `accounts`, `budgets`, `transactions`, `notifications`, `categories` (υποκατηγορίες πριν τις κατηγορίες) — **εκτός** το global `exchange_rates` |
+| Chunking | Νέο `WriteBatch` ανά chunk ≤**499**· timeout **20s** ανά ανάγνωση/batch |
+| Resume guard | `UserDocOutcome.deletionPending` από `ensureUserDocument` (cache ή server)· το `AppStart` κλειδώνει με οδηγία «Αποσύνδεση»· η σελίδα σύνδεσης προσφέρει «Συνέχισε τη διαγραφή» με τα credentials της φόρμας |
+| Μερική αποτυχία | Το root doc **δεν** διαγράφεται· διάλογος με «Συνέχισε τη διαγραφή» (idempotent cascade, χωρίς νέο login) |
+| Auth | `reauthenticateWithPassword` πριν από κάθε προσπάθεια· `requires-recent-login` → **μία** επανάληψη reauth· μετά το root delete μένει μόνο το `user.delete()` |
+| Ειδοποιήσεις | `NotificationsService.cancelAllNotifications` best-effort μετά την επιτυχία· οι ειδοποιήσεις άλλων λογαριασμών επανέρχονται στο επόμενο login (diff-based reschedule) |
+| UI | `PopScope` + κλείδωμα κουμπιών κατά την εκτέλεση· κανένα raw σφάλμα (L11) |
+| Γνωστός περιορισμός | Cache-first (E64): αν το marker γράφτηκε σε **άλλη** συσκευή και υπάρχει παλιό cache, η ανίχνευση γίνεται στον επόμενο server read· το resume αφορά κατά κύριο λόγο την ίδια συσκευή |
+| Έκδοση | `2.3.16+23` (PATCH) |
+
 ---
 
 ## 6. Firestore μοντέλο
@@ -778,7 +797,7 @@ schema_version (int), schema_updated_at (Timestamp)
 - Όλα τα δεδομένα χρήστη ζουν **κάτω από `users/{uid}`** (εκτός από το global `exchange_rates`).
 - **Soft-delete παντού**: `deleted: boolean` αντί για πραγματική διαγραφή — εκατοντάδες αναφορές σε όλο το `lib/`.
 - Sync πεδία: `uuid` (παντού ως doc id / αναφορά), `updated_at`, `last_modified_device_id`, `deleted` — από δεκάδες έως εκατοντάδες αναφορές.
-- **Διαγραφή λογαριασμού χρήστη**: δεν γίνεται cascade στο Firestore από την εφαρμογή· καθαρισμός μέσω `DatabaseCleanupService` / ροών διαγραφής.
+- **Διαγραφή λογαριασμού χρήστη**: **client-side cascade** (SEC-005, `AccountDeletionService`) — marker `deleted:true` → 12 συλλογές (υποκατηγορίες πρώτα) → root doc → Auth user. Το Firestore δεν κάνει cascade από μόνο του· το `DatabaseCleanupService` παραμένει για επιλεκτικό καθαρισμό παλιών δεδομένων.
 - Αναφορές μεταξύ docs γίνονται με **uuid strings** (`account_id`, `category_id`, `transfer_group_id`), όχι με document references.
 
 ---
@@ -814,7 +833,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | Όρια μεγέθους εγγράφων/ arrays | ❌ κανένα |
 | Διαχωρισμός ρόλων (admin/user) | ❌ δεν υπάρχει |
 | Server-side έλεγχοι (Cloud Functions) | ❌ δεν υπάρχουν |
-| Cascade διαγραφής | ❌ δεν υπάρχει |
+| Cascade διαγραφής | ❌ στους κανόνες — η εφαρμογή το κάνει **client-side** (SEC-005, `AccountDeletionService`) |
 
 ### 7.3 Όρια ασφάλειας του μοντέλου
 
@@ -909,11 +928,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (336 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (358 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 336/336 |
+| `flutter test` | ✅ 358/358 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 > Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
@@ -932,7 +951,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `prepare_startup_test.dart` | 5 | E58: σειρά βημάτων, timeout theme, αποτυχία notifications, διάδοση σφάλματος connectivity, επαναχρησιμοποίηση instance στο retry |
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
 | `onboarding_defaults_test.dart` | 18 | E5: σταθερά ids (`default-account`, `cat-*`, `sub-*`), πλήθη 6+8 κατηγοριών / 24+71 υποκατηγοριών, μοναδικότητα, μη κενά ονόματα, sequential icons, χρώματα |
-| `user_doc_policy_test.dart` | 14 | E64: cache hit/miss, offline gate, server exists/create, timeout & offline codes, permission-denied, σταθερές 8s / 3 κωδικοί |
+| `user_doc_policy_test.dart` | 17 | E64: cache hit/miss, offline gate, server exists/create, timeout & offline codes, permission-denied, σταθερές 8s / 3 κωδικοί· SEC-005: marker `deleted:true` → `deletionPending` |
 | `startup_error_view_test.dart` | 6 | Κείμενα, ενέργειες, λεπτομέρειες, `primaryEnabled=false`, `textScale 1.45` χωρίς overflow |
 | `ui_tokens_test.dart` | 9 | `ColorsUI.contrastRatio` (E67): λόγος αντίθεσης, όρια 4.5:1· `getAccessibleTextColor` (E67): tokens, fallback black/white σε μεσαία φωτεινότητα, sweep 256 γκρι ≥ 4.5:1 |
 | `message_policy_test.dart` | 20 | L11: χρόνοι 3/3/5/6s, semantic χρώματα + contrast ≥4.5:1 (light/dark), persist ανά action, πλάτος 560, `fromError`/`fromProvider` με allowlist |
@@ -944,6 +963,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `account_totals_test.dart` | 7 | `countsInTotal`, εξαιρέσεις χρήστη (και «όλοι εξαιρεμένοι»), legacy `is_active=false`, αρνητικά υπόλοιπα (E26/E27) |
 | `account_balance_test.dart` | 20 | Κανόνας «μετράει στο υπόλοιπο» (E20): εκκρεμείς/εκτελεσμένες/διαγραμμένες, «Άμεση» μελλοντική, ζεύγη, cents, μηνύματα |
 | `database_cleanup_policy_test.dart` | 41 | Κανόνας καθαρισμού (E34): chunks ≤499, όρια ημερών, parser ημερομηνιών, κριτήρια υπενθυμίσεων/budgets, soft-deleted (E39), aged docs, μηνύματα |
+| `account_deletion_policy_test.dart` | 19 | SEC-005: 12 συλλογές (χωρίς διπλότυπα, `categories` τελευταίο), marker `deleted:true`, chunks ≤499 (499/500/1000), timeout 20s, μηνύματα |
 | `firestore_indexes_test.dart` | 3 | Guard (E17): δομή JSON, 5 απαιτούμενα composite signatures, κανένα διπλότυπο |
 
 ### 9.3 Τι **δεν** καλύπτεται

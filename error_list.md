@@ -9,7 +9,7 @@
 
 | # | Ενέργεια | ID |
 |---|---|---|
-| — | Καμία εκκρεμότητα — τα **E77–E84** έκλεισαν 27/11/2026 | — |
+| — | Καμία εκκρεμότητα — τα **E86** και **E67** έκλεισαν 27/11/2026 | — |
 
 > **L11** ✅ **FIXED** 27/11/2026 (`2.3.14+21`): ο κεντρικός presenter `AppMessenger` + `MessagePolicy` ολοκληρώθηκε και τα 89 sites μεταφέρθηκαν (0 άμεσα `SnackBar(`). Ο post-commit έλεγχος βρήκε **E77–E83**· **όλα διορθώθηκαν** και το νέο device test πέρασε. Λεπτομέρειες παρακάτω.
 
@@ -20,6 +20,8 @@
 > **E15/L6** ✅ διορθώθηκαν 25/11/2026 (χωρίς version bump, κεφ. 40): νεκρός κώδικας + no-op sync hook αφαιρέθηκαν· το χρέος των άμεσων `SnackBar` (**L11**) μεταφέρθηκε στον `AppMessenger` 27/11/2026 (`2.3.14+21`)· όλα τα σχετικά ευρήματα **E77–E84** έκλεισαν.
 
 > **E67/L37** ✅ διορθώθηκε 27/11/2026 (`2.3.15+22`): το `ColorsUI.getAccessibleTextColor` εγγυάται πλέον αντίθεση ≥ 4.5:1 (tokens του theme → fallback black/white) + sweep test 256 γκρι· αφαιρέθηκε νεκρή έκφραση στο `stats_page`. Τα follow-ups **E85** (αδρανές `fg`, ημιδιαφανές `bg`) έκλεισαν ως 🚫 **WON'T FIX** (καμία ορατή επίπτωση).
+
+> **E86** ✅ διορθώθηκε 27/11/2026 (`2.3.16+23`): πλήρης διαγραφή λογαριασμού με client cascade **12 συλλογών** (+ υποκατηγορίες), marker `deleted:true`/`deleted_at`, reauth-first με κωδικό, root delete μόνο μετά από πλήρη cascade και resume guard («Συνέχισε τη διαγραφή») σε `AppStart`/`LoginPage`. Device tests POCO X3 ✅ (πλήρης διαγραφή, λάθος κωδικός, offline guard, resume, demo integrity).
 
 > Τα E6 και E8 είναι κλειστά (σκόπιμη συμπεριφορά / εγγενής περιορισμός) — δεν περιμένουν ενέργεια.
 > Τα **E11**, **E13**, **E24** διορθώθηκαν μαζί (έκδοση `2.2.0+6`, 21/11/2026)· τα **E18/E21/E23/E25** είναι ℹ️ INFO.
@@ -127,6 +129,7 @@
 | E83 | Device test L11 άκυρο: η συσκευή είχε `2.3.13+20` (πριν το L11)· δεν υπάρχει build `2.3.14+21` | — | ✅ FIXED | 2026-11-27 |
 | E84 | Docs overstate: E66 FIXED/«καμία εκκρεμότητα», «raw μόνο σε logs», κεφ. 47 «Χωρίς commit» + άκυρο device test | — | ✅ FIXED | 2026-11-27 |
 | E85 | E67 follow-ups: (α) το `fg` των καρτών «Περίληψη Επιλογών» δεν φτάνει σε ορατό στοιχείο (όλα τα παιδιά ορίζουν χρώμα), (β) ημιδιαφανές `bg` αξιολογείται ως αδιαφανές | — | 🚫 WON'T FIX | 2026-11-27 |
+| E86 | SEC-005: η διαγραφή λογαριασμού άφηνε **όλα** τα δεδομένα κάτω από `users/{uid}` (12 συλλογές) και κάθε μερική αποτυχία απαιτούσε νέο login | — | ✅ FIXED | 2026-11-27 |
 
 ### Λεπτομέρειες
 
@@ -645,6 +648,14 @@
 - E66 → `🔵 OPEN (partial)`· «Σειρά εκκρεμοτήτων» → E77–E83· κεφ. 47: διορθώθηκε το «Χωρίς commit» (commits `11a6bf8`, `880d616`), αφαιρέθηκε το άκυρο device test και η φράση «raw μόνο σε logs»· `DESIGN.md` §11 L11 → partial.
   - **Μεταγενέστερη ενημέρωση (ίδια ημέρα, μετά το E83):** E66/L11 → ✅ FIXED, «Σειρά εκκρεμοτήτων» → καμία, test count → **331/331**, device test ✅ σε `2.3.14+21`.
 - **Κατάσταση:** ✅ FIXED 27/11/2026 (docs-only, χωρίς version bump).
+
+**E86 — SEC-005: πλήρης διαγραφή λογαριασμού (✅ FIXED 27/11/2026, `2.3.16+23`)**
+
+- **Τι ήταν:** η ροή έγραφε μόνο `deleted:true` + `deleted_at` στο root doc και καλούσε `user.delete()`· καμία συλλογή κάτω από `users/{uid}` δεν διαγραφόταν (orphaned data μετά τη διαγραφή του Auth χρήστη). Σε `requires-recent-login` ο χρήστης έβλεπε μήνυμα χωρίς δυνατότητα συνέχισης.
+- **Διόρθωση:** client cascade (`AccountDeletionService`) με σειρά marker → 12 συλλογές (υποκατηγορίες πριν τις κατηγορίες, chunks ≤499, timeout 20s) → root doc → `cancelAll` → `user.delete()`. Reauth-first με κωδικό· `requires-recent-login` → μία επανάληψη. Resume guard `UserDocOutcome.deletionPending` σε `AppStart` + σελίδα σύνδεσης («Συνέχισε τη διαγραφή»). Μερική αποτυχία → root μένει + retry χωρίς νέο login.
+- **Αρχεία:** `core/utils/account_deletion_policy.dart` (νέο, καθαρό Dart), `core/services/account_deletion_service.dart` (νέο, I/O), `auth_service.dart`, `user_doc_policy.dart`, `app_start.dart`, `login_page.dart`, `delete_account_page.dart`.
+- **Tests:** `account_deletion_policy_test.dart` (19) + `user_doc_policy_test.dart` 14→17 → **358/358**, `flutter analyze` 0/0/0.
+- **Κατάσταση:** ✅ FIXED 27/11/2026.
 
 ## Πώς προσθέτω εύρημα
 

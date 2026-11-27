@@ -7,6 +7,8 @@ import 'package:family_economy/core/data/user_doc_policy.dart';
 import 'package:family_economy/core/errors/user_message_exception.dart';
 import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
+import 'package:family_economy/core/services/account_deletion_service.dart';
+import 'package:family_economy/core/utils/account_deletion_policy.dart';
 import 'package:family_economy/services/onboarding_service.dart';
 import 'package:family_economy/presentation/screens/home/home_page.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
@@ -92,6 +94,83 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
     AppMessenger.warning(context, OnboardingOfflineException.userMessage);
   }
 
+  /// Ενημερώνει το μήνυμα της φόρμας (χωρίς raw σφάλμα — L11).
+  void _showLoginMessage(String message) {
+    if (!mounted) return;
+    setState(() => _errorMessage = message);
+  }
+
+  /// SEC-005: ημιτελής διαγραφή → συνέχιση με τα ίδια credentials.
+  ///
+  /// Το `signIn` μόλις έγινε, άρα το Auth είναι «πρόσφατο»· αν παρ' όλα
+  /// αυτά ζητηθεί reauth, γίνεται μία φορά με τον κωδικό της φόρμας.
+  Future<void> _handlePendingDeletion(User user, String password) async {
+    final resume = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(AccountDeletionPolicy.pendingLoginTitle),
+        content: const Text(AccountDeletionPolicy.pendingLoginMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text(AccountDeletionPolicy.cancelAction),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text(AccountDeletionPolicy.retryAction),
+          ),
+        ],
+      ),
+    );
+
+    if (resume != true) {
+      await _authService.signOut();
+      _showLoginMessage(AccountDeletionPolicy.pendingCancelMessage);
+      AccessibilityService.announceError(
+        AccountDeletionPolicy.pendingCancelMessage,
+      );
+      return;
+    }
+
+    try {
+      final report = await AccountDeletionService(
+        userId: user.uid,
+      ).deleteAccountData();
+
+      if (!report.isComplete) {
+        _showLoginMessage(AccountDeletionPolicy.partialMessage);
+        AccessibilityService.announceError(
+          AccountDeletionPolicy.partialMessage,
+        );
+        return;
+      }
+
+      try {
+        final notifications = NotificationsService();
+        await notifications.initialize(requestPermissions: false);
+        await notifications.cancelAllNotifications();
+      } catch (e) {
+        DebugConfig.print('⚠️ cancelAllNotifications failed: $e');
+      }
+
+      try {
+        await _authService.deleteCurrentUser();
+      } on AuthFlowException catch (e) {
+        if (!e.requiresRecentLogin) rethrow;
+        await _authService.reauthenticateWithPassword(password);
+        await _authService.deleteCurrentUser();
+      }
+
+      _showLoginMessage(AccountDeletionPolicy.completedMessage);
+      AccessibilityService.announceSuccess('Ο λογαριασμός διαγράφηκε');
+    } finally {
+      // Καμία ημιτελής συνεδρία πάνω στη σελίδα σύνδεσης.
+      if (_authService.currentUser != null) {
+        await _authService.signOut();
+      }
+    }
+  }
+
   Future<void> _submit() async {
     setState(() {
       _isLoading = true;
@@ -139,6 +218,12 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         confirmedOffline: _isConfirmedOffline(),
       );
       if (!mounted) return;
+
+      // SEC-005: ημιτελής διαγραφή → κλείδωμα και συνέχιση από εδώ.
+      if (ensured.outcome == UserDocOutcome.deletionPending) {
+        await _handlePendingDeletion(user, password);
+        return;
+      }
 
       final userData = ensured.data;
       final currency = userData?['default_currency'] as String? ?? 'EUR';

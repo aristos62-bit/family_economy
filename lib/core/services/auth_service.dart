@@ -22,6 +22,18 @@ class UserDocumentResult {
   final String? errorCode;
 }
 
+/// Σφάλμα ροής Auth με κωδικό, πάντα με μήνυμα ασφαλές για εμφάνιση (L11).
+///
+/// Χρησιμοποιείται από τη διαγραφή λογαριασμού (SEC-005) για να ξεχωρίζει
+/// το `requires-recent-login` χωρίς να φτάνει raw σφάλμα στο UI.
+class AuthFlowException extends UserMessageException {
+  const AuthFlowException(super.message, {required this.code});
+
+  final String code;
+
+  bool get requiresRecentLogin => code == 'requires-recent-login';
+}
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -75,13 +87,16 @@ class AuthService {
     try {
       final cached = await docRef.get(const GetOptions(source: Source.cache));
       if (cached.exists) {
+        final data = cached.data();
         DebugConfig.print(
           '→ user doc: cache hit (${stopwatch.elapsedMilliseconds}ms)',
         );
         return UserDocumentResult(
-          outcome: UserDocOutcome.exists,
+          outcome: UserDocPolicy.isDeletionPending(data)
+              ? UserDocOutcome.deletionPending
+              : UserDocOutcome.exists,
           exists: true,
-          data: cached.data(),
+          data: data,
         );
       }
     } catch (e) {
@@ -110,13 +125,16 @@ class AuthService {
           .timeout(UserDocPolicy.serverTimeout);
 
       if (serverDoc.exists) {
+        final data = serverDoc.data();
         DebugConfig.print(
           '→ user doc: server hit (${stopwatch.elapsedMilliseconds}ms)',
         );
         return UserDocumentResult(
-          outcome: UserDocOutcome.exists,
+          outcome: UserDocPolicy.isDeletionPending(data)
+              ? UserDocOutcome.deletionPending
+              : UserDocOutcome.exists,
           exists: true,
-          data: serverDoc.data(),
+          data: data,
         );
       }
 
@@ -214,6 +232,52 @@ class AuthService {
     await _auth.signOut();
   }
 
+  /// SEC-005: επαλήθευση ταυτότητας πριν από ευαίσθητη ενέργεια.
+  ///
+  /// Πετάει [UserMessageException] (μέσω [AuthFlowException]) με μήνυμα
+  /// ασφαλές για το UI· ποτέ raw κωδικό σφάλματος.
+  Future<void> reauthenticateWithPassword(String password) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const UserMessageException(
+        'Η συνεδρία έληξε. Συνδεθείτε ξανά.',
+      );
+    }
+
+    final email = user.email;
+    if (email == null || email.isEmpty) {
+      throw const UserMessageException(
+        'Δεν είναι δυνατή η επιβεβαίωση ταυτότητας. Συνδεθείτε ξανά.',
+      );
+    }
+
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      throw AuthFlowException(mapFirebaseError(e), code: e.code);
+    }
+  }
+
+  /// SEC-005: οριστική διαγραφή του Auth λογαριασμού.
+  Future<void> deleteCurrentUser() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const UserMessageException(
+        'Η συνεδρία έληξε. Συνδεθείτε ξανά.',
+      );
+    }
+
+    try {
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      throw AuthFlowException(mapFirebaseError(e), code: e.code);
+    }
+  }
+
   /// Επιστρέφει τον τρέχοντα χρήστη
   User? get currentUser => _auth.currentUser;
 
@@ -244,6 +308,8 @@ class AuthService {
         return 'Η λειτουργία δεν επιτρέπεται. Επικοινωνήστε με τον διαχειριστή.';
       case 'network-request-failed':
         return 'Πρόβλημα σύνδεσης. Ελέγξτε το διαδίκτυο σας.';
+      case 'requires-recent-login':
+        return 'Για λόγους ασφαλείας απαιτείται πρόσφατη σύνδεση.';
       default:
         return 'Αποτυχία ελέγχου ταυτότητας. Δοκιμάστε ξανά.';
     }

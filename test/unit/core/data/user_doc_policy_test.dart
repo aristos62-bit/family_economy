@@ -114,4 +114,32 @@ void main() {
       expect(UserDocPolicy.isOfflineCode(null), isFalse);
     });
   });
+
+  group('UserDocPolicy.isDeletionPending — SEC-005', () {
+    test('deleted: true → true (ημιτελής διαγραφή)', () {
+      expect(
+        UserDocPolicy.isDeletionPending(<String, dynamic>{'deleted': true}),
+        isTrue,
+      );
+    });
+
+    test('deleted: false ή χωρίς πεδίο → false', () {
+      expect(
+        UserDocPolicy.isDeletionPending(<String, dynamic>{'deleted': false}),
+        isFalse,
+      );
+      expect(UserDocPolicy.isDeletionPending(<String, dynamic>{}), isFalse);
+      expect(UserDocPolicy.isDeletionPending(null), isFalse);
+    });
+
+    test('το deletionPending είναι ξεχωριστό outcome', () {
+      expect(UserDocOutcome.values, contains(UserDocOutcome.deletionPending));
+      expect(
+        UserDocOutcome.values.where(
+          (outcome) => outcome == UserDocOutcome.deletionPending,
+        ),
+        hasLength(1),
+      );
+    });
+  });
 }
