@@ -1,7 +1,7 @@
 # Family Economy — DESIGN.md
 
 > **Μοναδική πηγή τεχνικής αλήθειας για το project.**
-> Τελευταία επαλήθευση: **26/11/2026** (Flutter 3.50.1 / Dart 3.14.0 — toolchain, πλήθη `lib/`/tests, `pub outdated`, snapshot repo).
+> Τελευταία επαλήθευση: **27/11/2026** (Flutter 3.50.1 / Dart 3.14.0 — toolchain, πλήθη `lib/`/tests, `pub outdated`, snapshot repo).
 > Κάθε τιμή εδώ **μετρήθηκε** από κώδικα, config ή toolchain — δεν γράφτηκε από μνήμη.
 
 ---
@@ -34,7 +34,7 @@
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 292 tests
+flutter test                       # 328 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
@@ -60,7 +60,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Gradle / AGP / Kotlin | **9.5.0 / 9.3.1 / 2.4.20** (βλ. §2.1) |
 | Visual Studio | Community **2026 18.1.1** · Windows SDK **10.0.26100.0** — ✅ Windows release build επιβεβαιωμένο 24/11/2026· ⚠️ με **2022 17.10.1** + SDK 10.0.22621.0 αποτυγχάνει (§2.5, §11 L33) |
-| App version | **`2.3.13+20`** (`pubspec.yaml`, επαληθεύτηκε 26/11/2026) |
+| App version | **`2.3.14+21`** (`pubspec.yaml`, επαληθεύτηκε 27/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -128,17 +128,17 @@ git ls-files | Measure-Object      # τι είναι tracked
 #### 1.5.2 Single source of truth
 
 ```
-pubspec.yaml  (version: 2.3.13+20)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
+pubspec.yaml  (version: 2.3.14+21)        ← ΜΟΝΟ εδώ αλλάζει η έκδοση
    │
    ├── Android   build.gradle.kts  versionName/versionCode = flutter.*      (auto)
    ├── iOS/macOS Info.plist        $(FLUTTER_BUILD_NAME)/$(…NUMBER)         (auto)
    ├── Windows   Runner.rc         FLUTTER_VERSION* (flutter_tools/cmake)   (auto)
    ├── Web       build/web/version.json                                     (auto)
    │
-   └── build_and_setup_final.bat  APP_VER=2.3.13 · BUILD_NO=20   (από pubspec, STEP 0)
-         ├── APK      FamilyBudget_v2.3.13.apk
+   └── build_and_setup_final.bat  APP_VER=2.3.14 · BUILD_NO=21   (από pubspec, STEP 0)
+         ├── APK      FamilyBudget_v2.3.14.apk
          └── ISCC /DMyAppVersion /DMyBuildNo /DMyOutputBase
-               └── FamilyBudgetSetup_v2.3.13.exe   (FileVersion 2.3.13.20)
+               └── FamilyBudgetSetup_v2.3.14.exe   (FileVersion 2.3.14.21)
 ```
 
 **Κανόνες παραγωγής (R1–R5):**
@@ -151,7 +151,7 @@ pubspec.yaml  (version: 2.3.13+20)        ← ΜΟΝΟ εδώ αλλάζει η 
 | **R4** | Κάθε παραδοτέο φέρει την έκδοση **στο όνομα** | `FamilyBudget_v2.1.2.apk`, `FamilyBudgetSetup_v2.1.2.exe` |
 | **R5** | Κάθε release = **tag** | `v2.1.0` στο commit του release |
 
-Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.13 (build 20)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
+Εμφάνιση στον χρήστη: Ρυθμίσεις/Επιλογές → footer **`Έκδοση 2.3.14 (build 21)`** (μέσω `package_info_plus`, `core/utils/app_info.dart`).
 
 #### 1.5.3 Πίνακας απόφασης
 
@@ -251,7 +251,7 @@ pubspec.yaml  (version: 2.3.13+20)        ← ΜΟΝΟ εδώ αλλάζει η 
 | Σημείωση | Το `.iss` χρησιμοποιεί **σχετικές** διαδρομές (`{#SourcePath}` / script dir) → μεταφέρεται σε άλλο PC |
 | `InstallerOutput/` | ✅ στο `.gitignore` (38+ MB exe — δεν ανεβαίνει ποτέ) |
 
-### 2.7 Κατάσταση build (25/11/2026)
+### 2.7 Κατάσταση build (builds 25/11/2026· tests 27/11/2026)
 
 | Έλεγχος | Αποτέλεσμα |
 |---|---|
@@ -260,7 +260,7 @@ pubspec.yaml  (version: 2.3.13+20)        ← ΜΟΝΟ εδώ αλλάζει η 
 | `flutter build windows --debug` | ❌ LNK2019/LNK1120 — **μόνο με VS 2022** 17.10.1 + SDK 10.0.22621.0 (βλ. §11 L33) |
 | `flutter build windows --release` | ✅ `√ Built build\windows\x64\runner\Release\family_economy.exe` — **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026, επιβεβαιωμένο· το ❌ ισχύει μόνο με VS 2022) |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ **292/292** |
+| `flutter test` | ✅ **328/328** |
 
 **Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
@@ -268,16 +268,16 @@ pubspec.yaml  (version: 2.3.13+20)        ← ΜΟΝΟ εδώ αλλάζει η 
 
 ## 3. Δομή repo & `lib/`
 
-### 3.1 Μετρήσεις (26/11/2026)
+### 3.1 Μετρήσεις (27/11/2026)
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **109** (κανένα `*.backup` στο τρέχον clone· +1 `onboarding_defaults.dart` για E5, +1 `user_doc_policy.dart` για E64) |
+| Dart αρχεία στο `lib/` | **112** (κανένα `*.backup` στο τρέχον clone· +`onboarding_defaults.dart`, `user_doc_policy.dart`, `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 19 αρχεία · **292** `test()`/`testWidgets()` |
+| Tests | 23 αρχεία · **328** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -290,6 +290,10 @@ lib/
 
   core/
     accessibility/accessibility_service.dart   # Semantics / screen reader (59 αρχεία το χρησιμοποιούν)
+    errors/
+      user_message_exception.dart              # L11: εξαίρεση με μήνυμα ασφαλές για χρήστη
+    messaging/
+      app_messenger.dart                       # L11: κεντρικός presenter (ουρά ανά ScaffoldMessengerState)
     data/
       schema.dart                              # Έκδοση δεδομένων: σταθερές, parser, καθαρή απόφαση (χωρίς Firebase)
       schema_service.dart                      # Gate + migrations + εγγραφή έκδοσης (timeout + cache verify)
@@ -321,6 +325,7 @@ lib/
       currency_formatter.dart
       debug_config.dart                        # _debug = false (logs OFF)
       icon_mapper.dart
+      message_policy.dart                      # L11: χρόνοι/χρώματα/contrast/πλάτος + fromError/fromProvider (καθαρό Dart)
       monthly_trend.dart                       # MonthlyPoint + computeMonthlyTrend
       period_prefs.dart                        # Ανάγνωση/επιδιόρθωση περιόδου γραφημάτων (E57, καθαρό Dart + prefs)
     widgets/
@@ -383,7 +388,7 @@ lib/
 
 **Κανένα γνωστό νεκρό αρχείο** (25/11/2026). Τα `core/widgets/biometric_gate.dart` (195 γρ.), `core/services/message_service.dart` (288 γρ.), `core/widgets/offline_banner.dart` (η αχρησιμοποίητη κλάση `OfflineBanner`, 94 γρ.) και `services/recurring_notifications_service.dart` (296 γρ.) **αφαιρέθηκαν** — 0 imports/call sites, βλ. `error_list.md` E15/L6.
 
-> Παραμένει γνωστό χρέος μόνο για τα **άμεσα μηνύματα** (`SnackBar` σε 27 αρχεία, βλ. §5.5 / L11).
+> **L11 ✅ 27/11/2026:** όλα τα μηνύματα περνούν πλέον από `core/messaging/app_messenger.dart` (0 άμεσα `SnackBar(` έξω από τον presenter· guard test στο `test/unit/core/messaging/l11_guard_test.dart`).
 
 ---
 
@@ -444,7 +449,7 @@ lib/
 - `supportedLocales`: `el-GR` (προεπιλογή), `en-US` (fallback).
 - `themeMode` από `ThemeProvider` (light/dark/system).
 - `builder`: `TextScaler` clamp **0.85 – 1.45** + `AnnouncementOverlay`.
-- Καμία κεντρική υπηρεσία μηνυμάτων: τα μηνύματα δίνονται **άμεσα** από την κάθε οθόνη (βλ. §5.5).
+- Κεντρικός presenter μηνυμάτων: `AppMessenger` (`core/messaging/app_messenger.dart`) + `MessagePolicy` (`core/utils/message_policy.dart`) — όλα τα μηνύματα περνούν από εκεί (βλ. §5.5).
 
 ---
 
@@ -512,10 +517,20 @@ lib/
 
 ### 5.5 Μηνύματα προς χρήστη
 
-| Στοιχείο | Μέτρηση |
+**Αρχιτεκτονική (L11, 27/11/2026):** μία διαδρομή — καμία οθόνη δεν καλεί `ScaffoldMessenger`/`SnackBar` απευθείας.
+
+| Στοιχείο | Ρόλος |
 |---|---|
-| Κεντρικό `MessageService` | **Αφαιρέθηκε** 25/11/2026 (E15) — είχε 1 no-op call site και μετρητή που δεν τροφοδοτούνταν ποτέ |
-| Άμεσα `SnackBar(...)` | **181** σε **27** αρχεία (μέτρηση 25/11/2026) |
+| `core/utils/message_policy.dart` | Καθαρή πολιτική: `MessageKind` (success/info/warning/error), χρόνοι **3/3/5/6s**, semantic χρώματα + max-contrast foreground, πλάτος **560** σε οθόνες >600px, `fromError(e, action:)`, `fromProvider(message, action:)` (allowlist μόνο για τα γνωστά μηνύματα `TagsProvider`), `genericError` |
+| `core/messaging/app_messenger.dart` | Presenter: `success` / `info` / `warning` / `error`, προαιρετικό `actionLabel`+`onAction`, `persist`, `messenger:` για στοχευμένο `ScaffoldMessengerState`. Ουρά ανά messenger (`Expando`)· μη-persist αντικαθίσταται, persistent προστατεύεται. `liveRegion: true` για screen readers |
+| `core/errors/user_message_exception.dart` | `UserMessageException`: μήνυμα ασφαλές για χρήστη· οτιδήποτε άλλο → `MessagePolicy` generic |
+| Guard test | `test/unit/core/messaging/l11_guard_test.dart`: (1) κανένα `SnackBar(` έξω από το `app_messenger.dart`, (2) κανένα raw `$e`/`$error` σε `Text(`/`content:`/`label:`/`hintText:` (εξαιρούνται σχόλια/logging) |
+
+| Μέτρηση | Τιμή |
+|---|---|
+| Άμεσα `SnackBar(...)` στο `lib/` | **0** — μόνο η κατασκευή μέσα στον presenter (μέτρηση 27/11/2026) |
+| Αρχεία που καλούν `AppMessenger` | 28 |
+| Κεντρικό `MessageService` | **Αφαιρέθηκε** 25/11/2026 (E15) — αντικαταστάθηκε από το παραπάνω ζεύγος |
 
 ### 5.6 Budgets — υπολογισμός spent
 
@@ -893,11 +908,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (292 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (328 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 292/292 |
+| `flutter test` | ✅ 328/328 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 > Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
@@ -912,12 +927,16 @@ schema_version (int), schema_updated_at (Timestamp)
 | `monthly_trend_test.dart` | 11 | `computeMonthlyTrend` (φίλτρα, ποσοστά, edges) |
 | `budget_model_test.dart` | 8 | `matchesTransaction` (category/subcategory/total/account/date) |
 | `transactions_provider_test.dart` | 6 | `TransactionModel.isTransfer/isIncome/isExpense` |
-| `widget_test.dart` | 4 | `ErrorApp`: μήνυμα σφάλματος, αποτυχημένη επανάληψη (νέο σφάλμα + μετρητής), guard/disabled διπλού πατήματος, λήξη χρόνου επανάληψης (L18) |
+| `widget_test.dart` | 4 | `ErrorApp` (L11: χωρίς raw σφάλμα): γενικό μήνυμα, σταθερό μήνυμα σε αποτυχημένη επανάληψη + μετρητής, guard/disabled διπλού πατήματος, λήξη χρόνου επανάληψης (L18) |
 | `prepare_startup_test.dart` | 5 | E58: σειρά βημάτων, timeout theme, αποτυχία notifications, διάδοση σφάλματος connectivity, επαναχρησιμοποίηση instance στο retry |
 | `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
 | `onboarding_defaults_test.dart` | 18 | E5: σταθερά ids (`default-account`, `cat-*`, `sub-*`), πλήθη 6+8 κατηγοριών / 24+71 υποκατηγοριών, μοναδικότητα, μη κενά ονόματα, sequential icons, χρώματα |
 | `user_doc_policy_test.dart` | 14 | E64: cache hit/miss, offline gate, server exists/create, timeout & offline codes, permission-denied, σταθερές 8s / 3 κωδικοί |
 | `startup_error_view_test.dart` | 6 | Κείμενα, ενέργειες, λεπτομέρειες, `primaryEnabled=false`, `textScale 1.45` χωρίς overflow |
+| `ui_tokens_test.dart` | 4 | `ColorsUI.contrastRatio` (E67): λόγος αντίθεσης, όρια 4.5:1, έλεγχος warning χωρίς εγγύηση |
+| `message_policy_test.dart` | 20 | L11: χρόνοι 3/3/5/6s, semantic χρώματα + contrast ≥4.5:1 (light/dark), persist ανά action, πλάτος 560, `fromError`/`fromProvider` με allowlist |
+| `app_messenger_test.dart` | 10 | L11: floating/πλάτος/χρώματα, action, persist, ουρά (replace μη-persist, προστασία persistent), nested `ScaffoldMessengerState` |
+| `l11_guard_test.dart` | 2 | L11 guard (D10): 0 άμεσα `SnackBar(` έξω από τον presenter· 0 raw `$e`/`$error` σε `Text(`/`content:`/`label:`/`hintText:` |
 | `account_delete_guard_test.dart` | 41 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) + `targetIsVisible` αρχειοθετημένου στόχου (E32) + πεδία budgets στο πλάνο (L26) |
 | `account_budget_usage_test.dart` | 13 | Μέτρηση όλων των μη διαγραμμένων budgets (L26): soft-deleted, legacy χωρίς `is_active`/`deleted`, «Όλοι», άλλος λογαριασμός, ανενεργά, trim, κενά |
 | `account_restore_policy_test.dart` | 24 | Κανόνας επαναφοράς (E19/E14): μόνο marked ζεύγη, κρυφές κινήσεις χρήστη, εκκρεμή, missing/deleted peers, απόλυτο υπόλοιπο σε cents, chunks ≤499, fingerprint, μηνύματα |
@@ -1024,7 +1043,7 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L8 | iOS/macOS χωρίς `Podfile` → builds ανεπιβεβαίωτα | §2.3 |
 | L9 | Καμία CI (analyze/test/build χειροκίνητα) | §2.6 |
 | L10 | Android release υπογράφεται με **debug key**, minify/shrink off | §2.1 |
-| L11 | **Μερικώς λυμένο 25/11/2026 (E15):** το `MessageService` αφαιρέθηκε· μένουν **181** άμεσα `SnackBar(...)` σε **27** αρχεία, χωρίς κεντρική πολιτική μηνυμάτων/a11y | §5.5 |
+| L11 | **✅ Διορθώθηκε 27/11/2026 (`2.3.14+21`, E66)** — 89 άμεσα `SnackBar(...)` → `AppMessenger` (+ `MessagePolicy`, `UserMessageException`, inline validation), **0** άμεσα constructors στο `lib/`· guard test (D10) για `SnackBar(` και raw σφάλματα σε UI sinks | §5.5 |
 | L12 | Budgets spent με **3** διαδρομές υπολογισμού | §5.6 |
 | L13 | *(λύθηκε 19/11/2026)* Web title/manifest τοπικοποιήθηκαν | §2.4 |
 | L14 | *(λύθηκε 19/11/2026)* Installer με σχετικές διαδρομές | §2.6 |
@@ -1050,6 +1069,7 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L34 | **KGP:** `file_picker`, `firebase_auth`, `firebase_core`, `package_info_plus`, `shared_preferences_android` εφαρμόζουν ακόμα Kotlin Gradle Plugin· μελλοντική Flutter θα αποτύχει μέχρι να υιοθετήσουν Built-in Kotlin | §2.1 |
 | L35 | **✅ Διορθώθηκε 25/11/2026 (E56)** — migration σε `material_ui` **1.11.1**: 70 imports (`lib/` + `test/`) → `package:material_ui/material_ui.dart` + `GlobalMaterialLocalizations.delegates` στο `main.dart`. Το `package:flutter/material.dart` παραμένει deprecated στο SDK, αλλά **δεν** χρησιμοποιείται πλέον από τον κώδικα της εφαρμογής | §9.1 |
 | L36 | `ConnectivityService`: το `dispose()` (ακύρωση debounce timer + stream subscription, `connectivity_service.dart:111-116`) **δεν καλείται** πουθενά — ο provider χρησιμοποιεί `.value` (`main.dart:181-183`) και το `MyApp` είναι πλέον `StatelessWidget` (χωρίς `dispose`). Σκόπιμο singleton που ζει όσο η διεργασία· επίπτωση μόνο σε hot-restart/tests, καμία στη λειτουργία | §4.1, §5.9 |
+| L37 | **ℹ️ INFO (E67, 27/11/2026):** `ColorsUI.getAccessibleTextColor` (`ui_tokens.dart:279`) επιλέγει foreground με threshold luminance 0.5 και **δεν** εγγυάται 4.5:1 (π.χ. warning `#ED6C02` → ~2.5:1). Χρήση μόνο σε foreground καρτών stats (`stats_page.dart:1770`, `tag_stats_page.dart:1986`)· ο presenter δεν το χρησιμοποιεί (max-contrast black/white). Δεν αλλάζει στο L11 | §5.5 |
 
 ---
 

@@ -9,13 +9,15 @@
 
 | # | Ενέργεια | ID |
 |---|---|---|
-| — | Καμία ανοιχτή εκκρεμότητα | — |
+| — | **Καμία** — το L11 ολοκληρώθηκε 27/11/2026 (`2.3.14+21`): E66 + E68–E76 FIXED· μένει μόνο το ℹ️ E67 | — |
+
+> **L11** ✅ διορθώθηκε 27/11/2026 (`2.3.14+21`): κεντρικός presenter `AppMessenger` + `MessagePolicy`, 0 άμεσα `SnackBar(` στο `lib/`, guard test (D10), σταθερά μηνύματα αντί raw σφαλμάτων (E66, E68–E76). Λεπτομέρειες παρακάτω.
 
 > **E5** ✅ διορθώθηκε 26/11/2026 (`2.3.11+18`): σταθερά ids onboarding + server-truth gate + καμία εγγραφή offline (λεπτομέρειες παρακάτω). **E63** ✅ διορθώθηκε μαζί του (σταθερό `cat-transfer`). **E64** ✅ διορθώθηκε 26/11/2026 (`2.3.12+19`): server-truth `ensureUserDocument`, καμία εγγραφή offline, χωρίς poll. **E65** ✅ διορθώθηκε 26/11/2026 (`2.3.13+20`): βιομετρικό από το ίδιο doc, fail-closed χωρίς δεύτερο read.
 
 > **L18** ✅ διορθώθηκε 25/11/2026 (`2.3.8+15`) — το «Δοκιμή ξανά» ξανατρέχει την αρχικοποίηση (λεπτομέρειες: `DESIGN.md` §4.4, §11 L18). **Hardening `2.3.9+16`:** timeout 20s, disabled κουμπί όσο τρέχει, debug log σε αποτυχία/λήξη.
 > **E58/E59** ✅ διορθώθηκαν 25/11/2026 (`2.3.10+17`): όλη η εκκίνηση (theme/notifications/connectivity) μπήκε σε δοχείο σφάλματος με per-step timeouts και η άδεια ειδοποιήσεων ζητείται μετά το πρώτο frame· το `Phoenix` + `flutter_phoenix` αφαιρέθηκαν.
-> **E15/L6** ✅ διορθώθηκαν 25/11/2026 (χωρίς version bump, κεφ. 40): νεκρός κώδικας + no-op sync hook αφαιρέθηκαν· μένει μόνο το χρέος των άμεσων `SnackBar` (**L11**).
+> **E15/L6** ✅ διορθώθηκαν 25/11/2026 (χωρίς version bump, κεφ. 40): νεκρός κώδικας + no-op sync hook αφαιρέθηκαν· το χρέος των άμεσων `SnackBar` (**L11**) έκλεισε 27/11/2026 (`2.3.14+21`).
 
 > Τα E6 και E8 είναι κλειστά (σκόπιμη συμπεριφορά / εγγενής περιορισμός) — δεν περιμένουν ενέργεια.
 > Τα **E11**, **E13**, **E24** διορθώθηκαν μαζί (έκδοση `2.2.0+6`, 21/11/2026)· τα **E18/E21/E23/E25** είναι ℹ️ INFO.
@@ -103,6 +105,17 @@
 | E63 | Διπλή κατηγορία «Μεταφορά» από 2 συσκευές: `_getOrCreateTransferCategory` έγραφε τυχαίο uuid | F5 | ✅ FIXED | 2026-11-26 |
 | E64 | `createUserDocumentIfNeeded` τρέχει πριν το E5 gate: offline `set` + poll ~7.5s πριν την είσοδο | F5 | ✅ FIXED | 2026-11-26 |
 | E65 | AppStart offline + κενό Firestore cache: το `BiometricSettingsService.load` πετάει `unavailable` → `StartupErrorView` (fail-closed) | — | ✅ FIXED | 2026-11-26 |
+| E66 | L11: 89 άμεσα `SnackBar(` σε 28 αρχεία + raw τεχνικά σφάλματα σε UI + διπλές ανακοινώσεις + ασυνεπής inline validation | — | ✅ FIXED | 2026-11-27 |
+| E67 | L37: `ColorsUI.getAccessibleTextColor` επιλέγει text token με threshold 0.5 χωρίς εγγύηση 4.5:1 (2 call sites στα stats) | — | ℹ️ INFO | 2026-11-27 |
+| E68 | `accounts_page._buildErrorState`: εμφανίζει αυτούσιο το `AccountsProvider.error` σε `Semantics.label` και `Text` | — | ✅ FIXED | 2026-11-27 |
+| E69 | `change_password_page`: το γενικό `catch` εμφανίζει `'Σφάλμα: $e'` αυτούσιο σε page-level error | — | ✅ FIXED | 2026-11-27 |
+| E70 | `options_page`: 4 σημεία γράφουν raw `e`/`stackTrace` σε `_errorMessage`/`_error` που εμφανίζονται αυτούσια στην οθόνη | — | ✅ FIXED | 2026-11-27 |
+| E71 | `oil_page`: 2 σημεία γράφουν raw `e` σε `_errorMessage` που εμφανίζεται αυτούσιο στην οθόνη | — | ✅ FIXED | 2026-11-27 |
+| E72 | `database_cleanup_page`: 3 κλήσεις `_showError('... $e')` περνούν raw `e` σε snackbar | — | ✅ FIXED | 2026-11-27 |
+| E73 | `user_details_option`: 2 σημεία γράφουν raw `e` σε `_errorMessage` που εμφανίζεται αυτούσιο στην οθόνη | — | ✅ FIXED | 2026-11-27 |
+| E74 | `app_start.dart`: το γενικό `catch` θέτει raw `e.toString()` ως `_error` → εμφανίζεται ως `message` και ανακοινώνεται | — | ✅ FIXED | 2026-11-27 |
+| E75 | `delete_account_page`: raw `$e`/`e.code` σε `Text` και announcements του διαλόγου αποτυχίας | — | ✅ FIXED | 2026-11-27 |
+| E76 | `change_password_page._mapAuthError`: το default επιστρέφει το τεχνικό `e.code` στον χρήστη | — | ✅ FIXED | 2026-11-27 |
 
 ### Λεπτομέρειες
 
@@ -180,7 +193,7 @@
 - Κανένας reader σήμερα· ο κίνδυνος είναι μελλοντικός: τα `_parseTimestamp` των models δεν χειρίζονται String (σιωπηλό `DateTime.now()`) και `orderBy`/range filters συγκρίνουν μόνο εντός τύπου.
 - Λύση: `Timestamp.now()` και στα δύο σημεία (γραμμές 34-35, 61). `flutter analyze` ✅ · `flutter test` ✅ **89/89**.
 
-**E10 — Bubble layout μετά από cold restart (OPEN)**
+**E10 — Bubble layout μετά από cold restart (WON'T FIX)**
 - Μετά από cold restart το `MessageBubble` κρατά λάθος layout· navigate-away-and-back το διορθώνει (το `dispose()` καθαρίζει το cache).
 - **Καταρρίφθηκε:** η αρχική θεωρία ότι το `_obtainBubble` cache κάνει identity skip. Το `build()` καλείται κανονικά (ίδιο `identity`, `screenW`/`textScale`/`bubbleMaxWidth` σταθερά σε όλα τα builds). Τα δύο attempts (ValueKey, αφαίρεση cache) **αναιρέθηκαν**.
 - Επόμενη κατεύθυνση: ListView reconciliation, parent constraints, `MediaQuery` propagation.
@@ -220,7 +233,7 @@
 **E15 — MessageService ανενεργό (FIXED 25/11/2026)**
 - `core/services/message_service.dart` (offline-aware snackbars + a11y) είχε **1** call site (`main.dart` → `showSyncComplete`) και αυτό **no-op**: ο μετρητής `_pendingOperations` αυξανόταν μόνο μέσα στο `show()`, που είχε 0 κλήσεις → το μήνυμα «Συγχρονισμός ολοκληρώθηκε» δεν εμφανίστηκε ποτέ, σε καμία έκδοση.
 - Επιπλέον το `onSyncComplete` πυροδοτούσε σε **κάθε** offline→online μετάβαση (ανεξάρτητα από εκκρεμείς εγγραφές) — άρα ούτε «αληθινό» θα ήταν το πλήθος.
-- Οι οθόνες χρησιμοποιούν άμεσα `SnackBar` (181 σε 27 αρχεία) — βλ. L11 για το υπόλοιπο χρέος.
+- Οι οθόνες χρησιμοποιούν άμεσα `SnackBar` (181 σε 27 αρχεία) — βλ. L11 για το υπόλοιπο χρέος. **✅ Κλείστηκε 27/11/2026 (`2.3.14+21`):** 0 άμεσα `SnackBar(` στο `lib/`.
 - **✅ Διορθώθηκε 25/11/2026 (χωρίς version bump — καμία αλλαγή συμπεριφοράς):**
   - διαγράφηκαν `core/services/message_service.dart`, `core/widgets/biometric_gate.dart`, `services/recurring_notifications_service.dart` και η αχρησιμοποίητη `OfflineBanner` (το `OfflineAppBarChip` έμεινε, αρχείο → `offline_appbar_chip.dart`) — L6 κλειστό
   - αφαιρέθηκε το `onSyncComplete` από το `ConnectivityService` και το callback/`dispose` από το `main.dart` (το `MyApp` είναι πλέον `StatelessWidget`)
@@ -448,6 +461,92 @@
 - **Read-only έλεγχος 26/11/2026** (admin ανάγνωση Firestore, μόνο GET — καμία εγγραφή): **6 χρήστες / 2.312 κινήσεις / 146 transfer legs / 73 groups**. Έλεγχοι: leg χωρίς group id, group με ≠2 ενεργά legs, peer ανύπαρκτο/διαγραμμένο/άλλο group, άκυρο σχήμα, `account_id` που δεν υπάρχει, scheduled transfer χωρίς peer+group → **όλα 0**.
 - **Ανά χρήστη:** `aristos62@yahoo.com` 67 groups (66 πλήρη, 1 πλήρως διαγραμμένο) · `demo@yahoo.com` 6 groups (2 πλήρη, 4 πλήρως διαγραμμένα) · οι υπόλοιποι 4 χρήστες 0 transfer legs. **0 προβληματικά groups παντού** — τα «πλήρως διαγραμμένα» ζεύγη είναι κανονικές διαγραφές, όχι μισά ζεύγη.
 - **Απόφαση χρήστη (26/11/2026):** κλείσιμο ως **🚫 WON'T FIX** — το fail-closed guard κρίνεται **υπερβολή** (κανένα πραγματικό περιστατικό· η κανονική ροή καλύπτεται από E11). Καμία αλλαγή κώδικα, καμία επισκευή δεδομένων, κανένα version bump.
+
+**E66 — L11: κεντρικός presenter μηνυμάτων (FIXED 27/11/2026)**
+
+- **Τι είναι:** 89 άμεσα `SnackBar(...)` σε 28 αρχεία, 5 `hideCurrentSnackBar`, 12 `SnackBarBehavior.fixed`, 1 `SnackBarAction` — χωρίς ενιαίο χρόνο/χρώμα/a11y. Παράλληλα εμφανίζονται raw τεχνικά σφάλματα (`e.toString()`, `e.message`, `provider.error`, `snapshot.error`) και αρκετά dialog validation είναι snackbar αντί inline.
+- **Στόχος:** `MessagePolicy` (3/5/6s, semantic χρώματα, contrast, πλάτος 560 σε >600px) + `AppMessenger` (ουρά ανά `ScaffoldMessengerState`, replace μόνο μη-persist) + `UserMessageException`/allowlist + inline validation + guard test.
+- **Εμβέλεια:** 28 αρχεία UI + `auth_service.dart`/`main.dart`/`app_start.dart`· νέα `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`· tests.
+- **Αποτέλεσμα (27/11/2026):** 89/89 sites → `AppMessenger`· **0** άμεσα `SnackBar(` στο `lib/`· `MessagePolicy` (3/3/5/6s, semantic χρώματα + contrast, πλάτος 560, `fromError`/`fromProvider` allowlist)· `UserMessageException`· inline validation στους διαλόγους· αφαίρεση 5 `hideCurrentSnackBar` και 6 διπλών `announce` δίπλα σε snackbar· guard test (D10, 2 tests). `flutter analyze` 0/0/0, **328/328** tests.
+- **Device test (27/11/2026):** ✅ όλα σωστά (εκτέλεση από τον χρήστη).
+- **Κατάσταση:** ✅ FIXED 27/11/2026 (`2.3.14+21`).
+
+**E67 — L37: contrast helper με threshold (ℹ️ INFO 27/11/2026)**
+
+- `ColorsUI.getAccessibleTextColor` (`ui_tokens.dart:279`) επιλέγει `textPrimaryLight/Dark` με βάση luminance > 0.5· δεν εγγυάται 4.5:1 (π.χ. warning `#ED6C02` → ανοιχτό κείμενο, ~2.5:1).
+- Χρήση: `stats_page.dart:1770`, `tag_stats_page.dart:1986` (foreground καρτών stats).
+- **Απόφαση:** δεν αλλάζει στο L11. Το νέο δημόσιο `ColorsUI.contrastRatio` επιτρέπει έλεγχο· ο presenter χρησιμοποιεί max-contrast black/white, όχι αυτόν τον helper.
+- **Σημείωση:** `stats_page.dart:1771` `fg.withValues(alpha: 0.78);` — το αποτέλεσμα πετιέται (unused expression). Καταγράφεται, χωρίς διόρθωση στο L11.
+
+**E68 — `accounts_page`: raw `provider.error` στην οθόνη (FIXED 27/11/2026)**
+
+- **Τι είναι:** `accounts_page.dart:1809` περνά `accountsProvider.error` στην `_buildErrorState`· η μέθοδος (γραμμές 1964-1989) το εμφανίζει αυτούσιο σε `Semantics.label: 'Σφάλμα φόρτωσης: $error'` (γραμμή 1970) και `Text(error, ...)` (γραμμή 1989).
+- **Γιατί μετράει:** παραβιάζει τον κανόνα «ποτέ raw `provider.error`»· το `label:` θα το πιάσει ο guard test του L11 (D10).
+- **Προτεινόμενη διόρθωση (μετά το L11):** γενικό σταθερό μήνυμα στην οθόνη, raw μόνο σε `DebugConfig.print`· αφαίρεση της παραμέτρου `error` από την `_buildErrorState`.
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — διορθώθηκε στο τέλος του L11.
+
+**E69 — `change_password_page`: raw `$e` σε page-level error (FIXED 27/11/2026)**
+
+- **Τι είναι:** `change_password_page.dart:137-142` — το γενικό `catch (e)` θέτει `final msg = 'Σφάλμα: $e';` και το εμφανίζει αυτούσιο (`setState(() => _error = msg)` + `announceError(msg)`).
+- **Γιατί μετράει:** raw τεχνικό σφάλμα προς χρήστη, εκτός του κεντρικού presenter.
+- **Προτεινόμενη διόρθωση (μετά το L11):** `MessagePolicy.fromError(e, action: 'αλλαγής κωδικού')` (ή σταθερό μήνυμα) — όχι raw interpolation.
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — διορθώθηκε στο τέλος του L11.
+
+**E70 — `options_page`: raw `e`/`stackTrace` σε page-level error (FIXED 27/11/2026)**
+
+- **Τι είναι (4 σημεία):**
+  - `1043` `_errorMessage = 'Σφάλμα φόρτωσης: ${e.toString()}'` → `Text(_errorMessage!)` (1137-1141)
+  - `1081` `_errorMessage = 'Αποτυχία αποθήκευσης: ${e.toString()}'` → ίδιο
+  - `1894` `_error = 'LOAD ERROR:\n$e\n\nSTACK:\n$st'` → `Text(_error!)` (2050, διάλογος βιομετρικών)
+  - `1964` `_error = 'Σφάλμα βιομετρικών: $e'` → ίδιο
+- **Γιατί μετράει:** raw τεχνικό σφάλμα και stack trace προς χρήστη· παραβιάζει τον κανόνα «ποτέ raw `e`».
+- **Προτεινόμενη διόρθωση (μετά το L11):** σταθερό μήνυμα στην οθόνη, raw μόνο σε `DebugConfig.print` (το `DebugConfig` υπάρχει ήδη στο αρχείο).
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — διορθώθηκε στο τέλος του L11.
+
+**E71 — `oil_page`: raw `e` σε page-level error (FIXED 27/11/2026)**
+
+- **Τι είναι (2 σημεία):**
+  - `118` `_errorMessage = 'Σφάλμα φόρτωσης: ${e.toString()}'`
+  - `173` `_errorMessage = 'Αποτυχία αποθήκευσης: ${e.toString()}'`
+  - Εμφάνιση: `Text(_errorMessage ?? 'Άγνωστο σφάλμα')` (541).
+- **Γιατί μετράει:** raw τεχνικό σφάλμα προς χρήστη, εκτός του κεντρικού presenter.
+- **Προτεινόμενη διόρθωση (μετά το L11):** σταθερό μήνυμα στην οθόνη, raw μόνο σε `DebugConfig.print` (υπάρχει ήδη στο αρχείο).
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — διορθώθηκε στο τέλος του L11.
+
+**E72 — `database_cleanup_page`: raw `e` σε snackbar helpers (FIXED 27/11/2026)**
+
+- **Τι είναι (3 σημεία):** `580` `_showError('Σφάλμα προεπισκόπησης: $e')`, `600` ίδιο, `633` `_showError('Σφάλμα καθαρισμού: $e')`· το `_showError` (845-861) το εμφανίζει αυτούσιο σε snackbar.
+- **Γιατί μετράει:** raw τεχνικό σφάλμα προς χρήστη μέσω βοηθητικής μεθόδου (δεν το πιάνει ο guard του D10, γιατί δεν υπάρχει `Text(` στο call site).
+- **Προτεινόμενη διόρθωση (μετά το L11):** `MessagePolicy.fromError(e, action: ...)` σε κάθε call site, με το raw μόνο σε `DebugConfig.print`.
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — διορθώθηκε στο τέλος του L11.
+
+**E73 — `user_details_option`: raw `e` σε page-level error (FIXED 27/11/2026)**
+
+- **Τι είναι (2 σημεία):** `77` `_errorMessage = 'Σφάλμα φόρτωσης: ${e.toString()}'`, `117` `_errorMessage = 'Αποτυχία αποθήκευσης: ${e.toString()}'`· εμφάνιση σε `Text(_errorMessage!)` (176).
+- **Γιατί μετράει:** raw τεχνικό σφάλμα προς χρήστη, εκτός του κεντρικού presenter.
+- **Προτεινόμενη διόρθωση (μετά το L11):** σταθερό μήνυμα στην οθόνη, raw μόνο σε `DebugConfig.print`.
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — διορθώθηκε στο τέλος του L11.
+
+**E74 — `app_start.dart`: raw `e.toString()` στην οθόνη εκκίνησης (FIXED 27/11/2026)**
+
+- **Τι είναι:** `app_start.dart:195` `_error = e.toString().replaceFirst('Exception: ', '')`· εμφανίζεται ως `message: ... _error!` στο `StartupErrorView` (312) και ανακοινώνεται αυτούσιο (198-200).
+- **Γιατί μετράει:** raw τεχνικό σφάλμα προς χρήστη στην πιο κρίσιμη οθόνη (αποτυχία εκκίνησης).
+- **Προτεινόμενη διόρθωση (μετά το L11):** σταθερό μήνυμα στην οθόνη/ανακοίνωση, raw μόνο στο `DebugConfig.print` που ήδη υπάρχει (192).
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — διορθώθηκε στο τέλος του L11.
+
+**E75 — `delete_account_page`: raw `$e`/`e.code` στον διάλογο αποτυχίας (FIXED 27/11/2026)**
+
+- **Τι είναι (4 σημεία):** `188` `announceError('Σφάλμα διαγραφής: ${e.code}')`, `194` `Text('Αποτυχία διαγραφής λογαριασμού: ${e.code}')`, `207` `announceError('Σφάλμα διαγραφής: $e')`, `213` `Text('Αποτυχία διαγραφής λογαριασμού: $e')`.
+- **Γιατί μετράει:** raw τεχνικό σφάλμα/κωδικός προς χρήστη· τα 194/213 τα πιάνει ο guard test του D10.
+- **Προτεινόμενη διόρθωση (μετά το L11):** σταθερό μήνυμα σε Text/announce, raw μόνο σε `DebugConfig.print`.
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — διορθώθηκε στο τέλος του L11.
+
+**E76 — `change_password_page`: τεχνικό `e.code` στο default (FIXED 27/11/2026)**
+
+- **Τι είναι:** `_mapAuthError` (143-155), default `return 'Αποτυχία αλλαγής κωδικού (${e.code})';` → εμφανίζεται σε `_error`.
+- **Γιατί μετράει:** αγγλικός τεχνικός κωδικός προς χρήστη.
+- **Προτεινόμενη διόρθωση (μετά το L11):** σταθερό μήνυμα, `e.code` μόνο σε `DebugConfig.print`.
+- **Κατάσταση:** ✅ FIXED 27/11/2026 — διορθώθηκε στο τέλος του L11.
 
 ## Πώς προσθέτω εύρημα
 
