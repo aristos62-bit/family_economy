@@ -305,7 +305,7 @@ lib/
       biometric_settings_service.dart          # Mode ανά χρήστη: always / on_demand
       connectivity_service.dart                # Online/offline, 2s debounce
       database_cleanup_service.dart            # Καθαρισμός παλιών / soft-deleted (chunked, E34)
-      account_deletion_service.dart            # Πλήρης διαγραφή δεδομένων λογαριασμού: marker → cascade → root (SEC-005)
+      account_deletion_service.dart            # Πλήρης διαγραφή δεδομένων λογαριασμού: marker → cascade → root → Auth (SEC-005/SEC-005b)
       account_restore_service.dart             # I/O επαναφοράς διαγραμμένου λογαριασμού (E19/E14/E29-E31)
       transactions_actions_service.dart        # CRUD transactions + ενημέρωση υπολοίπων (batch)
     session/
@@ -657,16 +657,17 @@ lib/
 |---|---|
 | Κανόνας | `core/utils/account_deletion_policy.dart` — καθαρό Dart, **0 I/O**, 19 unit tests |
 | I/O | `core/services/account_deletion_service.dart` (`users/{uid}/...`, `Source.server`) |
-| Σειρά | offline guard → διπλή επιβεβαίωση → **reauth** (κωδικός) → marker `deleted:true` + `deleted_at` → cascade 12 συλλογών → root doc → `cancelAll` (best effort) → `user.delete()` |
+| Σειρά | offline guard → διπλή επιβεβαίωση → **reauth** (κωδικός) → `cancelAll` (best effort, πριν το root delete) → marker `deleted:true` + `deleted_at` → cascade 12 συλλογών → root doc → `user.delete()` |
 | Συλλογές | `transaction_tags`, `transaction_splits`, `attachments`, `account_snapshots`, `settings`, `oil_purchases`, `tags`, `accounts`, `budgets`, `transactions`, `notifications`, `categories` (υποκατηγορίες πριν τις κατηγορίες) — **εκτός** το global `exchange_rates` |
 | Chunking | Νέο `WriteBatch` ανά chunk ≤**499**· timeout **20s** ανά ανάγνωση/batch |
 | Resume guard | `UserDocOutcome.deletionPending` από `ensureUserDocument` (cache ή server)· το `AppStart` κλειδώνει με οδηγία «Αποσύνδεση»· η σελίδα σύνδεσης προσφέρει «Συνέχισε τη διαγραφή» με τα credentials της φόρμας |
 | Μερική αποτυχία | Το root doc **δεν** διαγράφεται· διάλογος με «Συνέχισε τη διαγραφή» (idempotent cascade, χωρίς νέο login) |
+| Auth αποτυχία (SEC-005b) | Αν το `user.delete()` αποτύχει μετά το root delete, ξαναγράφεται ο marker `deleted:true`· διάλογος «Η διαγραφή δεν ολοκληρώθηκε» με «Συνέχισε τη διαγραφή»/«Κλείσιμο»· το «Κλείσιμο» αποσυνδέει και η επόμενη σύνδεση συνεχίζει τη διαγραφή |
 | Auth | `reauthenticateWithPassword` πριν από κάθε προσπάθεια· `requires-recent-login` → **μία** επανάληψη reauth· μετά το root delete μένει μόνο το `user.delete()` |
 | Ειδοποιήσεις | `NotificationsService.cancelAllNotifications` best-effort μετά την επιτυχία· οι ειδοποιήσεις άλλων λογαριασμών επανέρχονται στο επόμενο login (diff-based reschedule) |
 | UI | `PopScope` + κλείδωμα κουμπιών κατά την εκτέλεση· κανένα raw σφάλμα (L11) |
 | Γνωστός περιορισμός | Cache-first (E64): αν το marker γράφτηκε σε **άλλη** συσκευή και υπάρχει παλιό cache, η ανίχνευση γίνεται στον επόμενο server read· το resume αφορά κατά κύριο λόγο την ίδια συσκευή |
-| Έκδοση | `2.3.16+23` (PATCH) |
+| Έκδοση | `2.3.18+25` (PATCH) |
 
 ---
 

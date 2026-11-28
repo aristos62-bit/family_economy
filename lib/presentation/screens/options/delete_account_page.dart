@@ -12,6 +12,8 @@ import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/errors/user_message_exception.dart';
+import 'package:family_economy/core/messaging/app_messenger.dart';
+import 'package:family_economy/presentation/auth/login_page.dart';
 import 'package:family_economy/core/services/account_deletion_service.dart';
 import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
@@ -225,11 +227,23 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
       await _authService.reauthenticateWithPassword(password);
       if (!mounted) return;
 
-      // 2) Marker + cascade + root doc. Σε μερική αποτυχία το root μένει
+      // 2) Τοπικές ειδοποιήσεις — best effort, πριν από το root delete ώστε
+      // να μη μεγαλώνει το παράθυρο root → marker restore (SEC-005b).
+      // Χωρίς αίτημα άδειας: η διαγραφή δεν πρέπει να ανοίγει διάλογο.
+      try {
+        final notifications = NotificationsService();
+        await notifications.initialize(requestPermissions: false);
+        await notifications.cancelAllNotifications();
+      } catch (e) {
+        DebugConfig.print('⚠️ cancelAllNotifications failed: $e');
+      }
+
+      // 3) Marker + cascade + root doc. Σε μερική αποτυχία το root μένει
       // και ο χρήστης μπορεί να συνεχίσει χωρίς νέο login.
       final service = AccountDeletionService(userId: userId);
+      late AccountDeletionReport report;
       while (true) {
-        final report = await service.deleteAccountData();
+        report = await service.deleteAccountData();
         if (!mounted) return;
 
         if (report.isFailed) {
@@ -246,23 +260,24 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
         if (retry != true || !mounted) return;
       }
 
-      // 3) Τοπικές ειδοποιήσεις — best effort, δεν ακυρώνει τη διαγραφή.
-      // Χωρίς αίτημα άδειας: η διαγραφή δεν πρέπει να ανοίγει διάλογο.
-      try {
-        final notifications = NotificationsService();
-        await notifications.initialize(requestPermissions: false);
-        await notifications.cancelAllNotifications();
-      } catch (e) {
-        DebugConfig.print('⚠️ cancelAllNotifications failed: $e');
-      }
-
       // 4) Auth user — μία επανάληψη reauth αν ζητηθεί πρόσφατη σύνδεση.
-      try {
-        await _authService.deleteCurrentUser();
-      } on AuthFlowException catch (e) {
-        if (!e.requiresRecentLogin) rethrow;
-        await _authService.reauthenticateWithPassword(password);
-        await _authService.deleteCurrentUser();
+      // SEC-005b: σε αποτυχία ο marker ξαναγράφεται και ο χρήστης επιλέγει.
+      while (!await service.finalizeDeletion(report, () async {
+        try {
+          await _authService.deleteCurrentUser();
+        } on AuthFlowException catch (e) {
+          if (!e.requiresRecentLogin) rethrow;
+          await _authService.reauthenticateWithPassword(password);
+          await _authService.deleteCurrentUser();
+        }
+      })) {
+        if (!mounted) return;
+        final retry = await _showAuthPendingDialog();
+        if (!mounted) return;
+        if (retry != true) {
+          await _closeWithPendingDeletion();
+          return;
+        }
       }
 
       if (!mounted) return;
@@ -301,6 +316,46 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
     } finally {
       if (mounted) setState(() => _isDeleting = false);
     }
+  }
+
+  /// SEC-005b: τα δεδομένα σβήστηκαν, εκκρεμεί ο Auth λογαριασμός.
+  Future<bool?> _showAuthPendingDialog() {
+    AccessibilityService.announceError(
+      AccountDeletionPolicy.authPendingMessage,
+    );
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        scrollable: true,
+        title: const Text(AccountDeletionPolicy.authPendingTitle),
+        content: const Text(AccountDeletionPolicy.authPendingMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text(AccountDeletionPolicy.closeAction),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text(AccountDeletionPolicy.retryAction),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// SEC-005b: ο χρήστης δεν συνεχίζει → αποσύνδεση και σελίδα σύνδεσης.
+  Future<void> _closeWithPendingDeletion() async {
+    await _authService.signOut();
+    if (!mounted) return;
+    AppMessenger.warning(
+      context,
+      AccountDeletionPolicy.authPendingClosedMessage,
+    );
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginRegisterPage()),
+      (route) => false,
+    );
   }
 
   Future<void> _showInfoDialog({

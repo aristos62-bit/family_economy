@@ -166,6 +166,9 @@ void main() {
       expect(AccountDeletionPolicy.partialMessage, isNotEmpty);
       expect(AccountDeletionPolicy.failedMessage, isNotEmpty);
       expect(AccountDeletionPolicy.passwordEmptyMessage, isNotEmpty);
+      expect(AccountDeletionPolicy.authPendingTitle, isNotEmpty);
+      expect(AccountDeletionPolicy.authPendingMessage, isNotEmpty);
+      expect(AccountDeletionPolicy.authPendingClosedMessage, isNotEmpty);
     });
   });
 }

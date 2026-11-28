@@ -21,10 +21,10 @@
 
 | | |
 |---|---|
-| Έκδοση | **2.3.17+24** |
-| Τελευταίο κεφάλαιο | **50** — E87–E89: προφόρτωση διάταξης γραφημάτων (**✅ FIXED**, 2026-11-28) |
-| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **374/374** · device tests POCO X3 ✅ (28/11/2026) |
-| Επόμενη εκκρεμότητα | **Καμία** — E87–E89 έκλεισαν 28/11/2026· δεν μένει ανοιχτή εκκρεμότητα |
+| Έκδοση | **2.3.18+25** |
+| Τελευταίο κεφάλαιο | **51** — SEC-005b: ολοκλήρωση διαγραφής όταν αποτύχει το Auth delete (**✅ FIXED**, 2026-11-28) |
+| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **374/374** · device tests POCO X3 ⏳ |
+| Επόμενη εκκρεμότητα | **Καμία** — SEC-005b έκλεισε 28/11/2026· δεν μένει ανοιχτή εκκρεμότητα |
 
 ## Κεφάλαια
 
@@ -80,14 +80,15 @@
 | 48 | 2026-11-27 | 41 | [E67: contrast helper ≥ 4.5:1](oldsessions/48-session-41-e67-contrast-helper.md) | `ColorsUI.getAccessibleTextColor`: tokens του theme → fallback black/white, εγγύηση ≥ 4.5:1 (WCAG AA)· διαγραφή νεκρής `fg.withValues(alpha: 0.78)` στο `stats_page`· `ui_tokens_test` 4→**9** (sweep 256 γκρι)· **336/336**, analyze 0/0/0· v2.3.15+22· **device test POCO X3 ✅** (footer, κάρτα «Περίληψη Επιλογών»)· E67 ✅ FIXED· E85 🚫 WON'T FIX |
 | 49 | 2026-11-27 | 42 | [SEC-005: πλήρης διαγραφή λογαριασμού](oldsessions/49-session-42-sec005-account-deletion.md) | Client cascade 12 συλλογών (+95 subcategories) με chunks ≤499· marker `deleted:true`/`deleted_at`· reauth-first με κωδικό· root delete μόνο μετά από πλήρη cascade· resume guard (`AppStart`/`LoginPage` «Συνέχισε τη διαγραφή») + `PopScope`· partial/failed κλείδωμα· 19+3 tests → **358/358**, analyze 0/0/0· v2.3.16+23· **device tests POCO X3 ✅** (full delete, wrong password, offline guard, resume, demo integrity)· E86 ✅ FIXED |
 | 50 | 2026-11-28 | 43 | [E87–E89: προφόρτωση διάταξης γραφημάτων](oldsessions/50-session-43-chart-layout-preload.md) | Νέο `ChartLayoutPrefs` (ζευγάρωμα id/ορατότητας, migration `graf_7` πριν `graf_6`, περίοδοι, όριο 500 ms/2 s)· `GeneralViewPage(initialLayout)` + `_layoutReady` + αφαίρεση περιττών writes· `HomePage(initialChartLayout)`· preload σε `AppStart`/`LoginPage` πριν τη μετάβαση· editor read μέσω loader· 16 tests → **374/374**, analyze 0/0/0· v2.3.17+24· E87/E88/E89 ✅ FIXED· **device tests POCO X3 ✅** (E87 cold/login, E88 migration, E89a/b, cleanup) |
+| 51 | 2026-11-28 | 44 | [SEC-005b: ολοκλήρωση διαγραφής μετά από Auth failure](oldsessions/51-session-44-sec005b-finalize.md) | Νέο `finalizeDeletion(report, deleteAuthUser)` με προϋπόθεση `isComplete`· root delete → Auth delete· σε αποτυχία `_writeMarker()` για resume στο επόμενο login· διάλογος «Η διαγραφή δεν ολοκληρώθηκε» + «Κλείσιμο» → signOut/login· notifications πριν το cascade· 374/374, analyze 0/0/0· v2.3.18+25· SEC-005b ✅ FIXED |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **50** (01–50) |
+| Κεφάλαια στον φάκελο | **51** (01–51) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **2611** |
+| Σύνολο γραμμών κεφαλαίων | **2674** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

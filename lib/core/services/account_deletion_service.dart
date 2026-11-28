@@ -5,6 +5,7 @@
 // - Marker πρώτα (resume guard), μετά cascade όλων των συλλογών.
 // - Νέο batch ανά chunk ≤499· timeout 20s ανά ανάγνωση/batch.
 // - Root doc **μόνο** όταν όλες οι συλλογές ολοκληρωθούν.
+// - SEC-005b: αν το Auth delete αποτύχει, ξαναγράφεται ο marker.
 // - Δεν πετάει: επιστρέφει complete / partial / failed report.
 // ============================================================
 
@@ -68,13 +69,7 @@ class AccountDeletionService {
 
     // 1) Marker — χωρίς αυτό δεν ξεκινά καμία διαγραφή.
     try {
-      await _userRef
-          .set(<String, dynamic>{
-            AccountDeletionPolicy.markerField: true,
-            AccountDeletionPolicy.markerTimestampField:
-                FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true))
-          .timeout(AccountDeletionPolicy.operationTimeout);
+      await _writeMarker();
       DebugConfig.print('🗑️ deletion marker set for uid=$userId');
     } catch (e) {
       DebugConfig.print('🔴 deletion marker failed: $e');
@@ -136,6 +131,51 @@ class AccountDeletionService {
       duration: DateTime.now().difference(started),
       timestamp: DateTime.now(),
     );
+  }
+
+  // ══════════════════════════════════════════════
+  // ΤΕΛΙΚΟ ΒΗΜΑ (SEC-005b)
+  // ══════════════════════════════════════════════
+  Future<void> _writeMarker() => _userRef
+      .set(<String, dynamic>{
+        AccountDeletionPolicy.markerField: true,
+        AccountDeletionPolicy.markerTimestampField:
+            FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true))
+      .timeout(AccountDeletionPolicy.operationTimeout);
+
+  /// SEC-005b: διαγραφή root doc (και τυχόν marker που ξαναγράφτηκε) και μετά
+  /// του Auth λογαριασμού.
+  ///
+  /// **Προϋπόθεση:** το [report] να είναι `complete` — δηλαδή να έχει ήδη
+  /// ολοκληρωθεί το cascade. Αλλιώς δεν αγγίζεται τίποτα, ώστε να μη μείνουν
+  /// ορφανές υποσυλλογές (το Firestore δεν κάνει cascade delete).
+  ///
+  /// Σε αποτυχία ξαναγράφει τον marker, ώστε η επόμενη σύνδεση να συνεχίσει
+  /// τη διαγραφή αντί να δημιουργήσει νέο user doc. Δεν πετάει.
+  Future<bool> finalizeDeletion(
+    AccountDeletionReport report,
+    Future<void> Function() deleteAuthUser,
+  ) async {
+    if (!report.isComplete) {
+      DebugConfig.print('🔴 finalize skipped: report is not complete');
+      return false;
+    }
+
+    try {
+      await _userRef.delete().timeout(AccountDeletionPolicy.operationTimeout);
+      await deleteAuthUser();
+      return true;
+    } catch (e) {
+      DebugConfig.print('🔴 finalize deletion failed: $e');
+      try {
+        await _writeMarker();
+      } catch (markerError) {
+        // Offline: η εγγραφή μένει στην ουρά και ισχύει ήδη στο cache.
+        DebugConfig.print('⚠️ marker restore not confirmed: $markerError');
+      }
+      return false;
+    }
   }
 
   // ══════════════════════════════════════════════

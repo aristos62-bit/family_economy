@@ -134,9 +134,19 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
     }
 
     try {
-      final report = await AccountDeletionService(
-        userId: user.uid,
-      ).deleteAccountData();
+      final service = AccountDeletionService(userId: user.uid);
+
+      // SEC-005b: οι ειδοποιήσεις πριν από το root delete, ώστε να μη
+      // μεγαλώνει το παράθυρο root → marker restore.
+      try {
+        final notifications = NotificationsService();
+        await notifications.initialize(requestPermissions: false);
+        await notifications.cancelAllNotifications();
+      } catch (e) {
+        DebugConfig.print('⚠️ cancelAllNotifications failed: $e');
+      }
+
+      final report = await service.deleteAccountData();
 
       if (!report.isComplete) {
         _showLoginMessage(AccountDeletionPolicy.partialMessage);
@@ -146,20 +156,22 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         return;
       }
 
-      try {
-        final notifications = NotificationsService();
-        await notifications.initialize(requestPermissions: false);
-        await notifications.cancelAllNotifications();
-      } catch (e) {
-        DebugConfig.print('⚠️ cancelAllNotifications failed: $e');
-      }
+      final finalized = await service.finalizeDeletion(report, () async {
+        try {
+          await _authService.deleteCurrentUser();
+        } on AuthFlowException catch (e) {
+          if (!e.requiresRecentLogin) rethrow;
+          await _authService.reauthenticateWithPassword(password);
+          await _authService.deleteCurrentUser();
+        }
+      });
 
-      try {
-        await _authService.deleteCurrentUser();
-      } on AuthFlowException catch (e) {
-        if (!e.requiresRecentLogin) rethrow;
-        await _authService.reauthenticateWithPassword(password);
-        await _authService.deleteCurrentUser();
+      if (!finalized) {
+        _showLoginMessage(AccountDeletionPolicy.authPendingClosedMessage);
+        AccessibilityService.announceError(
+          AccountDeletionPolicy.authPendingClosedMessage,
+        );
+        return;
       }
 
       _showLoginMessage(AccountDeletionPolicy.completedMessage);

@@ -122,6 +122,17 @@ class AccountDeletionPolicy {
   static const String completedMessage =
       '✅ Ο λογαριασμός διαγράφηκε οριστικά.';
 
+  // SEC-005b: τα δεδομένα σβήστηκαν αλλά ο Auth λογαριασμός υπάρχει ακόμη.
+  static const String authPendingTitle = 'Η διαγραφή δεν ολοκληρώθηκε';
+
+  static const String authPendingMessage =
+      'Τα δεδομένα σας διαγράφηκαν, αλλά ο λογαριασμός σύνδεσης υπάρχει '
+      'ακόμη. Ελέγξτε τη σύνδεση και δοκιμάστε ξανά.';
+
+  static const String authPendingClosedMessage =
+      'Τα δεδομένα διαγράφηκαν. Συνδεθείτε ξανά για να ολοκληρωθεί η '
+      'διαγραφή του λογαριασμού.';
+
   static const String passwordPromptTitle = 'Επιβεβαίωση ταυτότητας';
 
   static const String passwordPromptMessage =
