@@ -17,8 +17,10 @@ import 'package:family_economy/presentation/auth/login_page.dart';
 import 'package:family_economy/core/services/account_deletion_service.dart';
 import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
+import 'package:family_economy/core/services/deletion_guard_service.dart';
 import 'package:family_economy/core/utils/account_deletion_policy.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
+import 'package:family_economy/core/widgets/account_password_dialog.dart';
 import 'package:family_economy/services/notifications_service.dart';
 
 class DeleteAccountPage extends StatefulWidget {
@@ -145,67 +147,11 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
     await _performDelete(password);
   }
 
-  /// Ζητά τον κωδικό πρόσβασης για reauthentication.
+  /// Ζητά τον κωδικό πρόσβασης για reauthentication (E90).
   ///
-  /// Επιστρέφει `null` όταν ο χρήστης ακυρώσει· κενός κωδικός → μήνυμα.
-  Future<String?> _askPassword() async {
-    var typedPassword = '';
-    final result = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text(AccountDeletionPolicy.passwordPromptTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(AccountDeletionPolicy.passwordPromptMessage),
-            const SizedBox(height: 16),
-            TextField(
-              obscureText: true,
-              autofocus: true,
-              onChanged: (value) => typedPassword = value,
-              decoration: const InputDecoration(
-                labelText: AccountDeletionPolicy.passwordLabel,
-                border: OutlineInputBorder(),
-              ),
-              onSubmitted: (value) =>
-                  Navigator.of(dialogContext).pop(value),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text(AccountDeletionPolicy.cancelAction),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(typedPassword),
-            child: Text(
-              AccountDeletionPolicy.deleteAction,
-              style: TextStyle(color: ColorsUI.getError(context.brightness)),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    final password = result?.trim();
-
-    if (password == null) return null;
-    if (password.isEmpty) {
-      if (mounted) {
-        AccessibilityService.announceError(
-          AccountDeletionPolicy.passwordEmptyMessage,
-        );
-        await _showInfoDialog(
-          title: AccountDeletionPolicy.failedTitle,
-          message: AccountDeletionPolicy.passwordEmptyMessage,
-        );
-      }
-      return null;
-    }
-    return password;
-  }
+  /// Επιστρέφει `null` μόνο όταν ο χρήστης ακυρώσει· ο κενός κωδικός
+  /// εμφανίζεται inline και ο διάλογος μένει ανοιχτός.
+  Future<String?> _askPassword() => AccountPasswordDialog.show(context);
 
   /// SEC-005: reauth → marker → cascade → root → notifications → Auth delete.
   Future<void> _performDelete(String password) async {
@@ -214,6 +160,10 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
     setState(() => _isDeleting = true);
 
     final userId = context.session.userId;
+
+    // SEC-006a: η ίδια συσκευή εκτελεί τη διαγραφή — ο guard δεν πρέπει να
+    // ερμηνεύσει το root delete ως διαγραφή από άλλη συσκευή.
+    await DeletionGuardService.instance.suspend();
 
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -315,6 +265,11 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
       );
     } finally {
       if (mounted) setState(() => _isDeleting = false);
+      if (_authService.currentUser != null) {
+        DeletionGuardService.instance.resume();
+      } else {
+        await DeletionGuardService.instance.detach();
+      }
     }
   }
 

@@ -11,74 +11,124 @@ service cloud.firestore {
       // ✅ Προσθήκη ελέγχου userId != "" για αποφυγή denials κατά το initialization της εφαρμογής
       allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
 
+      // SEC-006b: νέο doc σε υποσυλλογή μόνο όταν το root doc υπάρχει και δεν
+      // είναι σημασμένο για διαγραφή. Τα delete μένουν ελεύθερα ώστε να τρέχει
+      // το cascade (εκείνη τη στιγμή ο marker είναι `deleted:true`).
+      // Μόνο στα create: τα updates σε διαγραμμένα docs αποτυγχάνουν με
+      // not-found και τα batched writes έχουν όριο 20 access calls.
+      function parentActive() {
+        return exists(/databases/$(database)/documents/users/$(userId))
+          && get(/databases/$(database)/documents/users/$(userId))
+               .data.get('deleted', false) != true;
+      }
+
       // ✅ TAGS
       match /tags/{tagId} {
-        allow read, create, update, delete:
+        allow read, update, delete:
           if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
       }
 
       // ✅ ACCOUNTS
       match /accounts/{accountId} {
-        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow read, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
       }
 
       // ✅ CATEGORIES & SUBCATEGORIES (Βελτιωμένο με recursive wildcard)
       match /categories/{categoryId} {
-        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow read, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
 
         // ✅ Καλύπτει τις subcategories και οποιαδήποτε άλλη υπο-συλλογή
         match /{allSubcollections=**} {
-          allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+          allow read, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+          allow create:
+            if isSignedIn() && request.auth.uid == userId && userId != ""
+               && parentActive();
         }
       }
 
       // ✅ TRANSACTIONS
       match /transactions/{transactionId} {
-        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow read, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
       }
 
       // ✅ BUDGETS
       match /budgets/{budgetId} {
-        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow read, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
       }
 
       // ✅ NOTIFICATIONS
       match /notifications/{notificationId} {
-        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow read, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
       }
 
       // ✅ TRANSACTION SPLITS
       match /transaction_splits/{splitId} {
-        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow read, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
       }
 
       // ✅ TRANSACTION TAGS
       match /transaction_tags/{tagLinkId} {
-        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow read, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
       }
 
       // ✅ ATTACHMENTS
       match /attachments/{attachmentId} {
-        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow read, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
       }
 
       // ✅ ACCOUNT SNAPSHOTS
       match /account_snapshots/{snapshotId} {
-        allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow read, update, delete: if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
       }
 
       // ✅ SETTINGS
-            match /settings/{settingId} {
-              allow read, write:
-                if isSignedIn() && request.auth.uid == userId && userId != "";
-            }
+      match /settings/{settingId} {
+        allow read, delete:
+          if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create, update:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
+      }
 
-            // ✅ OIL PURCHASES
-            match /oil_purchases/{purchaseId} {
-              allow read, create, update, delete:
-                if isSignedIn() && request.auth.uid == userId && userId != "";
-            }
-          }
+      // ✅ OIL PURCHASES
+      match /oil_purchases/{purchaseId} {
+        allow read, update, delete:
+          if isSignedIn() && request.auth.uid == userId && userId != "";
+        allow create:
+          if isSignedIn() && request.auth.uid == userId && userId != ""
+             && parentActive();
+      }
+    }
 
     // ✅ EXCHANGE RATES (read-only για όλους)
     match /exchange_rates/{rateId} {

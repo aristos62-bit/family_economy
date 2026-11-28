@@ -13,7 +13,9 @@ import 'package:family_economy/core/accessibility/accessibility_service.dart';
 
 // ✅ Offline support imports
 import 'package:family_economy/core/services/connectivity_service.dart';
+import 'package:family_economy/core/services/deletion_guard_service.dart';
 import 'package:family_economy/core/widgets/startup_error_view.dart';
+import 'package:family_economy/presentation/auth/login_page.dart';
 
 // ✅ ΝΕΟΣ: Scheduled transactions
 
@@ -168,6 +170,16 @@ Future<void> _bootstrap({
   // Firestore logging
   FirebaseFirestore.setLoggingEnabled(DebugConfig.isDebug);
   DebugConfig.startup("Firestore configured");
+
+  // SEC-006a: το composition root ορίζει την πλοήγηση του guard, ώστε το
+  // `core/` να μη γνωρίζει σελίδες.
+  DeletionGuardService.instance.onLocked = () async {
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginRegisterPage()),
+      (route) => false,
+    );
+  };
+
   DebugConfig.startup("runApp starting");
   runApp(
     MultiProvider(

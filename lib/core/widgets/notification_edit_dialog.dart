@@ -33,6 +33,10 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
   String? _messageError;
   String? _stopError;
 
+  // E91: ορατότητα σφαλμάτων σε μικρή οθόνη ή με ανοιχτό πληκτρολόγιο.
+  final GlobalKey _messageFieldKey = GlobalKey();
+  final GlobalKey _stopErrorKey = GlobalKey();
+
   // ✅ Recurring state - daily/weekly/monthly only
   bool _isRecurring = false;
   String _recurringFrequency = 'daily'; // 'daily' | 'weekly' | 'monthly'
@@ -186,15 +190,31 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
   }
 
   Widget _buildStopErrorText() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Text(
-        _stopError!,
-        style: TypographyUI.bodySmall(context.brightness).copyWith(
-          color: ColorsUI.getError(context.brightness),
+    return KeyedSubtree(
+      key: _stopErrorKey,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Text(
+          _stopError!,
+          style: TypographyUI.bodySmall(context.brightness).copyWith(
+            color: ColorsUI.getError(context.brightness),
+          ),
         ),
       ),
     );
+  }
+
+  /// E91: κυλάει το scroll ώστε το σφάλμα να είναι ορατό.
+  void _reveal(GlobalKey key) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = key.currentContext;
+      if (target == null || !mounted) return;
+      Scrollable.ensureVisible(
+        target,
+        alignment: 0.1,
+        duration: const Duration(milliseconds: 250),
+      );
+    });
   }
 
   // ============================================================
@@ -244,6 +264,7 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
       const error = 'Παρακαλώ γράψτε ένα μήνυμα υπενθύμισης';
       setState(() => _messageError = error);
       AccessibilityService.announceError(error);
+      _reveal(_messageFieldKey);
       return;
     }
 
@@ -274,6 +295,7 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
           const error = 'Ορίστε ημερομηνία λήξης για την επανάληψη';
           setState(() => _stopError = error);
           AccessibilityService.announceError(error);
+          _reveal(_stopErrorKey);
           return;
         }
         // end date cannot be before the first scheduled date (date-only compare)
@@ -293,6 +315,7 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
               'εμφάνιση';
           setState(() => _stopError = error);
           AccessibilityService.announceError(error);
+          _reveal(_stopErrorKey);
           return;
         }
         // ensure maxOccurrences is null in this mode
@@ -303,15 +326,10 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
           const error = 'Ορίστε μέγιστο αριθμό επαναλήψεων';
           setState(() => _stopError = error);
           AccessibilityService.announceError(error);
+          _reveal(_stopErrorKey);
           return;
         }
         // root is occurrenceIndex=0, so min total is 1
-        if (mo < 1) {
-          const error = 'Ο μέγιστος αριθμός επαναλήψεων πρέπει να είναι ≥ 1';
-          setState(() => _stopError = error);
-          AccessibilityService.announceError(error);
-          return;
-        }
         // ensure end date is null in this mode
         _recurringEndAt = null;
       }
@@ -441,6 +459,7 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
                   label: 'Μήνυμα υπενθύμισης',
                   hint: 'Γράψτε το μήνυμα που θέλετε να λάβετε',
                   child: TextField(
+                    key: _messageFieldKey,
                     controller: _messageController,
                     maxLines: 3,
                     style: TypographyUI.bodyMedium(context.brightness),
@@ -1085,9 +1104,10 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
                   tooltip: 'Μείωση αριθμού επαναλήψεων',
                   onPressed: (_maxOccurrences ?? 0) > 1
                       ? () {
-                          setState(
-                            () => _maxOccurrences = (_maxOccurrences ?? 1) - 1,
-                          );
+                          setState(() {
+                            _maxOccurrences = (_maxOccurrences ?? 1) - 1;
+                            _stopError = null;
+                          });
                           AccessibilityService.announcePolite(
                             'Επαναλήψεις: ${_maxOccurrences ?? 0}',
                           );
@@ -1101,9 +1121,10 @@ class _NotificationEditDialogState extends State<NotificationEditDialog> {
                   tooltip: 'Αύξηση αριθμού επαναλήψεων',
                   onPressed: (_maxOccurrences ?? 0) < 365
                       ? () {
-                          setState(
-                            () => _maxOccurrences = (_maxOccurrences ?? 0) + 1,
-                          );
+                          setState(() {
+                            _maxOccurrences = (_maxOccurrences ?? 0) + 1;
+                            _stopError = null;
+                          });
                           AccessibilityService.announcePolite(
                             'Επαναλήψεις: ${_maxOccurrences ?? 0}',
                           );

@@ -150,4 +150,9 @@ class AccountDeletionPolicy {
   static const String recentLoginMessage =
       'Για λόγους ασφαλείας απαιτείται πρόσφατη σύνδεση. '
       'Συνδεθείτε ξανά και δοκιμάστε ξανά.';
+
+  // SEC-006a: ο server επιβεβαίωσε διαγραφή ενώ η συσκευή ήταν συνδεδεμένη.
+  static const String remoteDeletionMessage =
+      'Ο λογαριασμός διαγράφηκε σε άλλη συσκευή. '
+      'Η συνεδρία έκλεισε για λόγους ασφαλείας.';
 }

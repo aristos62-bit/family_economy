@@ -67,12 +67,12 @@ class AccountDeletionService {
     final failures = <String>[];
     var totalDeleted = 0;
 
-    // 1) Marker — χωρίς αυτό δεν ξεκινά καμία διαγραφή.
-    try {
-      await _writeMarker();
-      DebugConfig.print('🗑️ deletion marker set for uid=$userId');
-    } catch (e) {
-      DebugConfig.print('🔴 deletion marker failed: $e');
+    // 1) Marker — μόνο με επιβεβαίωση server ξεκινά η διαγραφή (SEC-005c).
+    // Χωρίς επιβεβαίωση το `failed` είναι αληθινό: δεν μένει τίποτα στην
+    // offline ουρά που θα μπορούσε να κλειδώσει τον λογαριασμό αργότερα.
+    final markerWritten = await _writeMarkerConfirmed();
+    if (!markerWritten) {
+      DebugConfig.print('🔴 deletion marker not confirmed for uid=$userId');
       return AccountDeletionReport(
         outcome: AccountDeletionOutcome.failed,
         totalDeleted: 0,
@@ -81,6 +81,7 @@ class AccountDeletionService {
         timestamp: DateTime.now(),
       );
     }
+    DebugConfig.print('🗑️ deletion marker set for uid=$userId');
 
     // 2) Cascade — κάθε συλλογή ανεξάρτητα, ώστε μία αποτυχία να μη
     // σταματά τις υπόλοιπες.
@@ -136,6 +137,48 @@ class AccountDeletionService {
   // ══════════════════════════════════════════════
   // ΤΕΛΙΚΟ ΒΗΜΑ (SEC-005b)
   // ══════════════════════════════════════════════
+  /// SEC-005c: marker που επιβεβαιώνεται από τον server.
+  ///
+  /// Το transaction **δεν** μπαίνει στην offline ουρά: ή γράφεται στον server
+  /// ή αποτυγχάνει. Αν το timeout χτυπήσει, το commit μπορεί να έχει ήδη
+  /// γίνει — μία server read το επιβεβαιώνει πριν δηλώσουμε αποτυχία.
+  Future<bool> _writeMarkerConfirmed() async {
+    try {
+      await _db
+          .runTransaction<void>((transaction) async {
+            transaction.set(
+              _userRef,
+              <String, dynamic>{
+                AccountDeletionPolicy.markerField: true,
+                AccountDeletionPolicy.markerTimestampField:
+                    FieldValue.serverTimestamp(),
+              },
+              SetOptions(merge: true),
+            );
+          })
+          .timeout(AccountDeletionPolicy.operationTimeout);
+      return true;
+    } catch (e) {
+      DebugConfig.print('🔴 marker transaction failed: $e');
+    }
+
+    try {
+      final doc = await _userRef
+          .get(const GetOptions(source: Source.server))
+          .timeout(AccountDeletionPolicy.operationTimeout);
+      final confirmed = AccountDeletionPolicy.isDeletionPending(doc.data());
+      DebugConfig.print('→ marker verify: confirmed=$confirmed');
+      return confirmed;
+    } catch (e) {
+      DebugConfig.print('🔴 marker verify failed: $e');
+      return false;
+    }
+  }
+
+  /// Best-effort restore μετά από αποτυχία του Auth delete (SEC-005b).
+  ///
+  /// Εδώ η εγγραφή **θέλουμε** να μείνει στην offline ουρά: πρέπει να
+  /// επιβιώσει από restart, ώστε η επόμενη σύνδεση να συνεχίσει τη διαγραφή.
   Future<void> _writeMarker() => _userRef
       .set(<String, dynamic>{
         AccountDeletionPolicy.markerField: true,

@@ -10,6 +10,7 @@ import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/biometric_auth_service.dart';
 import 'package:family_economy/core/services/biometric_settings_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
+import 'package:family_economy/core/services/deletion_guard_service.dart';
 import 'package:family_economy/core/utils/account_deletion_policy.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/utils/message_policy.dart';
@@ -101,6 +102,9 @@ class _AppStartState extends State<AppStart> {
           AccountDeletionPolicy.pendingStartupMessage,
         );
       }
+
+      // SEC-006a: server-confirmed διαγραφή από άλλη συσκευή → κλείδωμα.
+      DeletionGuardService.instance.attach(uid);
 
       final userData = ensured.data;
       final currency = (userData?['default_currency'] as String?) ?? 'EUR';

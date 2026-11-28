@@ -8,6 +8,7 @@ import 'package:family_economy/core/errors/user_message_exception.dart';
 import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/services/account_deletion_service.dart';
+import 'package:family_economy/core/services/deletion_guard_service.dart';
 import 'package:family_economy/core/utils/account_deletion_policy.dart';
 import 'package:family_economy/services/onboarding_service.dart';
 import 'package:family_economy/presentation/screens/charts/chart_layout_prefs.dart';
@@ -58,6 +59,9 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
     _confirmPassController = TextEditingController();
+
+    // SEC-006a: μήνυμα από το κλείδωμα της προηγούμενης συνεδρίας.
+    _errorMessage = DeletionGuardService.instance.takeMessage();
   }
 
   void _togglePasswordVisibility() {
@@ -132,6 +136,10 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
       );
       return;
     }
+
+    // SEC-006a: η ροή διαγραφής παίρνει τον έλεγχο — ο guard δεν πρέπει να
+    // κλείσει τη συνεδρία στη μέση.
+    await DeletionGuardService.instance.suspend();
 
     try {
       final service = AccountDeletionService(userId: user.uid);
@@ -240,6 +248,9 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         await _handlePendingDeletion(user, password);
         return;
       }
+
+      // SEC-006a: server-confirmed διαγραφή από άλλη συσκευή → κλείδωμα.
+      DeletionGuardService.instance.attach(uid);
 
       final userData = ensured.data;
       final currency = userData?['default_currency'] as String? ?? 'EUR';
