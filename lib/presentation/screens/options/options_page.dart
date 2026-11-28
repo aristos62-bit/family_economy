@@ -6,6 +6,7 @@ import 'package:family_economy/core/data/schema.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/messaging/app_messenger.dart';
 import 'package:family_economy/core/session/session_scope.dart';
+import 'package:family_economy/core/services/auth_service.dart';
 import 'package:family_economy/providers/theme_provider.dart';
 import 'package:family_economy/providers/accounts_provider.dart';
 import 'package:family_economy/providers/categories_provider.dart';
@@ -667,7 +668,7 @@ class _OptionsPageState extends State<OptionsPage> {
                             // Το "πήγαινε στο Login" θα το βάλουμε στο επόμενο βήμα για να είναι καθαρό.
                             if (result == true && context.mounted) {
                               // ✅ Σταματάμε άμεσα οποιαδήποτε Firestore πρόσβαση από providers/screens
-                              await FirebaseAuth.instance.signOut();
+                              await AuthService().signOut();
 
                               if (!context.mounted) return;
 
@@ -1761,7 +1762,7 @@ class _LogoutCard extends StatelessWidget {
     if (confirmed != true || !context.mounted) return;
 
     try {
-      await FirebaseAuth.instance.signOut();
+      await AuthService().signOut();
 
       if (!context.mounted) return;
 

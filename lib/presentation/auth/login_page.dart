@@ -252,7 +252,11 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
       }
 
       // SEC-006a: server-confirmed διαγραφή από άλλη συσκευή → κλείδωμα.
-      DeletionGuardService.instance.attach(uid);
+      // Μόνο όταν το doc επιβεβαιώθηκε· σε skippedOffline/skippedError
+      // δεν υπάρχει αλήθεια από τον server (θα ήταν ψευδές lock).
+      if (ensured.exists) {
+        DeletionGuardService.instance.attach(uid);
+      }
 
       final userData = ensured.data;
       final currency = userData?['default_currency'] as String? ?? 'EUR';

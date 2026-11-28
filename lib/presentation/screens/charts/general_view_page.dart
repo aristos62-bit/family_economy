@@ -34,7 +34,7 @@ class GeneralViewPageState extends State<GeneralViewPage> {
   final Map<String, Widget> _chartCache = {};
   List<String> chartOrder = [];
   List<bool> chartVisibility = [];
-  bool _isFirstLoad = true;
+  bool _prefsRequested = false;
   bool _loadingPrefs = false;
   bool _layoutReady = false;
 
@@ -45,7 +45,6 @@ class GeneralViewPageState extends State<GeneralViewPage> {
     final initialLayout = widget.initialLayout;
     if (initialLayout != null) {
       _applyLayout(initialLayout);
-      _isFirstLoad = false;
     }
 
     AccessibilityService.announceAfterFirstFrame(
@@ -58,15 +57,14 @@ class GeneralViewPageState extends State<GeneralViewPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Load preferences when page is first built or when returning
-    if (!_layoutReady &&
-        (_isFirstLoad || chartOrder.isEmpty) &&
-        !_loadingPrefs) {
+    // Μία ανάγνωση ανά instance σελίδας: δείχνουμε αμέσως το initialLayout,
+    // αλλά πάντα ξαναδιαβάζουμε τα prefs (η σελίδα ξαναδημιουργείται από το PageView).
+    if (!_prefsRequested && !_loadingPrefs) {
+      _prefsRequested = true;
       _loadingPrefs = true;
       _loadChartPreferences().whenComplete(() {
         _loadingPrefs = false;
       });
-      _isFirstLoad = false;
     }
   }
 
@@ -129,7 +127,13 @@ class GeneralViewPageState extends State<GeneralViewPage> {
     );
 
     if (!mounted) return;
-    _applyLayout(layout ?? ChartLayoutPrefs.fallback(), notify: true);
+
+    if (layout != null) {
+      _applyLayout(layout, notify: true);
+    } else if (!_layoutReady) {
+      // Καμία έτοιμη διάταξη (π.χ. απέτυχε και η ανάγνωση εκκίνησης) → fallback.
+      _applyLayout(ChartLayoutPrefs.fallback(), notify: true);
+    }
   }
 
   /// Εφαρμόζει μια έτοιμη διάταξη στην κατάσταση της σελίδας.

@@ -104,7 +104,11 @@ class _AppStartState extends State<AppStart> {
       }
 
       // SEC-006a: server-confirmed διαγραφή από άλλη συσκευή → κλείδωμα.
-      DeletionGuardService.instance.attach(uid);
+      // Μόνο όταν το doc επιβεβαιώθηκε· σε skippedOffline/skippedError
+      // δεν υπάρχει αλήθεια από τον server (θα ήταν ψευδές lock).
+      if (ensured.exists) {
+        DeletionGuardService.instance.attach(uid);
+      }
 
       final userData = ensured.data;
       final currency = (userData?['default_currency'] as String?) ?? 'EUR';
@@ -327,7 +331,7 @@ class _AppStartState extends State<AppStart> {
   }
 
   Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
+    await _authService.signOut();
     if (!mounted) return;
     Navigator.pushReplacement(
       context,

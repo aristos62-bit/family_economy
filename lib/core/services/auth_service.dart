@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:family_economy/core/data/schema.dart';
 import 'package:family_economy/core/data/user_doc_policy.dart';
 import 'package:family_economy/core/errors/user_message_exception.dart';
+import 'package:family_economy/core/services/deletion_guard_service.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 
 /// E64: αποτέλεσμα της εξασφάλισης του user document.
@@ -227,8 +228,10 @@ class AuthService {
     }
   }
 
-  /// Αποσύνδεση
+  /// Αποσύνδεση — σταματά πρώτα τον guard (SEC-006a), ώστε να μη μείνει
+  /// «ενεργός» listener μετά το signOut.
   Future<void> signOut() async {
+    await DeletionGuardService.instance.detach();
     await _auth.signOut();
   }
 

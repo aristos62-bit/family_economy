@@ -81,14 +81,26 @@ class DeletionGuardService {
   // ══════════════════════════════════════════════
 
   void _listen(String uid) {
-    _subscription = _rootRef(uid)
-        .snapshots()
-        .listen(
-          _onSnapshot,
-          onError: (Object error) {
-            DebugConfig.print('⚠️ deletion guard listener error: $error');
-          },
-        );
+    late final StreamSubscription<DocumentSnapshot<Map<String, dynamic>>> sub;
+    sub = _rootRef(uid).snapshots().listen(
+      _onSnapshot,
+      onError: (Object error) {
+        DebugConfig.print('⚠️ deletion guard listener error: $error');
+        _forgetSubscription(sub);
+      },
+      onDone: () => _forgetSubscription(sub),
+    );
+    _subscription = sub;
+  }
+
+  /// Ο listener έκλεισε (π.χ. permission-denied μετά από logout) — σταματάμε
+  /// να τον θεωρούμε ενεργό, ώστε το επόμενο `attach` να ξαναακούσει.
+  void _forgetSubscription(
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>> sub,
+  ) {
+    if (!identical(_subscription, sub)) return;
+    _subscription = null;
+    unawaited(sub.cancel());
   }
 
   Future<void> _cancelListener() async {

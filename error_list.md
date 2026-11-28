@@ -11,7 +11,7 @@
 |---|---|---|
 | — | *(καμία ανοιχτή εκκρεμότητα)* | — |
 
-> Τα **SEC-005c**, **SEC-006a**, **SEC-006b**, **E90**, **E91**, **E92** διορθώθηκαν 28/11/2026 (`2.3.19+26`). Το **E93** διορθώθηκε επίσης 28/11/2026 (χωρίς version bump).
+> Τα **SEC-005c**, **SEC-006a**, **SEC-006b**, **E90**, **E91**, **E92** διορθώθηκαν 28/11/2026 (`2.3.19+26`). Τα **E93–E96** διορθώθηκαν επίσης 28/11/2026 (χωρίς version bump).
 
 > **L11** ✅ **FIXED** 27/11/2026 (`2.3.14+21`): ο κεντρικός presenter `AppMessenger` + `MessagePolicy` ολοκληρώθηκε και τα 89 sites μεταφέρθηκαν (0 άμεσα `SnackBar(`). Ο post-commit έλεγχος βρήκε **E77–E83**· **όλα διορθώθηκαν** και το νέο device test πέρασε. Λεπτομέρειες παρακάτω.
 
@@ -143,6 +143,9 @@
 | E91 | Σφάλμα εκτός ορατού χώρου· νεκρός κλάδος `mo < 1` | — | ✅ FIXED | 2026-11-28 |
 | E92 | Καμία behavior test για τους δύο διαλόγους | — | ✅ FIXED | 2026-11-28 |
 | E93 | `trim()` στον κωδικό σε login/change — έσπαγε κωδικούς με κενά | `password_change_policy.dart` (νέο) | ✅ FIXED | 2026-11-28 |
+| E94 | Η Αρχική δείχνει παλιά διάταξη γραφημάτων μετά από αλλαγή καρτέλας — το `PageView` καταστρέφει τη σελίδα και το `!_layoutReady` μπλοκάρει νέα ανάγνωση | — | ✅ FIXED | 2026-11-28 |
+| E95 | Ο guard απενεργοποιείται μετά από αποσύνδεση — δεν καλείται `detach()`, ο listener πεθαίνει με permission-denied αλλά το `_subscription` μένει γεμάτο | — | ✅ FIXED | 2026-11-28 |
+| E96 | Ψευδές «διαγράφηκε σε άλλη συσκευή» — `attach()` ακόμα και όταν το user doc δεν επιβεβαιώθηκε (`skippedOffline`/`skippedError`) | — | ✅ FIXED | 2026-11-28 |
 
 ### Λεπτομέρειες
 
@@ -708,6 +711,27 @@
 - **Tests:** `password_change_policy_test.dart` (12 tests — κενά στις άκρες, exact confirmation, μήκος raw, μόνο κενά, source guard χωρίς `.text.trim()` σε password) → **400/400**, `flutter analyze` 0/0/0.
 - **Αρχεία:** `login_page.dart`, `change_password_page.dart`, `password_change_policy.dart` (νέο), `password_change_policy_test.dart` (νέο).
 - **Κατάσταση:** ✅ FIXED 28/11/2026 (device tests POCO X3: login με ` e93pass1 `, mismatch raw, αλλαγή σε ` zzzzzz9 `, re-login με τον νέο κωδικό, καθαρισμός temp user — βλ. `oldsessions/53-*`).
+
+**E94 — Παλιά διάταξη γραφημάτων μετά από αλλαγή καρτέλας (✅ FIXED 28/11/2026, χωρίς version bump)**
+
+- **Πρόβλημα:** το `PageView` της `HomePage` δεν κρατά alive τη `GeneralViewPage`· σε κάθε επιστροφή η σελίδα ξαναχτίζεται, εφαρμόζει το `initialLayout` της εκκίνησης και το `_layoutReady` μπλοκάρει τη νέα ανάγνωση των prefs → παλιά σειρά/περίοδοι.
+- **Διόρθωση:** `_prefsRequested` ανά instance αντί `_isFirstLoad`· μία νέα ανάγνωση `ChartLayoutPrefs.loadWithin` (όριο 2 s) σε κάθε νέα σελίδα, ανεξάρτητα από `_layoutReady`· το `initialLayout` εφαρμόζεται ακόμα στο `initState` (πρώτο καρέ χωρίς flash)· fallback μόνο όταν δεν υπάρχει έτοιμη διάταξη.
+- **Αρχεία:** `general_view_page.dart`.
+- **Κατάσταση:** ✅ FIXED 28/11/2026 (device test POCO X3 ✅ — αλλαγή διάταξης/περιόδου → «Λογαριασμοί» → επιστροφή: νέα διάταξη).
+
+**E95 — Ο guard απενεργοποιείται μετά από αποσύνδεση (✅ FIXED 28/11/2026, χωρίς version bump)**
+
+- **Πρόβλημα:** η κανονική αποσύνδεση δεν καλούσε `detach()`· ο listener έπεφτε με permission-denied, αλλά το `_subscription` έμενε μη-`null` → νέα σύνδεση ίδιου χρήστη: το `attach()` θεωρούσε ότι ακούει ήδη και δεν ξεκινούσε listener.
+- **Διόρθωση:** `AuthService.signOut()` καλεί `detach()` πριν το `signOut`· `AppStart._logout` και οι δύο ροές του `options_page` περνούν από `AuthService.signOut()`· self-healing στο `_listen` — σε `onError`/`onDone` καθαρίζει το `_subscription` (με `identical` guard) ώστε το επόμενο `attach` να ξαναακούσει. Το `_lock()` μένει με απευθείας `signOut` για να διατηρεί το `_pendingMessage`.
+- **Αρχεία:** `deletion_guard_service.dart`, `auth_service.dart`, `app_start.dart`, `options_page.dart`.
+- **Κατάσταση:** ✅ FIXED 28/11/2026 (device test POCO X3 ✅ — logout → login ίδιου χρήστη → remote deletion → lock).
+
+**E96 — Ψευδές «διαγράφηκε σε άλλη συσκευή» (✅ FIXED 28/11/2026, χωρίς version bump)**
+
+- **Πρόβλημα:** το `attach()` καλούνταν ακόμα και όταν το user document δεν είχε επιβεβαιωθεί (`skippedOffline`/`skippedError`, `exists:false`). Νέος λογαριασμός με κακό δίκτυο: μόλις ο server απαντούσε «δεν υπάρχει», ο guard έκλεινε τη συνεδρία με λάθος μήνυμα.
+- **Διόρθωση:** `attach()` μόνο όταν `ensured.exists` — σε `AppStart` και `LoginPage`. Τα `cache hit`, `server hit` και `created` έχουν `exists:true` και συνεχίζουν να attachάρουν· το `deletionPending` χειρίζεται πριν το attach.
+- **Αρχεία:** `app_start.dart`, `login_page.dart`.
+- **Κατάσταση:** ✅ FIXED 28/11/2026 (analyze 0/0/0, 400/400· device test E96: **δεν εκτελέστηκε** σε αυτό το session).
 
 ## Πώς προσθέτω εύρημα
 
