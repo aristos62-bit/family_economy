@@ -21,10 +21,10 @@
 
 | | |
 |---|---|
-| Έκδοση | **2.3.16+23** |
-| Τελευταίο κεφάλαιο | **49** — SEC-005: πλήρης διαγραφή λογαριασμού (**✅ FIXED**, 2026-11-27) |
-| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **358/358** |
-| Επόμενη εκκρεμότητα | **Καμία** — E67/E85/E60 έκλεισαν 27/11/2026· δεν μένει ανοιχτή εκκρεμότητα |
+| Έκδοση | **2.3.17+24** |
+| Τελευταίο κεφάλαιο | **50** — E87–E89: προφόρτωση διάταξης γραφημάτων (**✅ FIXED**, 2026-11-28) |
+| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **374/374** |
+| Επόμενη εκκρεμότητα | **Καμία** — E87–E89 έκλεισαν 28/11/2026· δεν μένει ανοιχτή εκκρεμότητα |
 
 ## Κεφάλαια
 
@@ -79,14 +79,15 @@
 | 47 | 2026-11-27 | 40 | [L11: κεντρικός presenter μηνυμάτων](oldsessions/47-session-40-l11-message-presenter.md) | `AppMessenger` + `MessagePolicy` + `UserMessageException`· 89/89 sites, **0** άμεσα `SnackBar(` στο `lib/`· inline validation σε λογαριασμούς/κατηγορίες/tags/oil/notification· αφαίρεση 5 `hideCurrentSnackBar` + 6 διπλών `announce`· `ErrorApp` χωρίς raw error· E68–E76 FIXED· **post-commit E77–E84 → όλα FIXED** (commit `7ed135e`): guard v2 (taint tracking), raw μέσω providers/μεταβλητών, regressions E65/προγραμματισμένων· **331/331**, analyze 0/0/0· v2.3.14+21· **device test POCO X3 ✅**· E67 ℹ️ μένει |
 | 48 | 2026-11-27 | 41 | [E67: contrast helper ≥ 4.5:1](oldsessions/48-session-41-e67-contrast-helper.md) | `ColorsUI.getAccessibleTextColor`: tokens του theme → fallback black/white, εγγύηση ≥ 4.5:1 (WCAG AA)· διαγραφή νεκρής `fg.withValues(alpha: 0.78)` στο `stats_page`· `ui_tokens_test` 4→**9** (sweep 256 γκρι)· **336/336**, analyze 0/0/0· v2.3.15+22· **device test POCO X3 ✅** (footer, κάρτα «Περίληψη Επιλογών»)· E67 ✅ FIXED· E85 🚫 WON'T FIX |
 | 49 | 2026-11-27 | 42 | [SEC-005: πλήρης διαγραφή λογαριασμού](oldsessions/49-session-42-sec005-account-deletion.md) | Client cascade 12 συλλογών (+95 subcategories) με chunks ≤499· marker `deleted:true`/`deleted_at`· reauth-first με κωδικό· root delete μόνο μετά από πλήρη cascade· resume guard (`AppStart`/`LoginPage` «Συνέχισε τη διαγραφή») + `PopScope`· partial/failed κλείδωμα· 19+3 tests → **358/358**, analyze 0/0/0· v2.3.16+23· **device tests POCO X3 ✅** (full delete, wrong password, offline guard, resume, demo integrity)· E86 ✅ FIXED |
+| 50 | 2026-11-28 | 43 | [E87–E89: προφόρτωση διάταξης γραφημάτων](oldsessions/50-session-43-chart-layout-preload.md) | Νέο `ChartLayoutPrefs` (ζευγάρωμα id/ορατότητας, migration `graf_7` πριν `graf_6`, περίοδοι, όριο 500 ms/2 s)· `GeneralViewPage(initialLayout)` + `_layoutReady` + αφαίρεση περιττών writes· `HomePage(initialChartLayout)`· preload σε `AppStart`/`LoginPage` πριν τη μετάβαση· editor read μέσω loader· 16 tests → **374/374**, analyze 0/0/0· v2.3.17+24· E87/E88/E89 ✅ FIXED |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **49** (01–49) |
+| Κεφάλαια στον φάκελο | **50** (01–50) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **2532** |
+| Σύνολο γραμμών κεφαλαίων | **2595** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

@@ -10,6 +10,7 @@ import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/services/account_deletion_service.dart';
 import 'package:family_economy/core/utils/account_deletion_policy.dart';
 import 'package:family_economy/services/onboarding_service.dart';
+import 'package:family_economy/presentation/screens/charts/chart_layout_prefs.dart';
 import 'package:family_economy/presentation/screens/home/home_page.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/messaging/app_messenger.dart';
@@ -211,6 +212,9 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
         return;
       }
 
+      // Προφόρτωση διάταξης γραφημάτων παράλληλα με onboarding/έλεγχο schema.
+      final chartLayoutFuture = ChartLayoutPrefs.loadWithin(uid);
+
       // ✅ E64: μία κλήση — cache → server → create, χωρίς poll.
       // Offline δεν γράφεται τίποτα· η ροή συνεχίζει με ό,τι υπάρχει.
       final ensured = await _authService.ensureUserDocument(
@@ -295,6 +299,9 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
 
       if (!mounted) return;
 
+      final chartLayout = await chartLayoutFuture;
+      if (!mounted) return;
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -333,7 +340,7 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
 
                 return SessionScope(
                   session: Session(userId: uid, defaultCurrency: currency),
-                  child: const HomePage(),
+                  child: HomePage(initialChartLayout: chartLayout),
                 );
               },
             ),

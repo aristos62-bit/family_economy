@@ -30,6 +30,7 @@ import 'package:family_economy/providers/budgets_provider.dart';
 import 'package:family_economy/providers/tags_provider.dart';
 
 import 'package:family_economy/presentation/auth/login_page.dart';
+import 'package:family_economy/presentation/screens/charts/chart_layout_prefs.dart';
 import 'package:family_economy/presentation/screens/home/home_page.dart';
 
 // ✅ ΝΕΟΣ IMPORT
@@ -80,6 +81,10 @@ class _AppStartState extends State<AppStart> {
       }
 
       final uid = user.uid;
+
+      // Προφόρτωση της διάταξης γραφημάτων παράλληλα με τα υπόλοιπα βήματα.
+      // Το await γίνεται πριν τη μετάβαση, με όριο χρόνου μέσα στο loadWithin.
+      final chartLayoutFuture = ChartLayoutPrefs.loadWithin(uid);
 
       // 1) Load user data (for Session currency)
       // ✅ E64: μία κλήση — cache → server → create, χωρίς poll.
@@ -158,6 +163,9 @@ class _AppStartState extends State<AppStart> {
 
       if (!mounted) return;
 
+      final chartLayout = await chartLayoutFuture;
+      if (!mounted) return;
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -195,7 +203,7 @@ class _AppStartState extends State<AppStart> {
                 };
                 return SessionScope(
                   session: Session(userId: uid, defaultCurrency: currency),
-                  child: const HomePage(),
+                  child: HomePage(initialChartLayout: chartLayout),
                 );
               },
             ),

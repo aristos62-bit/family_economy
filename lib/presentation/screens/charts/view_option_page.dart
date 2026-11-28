@@ -7,9 +7,9 @@
 
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:family_economy/presentation/screens/charts/chart_layout_prefs.dart';
 import 'package:family_economy/presentation/screens/charts/chart_registry.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
-import 'package:family_economy/core/utils/period_prefs.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
@@ -48,16 +48,6 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
     'graf_5': Colors.teal,
     'graf_7': Colors.indigo,
     'graf_6': Colors.deepPurple,
-  };
-
-  /// Default periods per chart
-  final Map<String, String> _defaultPeriods = {
-    'graf_1': 'Εβδομάδα',
-    'graf_2': 'Μήνας',
-    'graf_3': 'Εβδομάδα',
-    'graf_4': 'Έτος',
-    'graf_5': 'Μήνας',
-    'graf_6': 'Μήνας',
   };
 
   /// Current saved period per chart
@@ -125,63 +115,41 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
 
   /// Map from chartId to prefix key used in SharedPreferences
   String? _periodKeyForChart(String chartId) {
-    switch (chartId) {
-      case 'graf_1':
-        return 'graf1';
-      case 'graf_2':
-        return 'graf2';
-      case 'graf_3':
-        return 'graf3';
-      case 'graf_5':
-        return 'graf5';
-      case 'graf_6':
-        return 'graf6';
-      default:
-        return null; // graf_4 doesn't use period
-    }
+    return ChartLayoutPrefs.periodKeys[chartId];
   }
 
   Future<void> _loadPreferences() async {
     if (_userId == null) return;
-    final prefs = await SharedPreferences.getInstance();
 
-    // Load order & visibility
-    final order = prefs.getStringList('chart_order_${_userId!}');
-    final visibility = prefs.getStringList('chart_visibility_${_userId!}');
+    final layout =
+        await ChartLayoutPrefs.loadWithin(
+          _userId!,
+          timeout: const Duration(seconds: 2),
+        ) ??
+        ChartLayoutPrefs.fallback();
 
-    if (order != null && visibility != null) {
-      final Map<String, bool> visMap = {};
-      for (int i = 0; i < order.length; i++) {
-        visMap[order[i]] = visibility[i] == 'true';
+    if (!mounted) return;
+
+    setState(() {
+      final visMap = <String, bool>{};
+      for (var i = 0; i < layout.order.length; i++) {
+        visMap[layout.order[i]] = layout.visibility[i];
       }
 
-      setState(() {
-        charts = availableCharts.map((c) {
-          return {'id': c.id, 'name': c.name, 'visible': visMap[c.id] ?? true};
-        }).toList();
+      charts = availableCharts.map((c) {
+        return {'id': c.id, 'name': c.name, 'visible': visMap[c.id] ?? true};
+      }).toList();
 
-        charts.sort(
-          (a, b) => order.indexOf(a['id']).compareTo(order.indexOf(b['id'])),
-        );
-      });
-    }
-
-    // Load saved periods for each chart
-    for (final c in availableCharts) {
-      final chartId = c.id;
-      final keyPrefix = _periodKeyForChart(chartId);
-      if (keyPrefix == null) continue;
-
-      // Self-healing: διορθώνει χαλασμένες τιμές (λάθος κωδικοποίηση) και τις
-      // ξαναγράφει σωστές.
-      _chartPeriods[chartId] = await PeriodPrefs.load(
-        prefs,
-        '${keyPrefix}_period_${_userId!}',
-        _defaultPeriods[chartId]!,
+      charts.sort(
+        (a, b) => layout.order
+            .indexOf(a['id'])
+            .compareTo(layout.order.indexOf(b['id'])),
       );
-    }
 
-    setState(() {});
+      _chartPeriods
+        ..clear()
+        ..addAll(layout.periods);
+    });
   }
 
   Future<void> _savePreferences() async {
@@ -227,7 +195,9 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
 
   Future<void> _showPeriodDialog(String chartId) async {
     final currentPeriod =
-        _chartPeriods[chartId] ?? _defaultPeriods[chartId] ?? 'Μήνας';
+        _chartPeriods[chartId] ??
+        ChartLayoutPrefs.defaultPeriods[chartId] ??
+        'Μήνας';
 
     final brightness = Theme.of(context).brightness;
 

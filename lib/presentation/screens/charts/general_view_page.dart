@@ -7,15 +7,18 @@
 
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:family_economy/presentation/screens/charts/chart_layout_prefs.dart';
 import 'package:family_economy/presentation/screens/charts/chart_registry.dart';
 import 'package:family_economy/presentation/screens/charts/view_option_page.dart';
 import 'package:family_economy/core/theme/ui_tokens.dart';
-import 'package:family_economy/core/utils/period_prefs.dart';
 import 'package:family_economy/core/accessibility/accessibility_service.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 
 class GeneralViewPage extends StatefulWidget {
-  const GeneralViewPage({super.key});
+  const GeneralViewPage({super.key, this.initialLayout});
+
+  /// Διάταξη που έχει ήδη διαβαστεί πριν το άνοιγμα της σελίδας.
+  final ChartLayout? initialLayout;
 
   @override
   State<GeneralViewPage> createState() => GeneralViewPageState();
@@ -33,10 +36,18 @@ class GeneralViewPageState extends State<GeneralViewPage> {
   List<bool> chartVisibility = [];
   bool _isFirstLoad = true;
   bool _loadingPrefs = false;
+  bool _layoutReady = false;
 
   @override
   void initState() {
     super.initState();
+
+    final initialLayout = widget.initialLayout;
+    if (initialLayout != null) {
+      _applyLayout(initialLayout);
+      _isFirstLoad = false;
+    }
+
     AccessibilityService.announceAfterFirstFrame(
       context,
       'Γενική εικόνα οικονομικών. Προβολή γραφημάτων.',
@@ -48,7 +59,9 @@ class GeneralViewPageState extends State<GeneralViewPage> {
     super.didChangeDependencies();
 
     // Load preferences when page is first built or when returning
-    if ((_isFirstLoad || chartOrder.isEmpty) && !_loadingPrefs) {
+    if (!_layoutReady &&
+        (_isFirstLoad || chartOrder.isEmpty) &&
+        !_loadingPrefs) {
       _loadingPrefs = true;
       _loadChartPreferences().whenComplete(() {
         _loadingPrefs = false;
@@ -110,108 +123,55 @@ class GeneralViewPageState extends State<GeneralViewPage> {
     if (!mounted) return;
 
     final userId = context.session.userId;
-    final prefs = await SharedPreferences.getInstance();
-
-    // Load order & visibility
-    final savedOrder = prefs.getStringList('chart_order_$userId');
-    final savedVisibility = prefs.getStringList('chart_visibility_$userId');
-
-    final defaultOrder = availableCharts.map((c) => c.id).toList();
-    final defaultVisibility = List.filled(availableCharts.length, true);
-
-    // Load periods for each chart (self-healing: διορθώνει χαλασμένες τιμές)
-    final period1 = await PeriodPrefs.load(
-      prefs,
-      'graf1_period_$userId',
-      'Εβδομάδα',
-    );
-    final period2 = await PeriodPrefs.load(
-      prefs,
-      'graf2_period_$userId',
-      'Μήνας',
-    );
-    final period3 = await PeriodPrefs.load(
-      prefs,
-      'graf3_period_$userId',
-      'Εβδομάδα',
-    );
-    final period5 = await PeriodPrefs.load(
-      prefs,
-      'graf5_period_$userId',
-      'Μήνας',
-    );
-    final period6 = await PeriodPrefs.load(
-      prefs,
-      'graf6_period_$userId',
-      'Μήνας',
+    final layout = await ChartLayoutPrefs.loadWithin(
+      userId,
+      timeout: const Duration(seconds: 2),
     );
 
-    // Migration: Add new charts to existing installations
-    List<String> finalOrder;
-    List<bool> finalVisibility;
+    if (!mounted) return;
+    _applyLayout(layout ?? ChartLayoutPrefs.fallback(), notify: true);
+  }
 
-    if (savedOrder != null) {
-      finalOrder = List<String>.from(savedOrder);
+  /// Εφαρμόζει μια έτοιμη διάταξη στην κατάσταση της σελίδας.
+  ///
+  /// [notify] = true όταν η κλήση γίνεται μετά το πρώτο build· στο
+  /// [initState] τα πεδία γράφονται απευθείας.
+  void _applyLayout(ChartLayout layout, {bool notify = false}) {
+    void apply() {
+      final period1 = layout.periodFor('graf_1');
+      final period2 = layout.periodFor('graf_2');
+      final period3 = layout.periodFor('graf_3');
+      final period5 = layout.periodFor('graf_5');
+      final period6 = layout.periodFor('graf_6');
 
-      // Find missing charts
-      for (final chartId in defaultOrder) {
-        if (!finalOrder.contains(chartId)) {
-          if (chartId == 'graf_7' && finalOrder.contains('graf_6')) {
-            finalOrder.insert(finalOrder.indexOf('graf_6'), chartId);
-          } else {
-            finalOrder.add(chartId); // Add new chart at the end
-          }
-        }
+      final somethingChanged =
+          _selectedPeriodGraf1 != period1 ||
+          _selectedPeriodGraf2 != period2 ||
+          _selectedPeriodGraf3 != period3 ||
+          _selectedPeriodGraf5 != period5 ||
+          _selectedPeriodGraf6 != period6 ||
+          !_listEquals(chartOrder, layout.order) ||
+          !_listEquals(chartVisibility, layout.visibility);
+
+      chartOrder = List<String>.of(layout.order);
+      chartVisibility = List<bool>.of(layout.visibility);
+      _selectedPeriodGraf1 = period1;
+      _selectedPeriodGraf2 = period2;
+      _selectedPeriodGraf3 = period3;
+      _selectedPeriodGraf5 = period5;
+      _selectedPeriodGraf6 = period6;
+      _layoutReady = true;
+
+      // ✅ Καθαρισμός cache ΜΟΝΟ αν άλλαξε κάτι
+      if (somethingChanged) {
+        _chartCache.clear();
       }
-
-      await prefs.setStringList('chart_order_$userId', finalOrder);
-    } else {
-      finalOrder = defaultOrder;
     }
 
-    if (savedVisibility != null) {
-      finalVisibility = savedVisibility.map((v) => v == 'true').toList();
-
-      // Add visibility for new charts
-      while (finalVisibility.length < finalOrder.length) {
-        finalVisibility.add(true); // New charts visible by default
-      }
-
-      final visibilityStrings =
-      finalVisibility.map((v) => v.toString()).toList();
-      await prefs.setStringList(
-        'chart_visibility_$userId',
-        visibilityStrings,
-      );
+    if (notify && mounted) {
+      setState(apply);
     } else {
-      finalVisibility = defaultVisibility;
-    }
-
-    if (mounted) {
-      setState(() {
-        // Έλεγχος αν άλλαξε κάτι που επηρεάζει τα γραφήματα
-        final somethingChanged =
-            _selectedPeriodGraf1 != period1 ||
-                _selectedPeriodGraf2 != period2 ||
-                _selectedPeriodGraf3 != period3 ||
-                _selectedPeriodGraf5 != period5 ||
-                _selectedPeriodGraf6 != period6 ||
-                !_listEquals(chartOrder, finalOrder) ||
-                !_listEquals(chartVisibility, finalVisibility);
-
-        chartOrder = finalOrder;
-        chartVisibility = finalVisibility;
-        _selectedPeriodGraf1 = period1;
-        _selectedPeriodGraf2 = period2;
-        _selectedPeriodGraf3 = period3;
-        _selectedPeriodGraf5 = period5;
-        _selectedPeriodGraf6 = period6;
-
-        // ✅ Καθαρισμός cache ΜΟΝΟ αν άλλαξε κάτι
-        if (somethingChanged) {
-          _chartCache.clear();
-        }
-      });
+      apply();
     }
   }
 
@@ -491,6 +451,21 @@ class GeneralViewPageState extends State<GeneralViewPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Όσο η διάταξη δεν έχει φορτωθεί, κρατάμε το ίδιο πλαίσιο χωρίς
+    // περιεχόμενο — ούτε spinner, ούτε κουμπί στην κορυφή.
+    if (!_layoutReady) {
+      return Semantics(
+        scopesRoute: true,
+        namesRoute: true,
+        explicitChildNodes: true,
+        label: 'Γενική εικόνα οικονομικών',
+        child: Scaffold(
+          backgroundColor: context.cBg,
+          body: const SafeArea(child: SizedBox.shrink()),
+        ),
+      );
+    }
+
     final List<Widget> chartCards = [];
 
     for (int i = 0; i < chartOrder.length; i++) {

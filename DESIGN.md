@@ -60,7 +60,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Gradle / AGP / Kotlin | **9.5.0 / 9.3.1 / 2.4.20** (βλ. §2.1) |
 | Visual Studio | Community **2026 18.1.1** · Windows SDK **10.0.26100.0** — ✅ Windows release build επιβεβαιωμένο 24/11/2026· ⚠️ με **2022 17.10.1** + SDK 10.0.22621.0 αποτυγχάνει (§2.5, §11 L33) |
-| App version | **`2.3.16+23`** (`pubspec.yaml`, επαληθεύτηκε 27/11/2026) |
+| App version | **`2.3.17+24`** (`pubspec.yaml`, επαληθεύτηκε 28/11/2026) |
 
 ### 1.2 Constraint vs resolved
 
@@ -268,16 +268,16 @@ pubspec.yaml  (version: 2.3.16+23)        ← ΜΟΝΟ εδώ αλλάζει η 
 
 ## 3. Δομή repo & `lib/`
 
-### 3.1 Μετρήσεις (27/11/2026)
+### 3.1 Μετρήσεις (28/11/2026)
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **114** (κανένα `*.backup` στο τρέχον clone· +`onboarding_defaults.dart`, `user_doc_policy.dart`, `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`, `account_deletion_policy.dart`, `account_deletion_service.dart`) |
+| Dart αρχεία στο `lib/` | **115** (κανένα `*.backup` στο τρέχον clone· +`onboarding_defaults.dart`, `user_doc_policy.dart`, `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`, `account_deletion_policy.dart`, `account_deletion_service.dart`, `chart_layout_prefs.dart`) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 24 αρχεία · **358** `test()`/`testWidgets()` |
+| Tests | 25 αρχεία · **374** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -426,18 +426,21 @@ lib/
 
 | # | Βήμα | Γραμμή |
 |---|---|---|
-| 1 | `FirebaseAuth.instance.currentUser` → αν `null` → `LoginRegisterPage` | 68–76 |
-| 2 | Φόρτωση user document (E64: cache → server → create, χωρίς poll) → `default_currency` (default `EUR`) | 81–91 |
-| 3 | **E65:** βιομετρικές ρυθμίσεις από το **ίδιο** doc (0 επιπλέον reads)· αν λείπει (offline + κενό cache) → fail-closed με καθαρό μήνυμα | 93–113 |
-| 4 | Αν `enabled && mode == 'always'` → `BiometricAuthService.authenticate()`· σε αποτυχία → exception → `StartupErrorView` | 116–127 |
-| 5 | **E4 gate:** `SchemaService.checkAndMigrate(...)` με το doc των γραμμών 81–91 (**0 νέα reads**) | 132–136 (μέθοδος 206–220) |
-| 6 | `_runOnboardingIfNeeded` — resume διακοπέντος onboarding | 142, 226–250 |
-| 7 | `ScheduledTransactionsService.checkAndExecutePendingTransactions(uid)` | 145, 262–288 |
-| 8 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` | 149–179 |
+| 1 | `FirebaseAuth.instance.currentUser` → αν `null` → `LoginRegisterPage` | 72–80 |
+| 2 | Φόρτωση user document (E64: cache → server → create, χωρίς poll) → `default_currency` (default `EUR`) | 90–106 |
+| 3 | **E65:** βιομετρικές ρυθμίσεις από το **ίδιο** doc (0 επιπλέον reads)· αν λείπει (offline + κενό cache) → fail-closed με καθαρό μήνυμα | 108–131 |
+| 4 | Αν `enabled && mode == 'always'` → `BiometricAuthService.authenticate()`· σε αποτυχία → exception → `StartupErrorView` | 134–145 |
+| 5 | **E4 gate:** `SchemaService.checkAndMigrate(...)` με το doc των γραμμών 90–106 (**0 νέα reads**) | 149 (μέθοδος 238) |
+| 6 | `_runOnboardingIfNeeded` — resume διακοπέντος onboarding | 159, 258 |
+| 7 | `ScheduledTransactionsService.checkAndExecutePendingTransactions(uid)` | 162, 294 |
+| 8 | **Προφόρτωση διάταξης γραφημάτων:** ξεκινά μόλις γίνει γνωστό το `uid` (παράλληλα με 2–7) και περιμένει πριν τη μετάβαση· όριο **500 ms** με fallback `null` | 87, 166 |
+| 9 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` + `HomePage(initialChartLayout)` | 169–210 |
 
 > Οι recurring ειδοποιήσεις παράγονται από το `NotificationsProvider` (§5.10)· το νεκρό `recurring_notifications_service.dart` **αφαιρέθηκε** 25/11/2026 (L6), μαζί με τα σχολιασμένα `generateAhead` εδώ και στο `login_page.dart`.
 
 > **Σειρά σημαντική:** το E4 gate τρέχει **μετά** το βιομετρικό και **πριν** τις scheduled transactions (που γράφουν). `SchemaBlockedException` → typed catch (180) → `StartupErrorView` (310) με «Ξανά» / «Αποσύνδεση». Από `2.3.12+19` το E64 ensure εκτελείται πριν το βιομετρικό· μπορεί να γράψει μόνο όταν ο server επιβεβαιώσει ότι λείπει το doc (E64). Από `2.3.13+20` το βιομετρικό διαβάζεται από το **ίδιο** doc (E65, 0 επιπλέον reads)· αν το doc δεν είναι διαθέσιμο (offline + κενό cache), η είσοδος μπλοκάρει fail-closed με σαφές μήνυμα — το βιομετρικό gate δεν παρακάμπτεται.
+
+> **Από `2.3.17+24` (E87/E88):** η διάταξη γραφημάτων διαβάζεται **μία φορά** μέσω `ChartLayoutPrefs.loadWithin(uid)` μόλις γίνει γνωστό το `uid` και περνά στο `HomePage` → `GeneralViewPage(initialLayout)`. Το πρώτο καρέ της Αρχικής δείχνει την τελική διάταξη· αν η ανάγνωση ξεπεράσει τα **500 ms** ή αποτύχει, επιστρέφεται `null` και η σελίδα φορτώνει μόνη της όπως πριν. Η ίδια προφόρτωση γίνεται και στο `login_page.dart` πριν τη μετάβαση.
 
 ### 4.4 `MyApp` / `ErrorApp`
 
@@ -557,6 +560,8 @@ lib/
 | `chart_order_{uid}` / `chart_visibility_{uid}` | Σειρά & ορατότητα γραφημάτων |
 | `{grafN}_period_{uid}` | Επιλεγμένη περίοδος ανά γράφημα |
 | `crypto_watched_ids` | Παρακολούθηση crypto (unit converter) |
+
+> **Από `2.3.17+24` (E87/E88):** η ανάγνωση των `chart_order_{uid}`, `chart_visibility_{uid}` και `{grafN}_period_{uid}` γίνεται **μόνο** μέσω `ChartLayoutPrefs` (`presentation/screens/charts/chart_layout_prefs.dart`): ζευγάρωμα `(id, visible)` πριν από κάθε μετακίνηση, αφαίρεση άγνωστων/διπλών ids, migration `graf_7` πριν από `graf_6`, περίοδοι μέσω `PeriodPrefs`. Όριο **500 ms** στην εκκίνηση και **2 s** στον editor/refresh· μοναδικός writer παραμένει το `ViewOptionPage`.
 
 ### 5.9 Connectivity & accessibility
 
@@ -928,11 +933,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (358 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (374 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 358/358 |
+| `flutter test` | ✅ 374/374 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 > Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
@@ -965,6 +970,7 @@ schema_version (int), schema_updated_at (Timestamp)
 | `database_cleanup_policy_test.dart` | 41 | Κανόνας καθαρισμού (E34): chunks ≤499, όρια ημερών, parser ημερομηνιών, κριτήρια υπενθυμίσεων/budgets, soft-deleted (E39), aged docs, μηνύματα |
 | `account_deletion_policy_test.dart` | 19 | SEC-005: 12 συλλογές (χωρίς διπλότυπα, `categories` τελευταίο), marker `deleted:true`, chunks ≤499 (499/500/1000), timeout 20s, μηνύματα |
 | `firestore_indexes_test.dart` | 3 | Guard (E17): δομή JSON, 5 απαιτούμενα composite signatures, κανένα διπλότυπο |
+| `chart_layout_prefs_test.dart` | 16 | E87/E88: προεπιλεγμένη/προσαρμοσμένη σειρά, άγνωστα/διπλά ids, migration `graf_7` πριν από `graf_6`, λείποντα/κοντύτερη ορατότητα, χαλασμένες τιμές, περίοδοι (`PeriodPrefs`), καμία περιττή εγγραφή, `fallback`, `loadWithin` |
 
 ### 9.3 Τι **δεν** καλύπτεται
 

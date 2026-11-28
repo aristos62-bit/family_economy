@@ -11,12 +11,16 @@ import 'package:family_economy/presentation/screens/scheduled/scheduled_transact
 import 'package:family_economy/presentation/screens/budget/budget_page.dart';
 import 'package:family_economy/services/scheduled_transactions_service.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
+import 'package:family_economy/presentation/screens/charts/chart_layout_prefs.dart';
 import 'package:family_economy/presentation/screens/charts/general_view_page.dart';
 import 'package:family_economy/presentation/screens/calendar/calendar_page.dart';
 import 'package:family_economy/core/widgets/offline_appbar_chip.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.initialChartLayout});
+
+  /// Διάταξη γραφημάτων που έχει ήδη διαβαστεί πριν την Αρχική.
+  final ChartLayout? initialChartLayout;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -301,7 +305,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      const GeneralViewPage(),
+      GeneralViewPage(initialLayout: widget.initialChartLayout),
       TransactionEntryPage(onGoToAccounts: () => _onTabTap(2)),
       const AccountsPage(),
       const ScheduledTransactionsPage(),
