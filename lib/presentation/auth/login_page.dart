@@ -10,6 +10,7 @@ import 'package:family_economy/core/services/connectivity_service.dart';
 import 'package:family_economy/core/services/account_deletion_service.dart';
 import 'package:family_economy/core/services/deletion_guard_service.dart';
 import 'package:family_economy/core/utils/account_deletion_policy.dart';
+import 'package:family_economy/core/utils/password_change_policy.dart';
 import 'package:family_economy/services/onboarding_service.dart';
 import 'package:family_economy/presentation/screens/charts/chart_layout_prefs.dart';
 import 'package:family_economy/presentation/screens/home/home_page.dart';
@@ -207,8 +208,9 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
     }
 
     final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    final confirmPassword = _confirmPassController.text.trim();
+    // E93: ο κωδικός χρησιμοποιείται ως έχει — ποτέ trim.
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPassController.text;
 
     try {
       User? user;
@@ -736,15 +738,9 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Υποχρεωτικός κωδικός';
-                                        }
-                                        if (value.length < 6) {
-                                          return 'Τουλάχιστον 6 χαρακτήρες';
-                                        }
-                                        return null;
-                                      },
+                                      // E93: μόνο κενά = κενό· μήκος στο raw.
+                                      validator: PasswordChangePolicy
+                                          .validateLoginPassword,
                                     ),
                                     if (!_isLogin) ...[
                                       const SizedBox(height: 16.0),
@@ -768,12 +764,9 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
-                                        validator: (value) {
-                                          if (value == null || value.isEmpty) {
-                                            return 'Επιβεβαίωσε τον κωδικό';
-                                          }
-                                          return null;
-                                        },
+                                        // E93: μόνο κενά = κενό.
+                                        validator: PasswordChangePolicy
+                                            .validateConfirmPassword,
                                       ),
                                     ],
                                     const SizedBox(height: 24.0),

@@ -22,9 +22,9 @@
 | | |
 |---|---|
 | Έκδοση | **2.3.19+26** |
-| Τελευταίο κεφάλαιο | **52** — SEC-005c/SEC-006a/SEC-006b + E90–E92: ασφάλεια διαγραφής & διάλογοι (**✅ FIXED**, 2026-11-28) |
-| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **388/388** · rules emulator ✅ 6/6 · device tests POCO X3 (28/11/2026) |
-| Επόμενη εκκρεμότητα | **E93** (LOW) — `trim()` στον κωδικό σε login/change |
+| Τελευταίο κεφάλαιο | **53** — E93: κωδικός χωρίς trim σε login/αλλαγή (**✅ FIXED**, 2026-11-28) |
+| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **400/400** · rules emulator ✅ 6/6 · device tests POCO X3 (28/11/2026) |
+| Επόμενη εκκρεμότητα | *(καμία ανοιχτή)* |
 
 ## Κεφάλαια
 
@@ -82,14 +82,15 @@
 | 50 | 2026-11-28 | 43 | [E87–E89: προφόρτωση διάταξης γραφημάτων](oldsessions/50-session-43-chart-layout-preload.md) | Νέο `ChartLayoutPrefs` (ζευγάρωμα id/ορατότητας, migration `graf_7` πριν `graf_6`, περίοδοι, όριο 500 ms/2 s)· `GeneralViewPage(initialLayout)` + `_layoutReady` + αφαίρεση περιττών writes· `HomePage(initialChartLayout)`· preload σε `AppStart`/`LoginPage` πριν τη μετάβαση· editor read μέσω loader· 16 tests → **374/374**, analyze 0/0/0· v2.3.17+24· E87/E88/E89 ✅ FIXED· **device tests POCO X3 ✅** (E87 cold/login, E88 migration, E89a/b, cleanup) |
 | 51 | 2026-11-28 | 44 | [SEC-005b: ολοκλήρωση διαγραφής μετά από Auth failure](oldsessions/51-session-44-sec005b-finalize.md) | Νέο `finalizeDeletion(report, deleteAuthUser)` με προϋπόθεση `isComplete`· root delete → Auth delete· σε αποτυχία `_writeMarker()` για resume στο επόμενο login· διάλογος «Η διαγραφή δεν ολοκληρώθηκε» + «Κλείσιμο» → signOut/login· notifications πριν το cascade· 374/374, analyze 0/0/0· v2.3.18+25· SEC-005b ✅ FIXED· **device tests POCO X3 ✅** (retry, close→resume, light, release smoke) |
 | 52 | 2026-11-28 | 45 | [SEC-005c/SEC-006a/SEC-006b + E90–E92: ασφάλεια διαγραφής & διάλογοι](oldsessions/52-session-45-sec006-v4.md) | Marker με transaction + verify (SEC-005c)· `DeletionGuardPolicy`/`DeletionGuardService` με suspend/resume + server-confirmed lock (SEC-006a)· `parentActive()` μόνο σε create + emulator tests 6/6 (SEC-006b)· `AccountPasswordDialog` raw/inline (E90)· `ensureVisible` + νεκρός κλάδος (E91)· 3 behavior test αρχεία (E92)· 388/388, analyze 0/0/0· v2.3.19+26 |
+| 53 | 2026-11-28 | 46 | [E93: κωδικός χωρίς trim](oldsessions/53-e93-password-trim.md) | Νέο pure `PasswordChangePolicy`· raw password σε login/register/αλλαγή (re-auth + `updatePassword`)· trim μόνο για «μόνο κενά»· 12 tests (και source guard) → **400/400**, analyze 0/0/0· χωρίς version bump |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **51** (01–51) |
+| Κεφάλαια στον φάκελο | **53** (01–53) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **2699** |
+| Σύνολο γραμμών κεφαλαίων | **2844** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

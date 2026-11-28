@@ -9,9 +9,9 @@
 
 | # | Ενέργεια | ID |
 |---|---|---|
-| 1 | `trim()` στον κωδικό σε login/change — LOW, εκτός scope SEC-006 | E93 |
+| — | *(καμία ανοιχτή εκκρεμότητα)* | — |
 
-> Τα **SEC-005c**, **SEC-006a**, **SEC-006b**, **E90**, **E91**, **E92** διορθώθηκαν 28/11/2026 (`2.3.19+26`). Το **E93** μένει ανοιχτό ως LOW.
+> Τα **SEC-005c**, **SEC-006a**, **SEC-006b**, **E90**, **E91**, **E92** διορθώθηκαν 28/11/2026 (`2.3.19+26`). Το **E93** διορθώθηκε επίσης 28/11/2026 (χωρίς version bump).
 
 > **L11** ✅ **FIXED** 27/11/2026 (`2.3.14+21`): ο κεντρικός presenter `AppMessenger` + `MessagePolicy` ολοκληρώθηκε και τα 89 sites μεταφέρθηκαν (0 άμεσα `SnackBar(`). Ο post-commit έλεγχος βρήκε **E77–E83**· **όλα διορθώθηκαν** και το νέο device test πέρασε. Λεπτομέρειες παρακάτω.
 
@@ -142,7 +142,7 @@
 | E90 | Κενός κωδικός κλείνει τον διάλογο· `trim()` αλλοιώνει κωδικούς | — | ✅ FIXED | 2026-11-28 |
 | E91 | Σφάλμα εκτός ορατού χώρου· νεκρός κλάδος `mo < 1` | — | ✅ FIXED | 2026-11-28 |
 | E92 | Καμία behavior test για τους δύο διαλόγους | — | ✅ FIXED | 2026-11-28 |
-| E93 | `trim()` στον κωδικό σε login/change — σπάει κωδικούς με κενά | `login_page.dart:202`, `change_password_page.dart:61-63,116,121` | ⏳ OPEN (LOW) | 2026-11-28 |
+| E93 | `trim()` στον κωδικό σε login/change — έσπαγε κωδικούς με κενά | `password_change_policy.dart` (νέο) | ✅ FIXED | 2026-11-28 |
 
 ### Λεπτομέρειες
 
@@ -700,6 +700,14 @@
 - **E92:** καμία behavior test για τους δύο διαλόγους. **Διόρθωση:** 3 νέα αρχεία (`deletion_guard_policy_test.dart` 7, `account_password_dialog_test.dart` 4, `notification_edit_dialog_test.dart` 3) → **388/388**, `flutter analyze` 0/0/0.
 - **Αρχεία:** `account_deletion_service.dart`, `account_deletion_policy.dart`, `deletion_guard_policy.dart` (νέο), `deletion_guard_service.dart` (νέο), `account_password_dialog.dart` (νέο), `delete_account_page.dart`, `login_page.dart`, `app_start.dart`, `main.dart`, `notification_edit_dialog.dart`, `firestore.rules`, `package.json`, `tools/rules_test/`.
 - **Κατάσταση:** ✅ FIXED 28/11/2026 (device tests POCO X3: 9/9 PASS — smoke create/delete, E90 κενός/λάθος κωδικός/Άκυρο, E91 μεγάλο textScale, SEC-005c πλήρης διαγραφή temp user, SEC-006a remote lock· βλ. `oldsessions/52-*`).
+
+**E93 — Κωδικός χωρίς trim (✅ FIXED 28/11/2026, χωρίς version bump)**
+
+- **Πρόβλημα:** το `login_page.dart` έκανε `trim()` σε password/confirm πριν από `signIn`/`register` → κωδικός με κενά στις άκρες δεν συνδεόταν ποτέ· στο register αποθηκευόταν σιωπηλά αλλοιωμένος. Το `change_password_page.dart` έκανε `trim()` σε validation, re-auth και `updatePassword`.
+- **Διόρθωση:** νέο pure `PasswordChangePolicy` (`core/utils/`) με `validateLoginPassword`, `validateConfirmPassword`, `validateChange`· όλες οι τιμές περνούν **raw** στο Firebase· το `trim()` χρησιμοποιείται μόνο για τον έλεγχο «μόνο κενά»· το μήκος ≥6 μετριέται στο raw.
+- **Tests:** `password_change_policy_test.dart` (12 tests — κενά στις άκρες, exact confirmation, μήκος raw, μόνο κενά, source guard χωρίς `.text.trim()` σε password) → **400/400**, `flutter analyze` 0/0/0.
+- **Αρχεία:** `login_page.dart`, `change_password_page.dart`, `password_change_policy.dart` (νέο), `password_change_policy_test.dart` (νέο).
+- **Κατάσταση:** ✅ FIXED 28/11/2026 (device tests POCO X3: βλ. `oldsessions/53-*`).
 
 ## Πώς προσθέτω εύρημα
 

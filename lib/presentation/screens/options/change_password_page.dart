@@ -8,6 +8,7 @@ import 'package:family_economy/core/theme/ui_tokens.dart';
 import 'package:family_economy/core/session/session_scope.dart';
 import 'package:family_economy/core/utils/debug_config.dart';
 import 'package:family_economy/core/utils/message_policy.dart';
+import 'package:family_economy/core/utils/password_change_policy.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -58,26 +59,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   String? _validate() {
-    final current = _currentCtrl.text.trim();
-    final next = _newCtrl.text.trim();
-    final confirm = _confirmCtrl.text.trim();
-
-    if (current.isEmpty) {
-      return 'Γράψτε τον τρέχοντα κωδικό';
-    }
-    if (next.isEmpty) {
-      return 'Γράψτε νέο κωδικό';
-    }
-    if (next.length < 6) {
-      return 'Ο νέος κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες';
-    }
-    if (next != confirm) {
-      return 'Ο νέος κωδικός και η επιβεβαίωση δεν ταιριάζουν';
-    }
-    if (current == next) {
-      return 'Ο νέος κωδικός δεν μπορεί να είναι ίδιος με τον τρέχοντα';
-    }
-    return null;
+    // E93: raw τιμές — το trim χρησιμοποιείται μόνο για τον έλεγχο
+    // «μόνο κενά» μέσα στην policy.
+    return PasswordChangePolicy.validateChange(
+      current: _currentCtrl.text,
+      next: _newCtrl.text,
+      confirm: _confirmCtrl.text,
+    );
   }
 
   Future<void> _changePassword() async {
@@ -111,14 +99,15 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       }
 
       // ✅ Re-authentication (απαραίτητο από Firebase για updatePassword)
+      // E93: raw κωδικός — ποτέ trim.
       final credential = EmailAuthProvider.credential(
         email: email,
-        password: _currentCtrl.text.trim(),
+        password: _currentCtrl.text,
       );
 
       await user.reauthenticateWithCredential(credential);
 
-      await user.updatePassword(_newCtrl.text.trim());
+      await user.updatePassword(_newCtrl.text);
 
       if (!mounted) return;
 

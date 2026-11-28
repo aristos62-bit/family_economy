@@ -272,12 +272,12 @@ pubspec.yaml  (version: 2.3.16+23)        ← ΜΟΝΟ εδώ αλλάζει η 
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **118** (κανένα `*.backup` στο τρέχον clone· +`onboarding_defaults.dart`, `user_doc_policy.dart`, `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`, `account_deletion_policy.dart`, `account_deletion_service.dart`, `chart_layout_prefs.dart`, `deletion_guard_policy.dart`, `deletion_guard_service.dart`, `account_password_dialog.dart`) |
+| Dart αρχεία στο `lib/` | **119** (κανένα `*.backup` στο τρέχον clone· +`onboarding_defaults.dart`, `user_doc_policy.dart`, `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`, `account_deletion_policy.dart`, `account_deletion_service.dart`, `chart_layout_prefs.dart`, `deletion_guard_policy.dart`, `deletion_guard_service.dart`, `account_password_dialog.dart`, `password_change_policy.dart`) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 28 αρχεία · **388** `test()`/`testWidgets()` |
+| Tests | 29 αρχεία · **400** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -328,6 +328,7 @@ lib/
       debug_config.dart                        # _debug = false (logs OFF)
       icon_mapper.dart
       message_policy.dart                      # L11: χρόνοι/χρώματα/contrast/πλάτος + fromError/fromProvider (καθαρό Dart)
+      password_change_policy.dart              # E93: κανόνες κωδικού χωρίς trim (login/εγγραφή/αλλαγή, καθαρό Dart)
       monthly_trend.dart                       # MonthlyPoint + computeMonthlyTrend
       period_prefs.dart                        # Ανάγνωση/επιδιόρθωση περιόδου γραφημάτων (E57, καθαρό Dart + prefs)
     widgets/
@@ -943,6 +944,12 @@ Emulator tests: `tools/rules_test/firestore.rules.test.js` → `npm run test:rul
 - `AnnouncementOverlay` τυλίγει όλο το app.
 - `ColorsUI.getAccessibleTextColor` (`ui_tokens.dart:295`) εγγυάται αντίθεση **≥ 4.5:1** (WCAG AA) για αδιαφανές background — tokens του theme, με fallback black/white σε μεσαία φωτεινότητα (E67, `2.3.15+22`).
 
+### 8.11 Password policy (E93)
+
+- Ο κωδικός χρησιμοποιείται **πάντα ως έχει** (raw) σε `signIn` / `register` / `reauthenticate` / `updatePassword` — ποτέ `trim()`.
+- Το `trim()` επιτρέπεται **μόνο** για τον έλεγχο «μόνο κενά»· το μήκος ≥6 μετριέται στο raw.
+- Ενιαίοι κανόνες/μηνύματα: `PasswordChangePolicy` (`core/utils/password_change_policy.dart`, καθαρό Dart) για login, εγγραφή και αλλαγή κωδικού.
+
 ---
 
 ## 9. Tests & quality gates
@@ -951,11 +958,11 @@ Emulator tests: `tools/rules_test/firestore.rules.test.js` → `npm run test:rul
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (388 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (400 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 388/388 |
+| `flutter test` | ✅ 400/400 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 > Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
@@ -992,6 +999,7 @@ Emulator tests: `tools/rules_test/firestore.rules.test.js` → `npm run test:rul
 | `deletion_guard_policy_test.dart` | 7 | SEC-006a: cache snapshot (με/χωρίς doc, με `deleted:true`) → ignore, pending write → ignore, server-confirmed missing/`deleted:true` → lock, ενεργό doc → ignore, cache+pending → ignore |
 | `account_password_dialog_test.dart` | 4 | E90: κενός κωδικός → inline σφάλμα και ανοιχτός διάλογος, raw κωδικός με κενά, Άκυρο → null, καθαρισμός σφάλματος στην πληκτρολόγηση |
 | `notification_edit_dialog_test.dart` | 3 | E91: κενό μήνυμα → inline σφάλμα, έγκυρο μήνυμα → κλείσιμο/επιστροφή, μικρή οθόνη → σφάλμα ορατό μετά το Save |
+| `password_change_policy_test.dart` | 12 | E93: raw κωδικός χωρίς trim — κενά στις άκρες, exact confirmation, μήκος στο raw, μόνο κενά, login validators, source guard |
 
 ### 9.3 Τι **δεν** καλύπτεται
 
