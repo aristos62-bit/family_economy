@@ -707,7 +707,7 @@
 - **Διόρθωση:** νέο pure `PasswordChangePolicy` (`core/utils/`) με `validateLoginPassword`, `validateConfirmPassword`, `validateChange`· όλες οι τιμές περνούν **raw** στο Firebase· το `trim()` χρησιμοποιείται μόνο για τον έλεγχο «μόνο κενά»· το μήκος ≥6 μετριέται στο raw.
 - **Tests:** `password_change_policy_test.dart` (12 tests — κενά στις άκρες, exact confirmation, μήκος raw, μόνο κενά, source guard χωρίς `.text.trim()` σε password) → **400/400**, `flutter analyze` 0/0/0.
 - **Αρχεία:** `login_page.dart`, `change_password_page.dart`, `password_change_policy.dart` (νέο), `password_change_policy_test.dart` (νέο).
-- **Κατάσταση:** ✅ FIXED 28/11/2026 (device tests POCO X3: βλ. `oldsessions/53-*`).
+- **Κατάσταση:** ✅ FIXED 28/11/2026 (device tests POCO X3: login με ` e93pass1 `, mismatch raw, αλλαγή σε ` zzzzzz9 `, re-login με τον νέο κωδικό, καθαρισμός temp user — βλ. `oldsessions/53-*`).
 
 ## Πώς προσθέτω εύρημα
 

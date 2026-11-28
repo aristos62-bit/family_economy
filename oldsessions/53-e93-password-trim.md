@@ -37,11 +37,26 @@
 
 ## Device tests (POCO X3 NFC, Android 12)
 
-_(συμπληρώνεται μετά την εκτέλεση)_
+Release `2.3.19+26` (commit `ba2aed7`), disposable λογαριασμός `e93.dev@example.com`.
+
+| Έλεγχος | Αποτέλεσμα | Απόδειξη |
+|---|---|---|
+| Εγκατάσταση + cold start | ✅ | `e93_01_after_install.png` |
+| Login με ` e93pass1 ` (κενά στις άκρες) | ✅ | `e93_06_login_spaced_ok.png` |
+| Mismatch raw (` zzzzzz9 ` vs `zzzzzz9`) → «Ο νέος κωδικός και η επιβεβαίωση δεν ταιριάζουν» | ✅ | `e93_14_mismatch_message.png` |
+| Αλλαγή σε ` zzzzzz9 ` (raw) | ✅ — REST: `abcdef1` αποτυγχάνει, ` zzzzzz9 ` συνδέεται | — |
+| Logout → login με ` zzzzzz9 ` | ✅ — μπήκε στην Αρχική | `e93_18_login_filled_new.png`, `e93_19_after_login_new_password.png` |
+| Καθαρισμός temp user (Auth + root doc + 12 υποσυλλογές) | ✅ — 0 docs | — |
+| Επανασύνδεση demo με τα δεδομένα του | ✅ | `e93_24_demo_home.png` |
+| Επαναφορά συσκευής (font_scale 1.0, auto-rotation, airplane off) | ✅ | — |
+
+> Screenshots/logs: untracked `device test/screenshots/e93_*` & `device test/logs/e93_*`.
+> Το success snackbar της αλλαγής δεν φωτογραφήθηκε (το session έκλεισε πριν το submit)· η αλλαγή επιβεβαιώθηκε με REST sign-in και νέο login.
 
 ## Backups
 
 `backups/2026-11-28-e93/` — `login_page.dart`, `change_password_page.dart`.
+`backups/2026-11-28-e93-device-tests/` — `53-e93-password-trim.md`, `oldsessions.md`, `error_list.md` (πριν τη συμπλήρωση των device tests).
 
 ## Εκκρεμότητες
 
