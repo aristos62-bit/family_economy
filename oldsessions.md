@@ -22,8 +22,8 @@
 | | |
 |---|---|
 | Έκδοση | **2.3.19+26** |
-| Τελευταίο κεφάλαιο | **55** — E97: μήνυμα προγραμματισμένων κινήσεων 5″ (**✅ FIXED**, 2026-11-28) |
-| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **400/400** · rules emulator ✅ 6/6 · device tests POCO X3 ✅ (E94–E97) |
+| Τελευταίο κεφάλαιο | **56** — E98–E99: μηνύματα ορίου API & cooldown (**✅ FIXED**, 2026-11-28) |
+| Quality gates | `flutter analyze` ✅ **No issues found** · `flutter test` ✅ **400/400** · rules emulator ✅ 6/6 · device tests POCO X3 ✅ (E94–E99) |
 | Επόμενη εκκρεμότητα | *(καμία ανοιχτή)* |
 
 ## Κεφάλαια
@@ -85,14 +85,15 @@
 | 53 | 2026-11-28 | 46 | [E93: κωδικός χωρίς trim](oldsessions/53-e93-password-trim.md) | Νέο pure `PasswordChangePolicy`· raw password σε login/register/αλλαγή (re-auth + `updatePassword`)· trim μόνο για «μόνο κενά»· 12 tests (και source guard) → **400/400**, analyze 0/0/0· χωρίς version bump· **device tests POCO X3 ✅** (spaced login, mismatch, αλλαγή σε spaced, re-login, cleanup) |
 | 54 | 2026-11-28 | 47 | [E94–E96: διάταξη & guard](oldsessions/54-e94-e96-chart-guard.md) | E94: νέα ανάγνωση prefs σε κάθε `GeneralViewPage`· E95: `detach()` σε κάθε signOut + self-healing listener· E96: `attach()` μόνο με `ensured.exists`· analyze 0/0/0, **400/400**· χωρίς version bump· device tests E94/E95 ✅, E96 εκκρεμεί |
 | 55 | 2026-11-28 | 48 | [E97: μήνυμα προγραμματισμένων 5″](oldsessions/55-e97-scheduled-5s.md) | `duration: 5s` στη μία κλήση του `home_page.dart`· global policy αμετάβλητο· analyze 0/0/0, **400/400**· device test POCO X3 ✅· επαλήθευση deployed rules SEC-006b (byte-identical, `f89f2943`)· χωρίς version bump |
+| 56 | 2026-11-28 | 49 | [E98–E99: μηνύματα μετατροπέα](oldsessions/56-e98-e99-converter-messages.md) | E98: `setState` + `return` στο 429 → το πρώτο 429 δείχνει το μήνυμα ορίου· E99: το cooldown 30″ δείχνει «Αναμονή Xs» αντί για σιωπηλό return· analyze 0/0/0, **400/400**· device tests POCO X3 ✅· χωρίς version bump |
 
 ## Έλεγχος συνέπειας
 
 | Έλεγχος | Τιμή |
 |---|---|
-| Κεφάλαια στον φάκελο | **55** (01–55) |
+| Κεφάλαια στον φάκελο | **56** (01–56) |
 | Μεγαλύτερο κεφάλαιο | 14 (Session 13) — **134 γρ.** (όριο 150) |
-| Σύνολο γραμμών κεφαλαίων | **2978** |
+| Σύνολο γραμμών κεφαλαίων | **3037** |
 
 > Στο τέλος κάθε session: `(Get-ChildItem oldsessions/*.md).Count` πρέπει να ισούται με τις γραμμές του πίνακα «Κεφάλαια».
 

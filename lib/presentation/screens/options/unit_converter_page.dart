@@ -587,7 +587,12 @@ class _ConverterPageState extends State<ConverterPage>
     if (_lastRefresh != null &&
         DateTime.now().difference(_lastRefresh!) <
             const Duration(seconds: 30)) {
-      DebugConfig.print('⏳ Refresh skipped (cooldown)');
+      final secs =
+          30 - DateTime.now().difference(_lastRefresh!).inSeconds;
+      DebugConfig.print('⏳ Refresh skipped (cooldown ${secs}s)');
+      setState(
+        () => _cryptoError = 'Αναμονή ${secs}s για νέα ανανέωση τιμών.',
+      );
       return;
     }
 
@@ -644,9 +649,13 @@ class _ConverterPageState extends State<ConverterPage>
       } else if (response.statusCode == 429) {
         DebugConfig.print('🚫 Rate limit exceeded (429)');
         _rateLimitUntil = DateTime.now().add(const Duration(seconds: 90));
-        throw Exception(
-          'Υπέρβαση ορίου API. Δοκιμάστε ξανά σε 90 δευτερόλεπτα.',
-        );
+        if (!mounted) return;
+        setState(() {
+          _cryptoError =
+              'Υπέρβαση ορίου API. Δοκιμάστε ξανά σε 90 δευτερόλεπτα.';
+          _watchedLoading = false;
+        });
+        return;
       } else {
         DebugConfig.print('❌ HTTP ${response.statusCode}');
         throw Exception('HTTP ${response.statusCode}');
