@@ -667,6 +667,7 @@
 - **E89 (editor):** πιθανό `RangeError` όταν η ορατότητα ήταν μικρότερη από τη σειρά και λείπον γράφημα στην κορυφή λόγω `indexOf` = -1. **Διόρθωση:** ανάγνωση μέσω του ίδιου reader· οι εγγραφές του editor έμειναν αμετάβλητες.
 - **Αρχεία:** `chart_layout_prefs.dart` (νέο), `general_view_page.dart`, `view_option_page.dart`, `home_page.dart`, `app_start.dart`, `login_page.dart`.
 - **Tests:** `chart_layout_prefs_test.dart` (16) → **374/374**, `flutter analyze` 0/0/0.
+- **Device tests:** ✅ POCO X3 (28/11/2026) — E87 cold start & login χωρίς flash, E88 migration/pairing χωρίς μετατόπιση, E89a/E89b editor χωρίς `RangeError`· cleanup/επαναφορά ✅ (`device test/E87_E88_device_tests.md`).
 - **Κατάσταση:** ✅ FIXED 28/11/2026.
 
 ## Πώς προσθέτω εύρημα

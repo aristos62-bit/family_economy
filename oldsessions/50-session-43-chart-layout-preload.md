@@ -40,7 +40,23 @@
 | `flutter analyze` | ✅ **No issues found!** (82,2 s) |
 | `flutter test` (νέο αρχείο) | ✅ **16/16** |
 | `flutter test` (πλήρες) | ✅ **374/374** |
-| Device tests POCO X3 | ⏳ εκτελούνται μετά το commit (βλ. `device test/E87_E88_device_tests.md`) |
+| Device tests POCO X3 | ✅ **PASS** (28/11/2026) — E87 cold start & login χωρίς flash· E88 migration/pairing χωρίς μετατόπιση· E89a/E89b editor χωρίς `RangeError`· cleanup/επαναφορά ✅ |
+
+### Device tests (POCO X3, 28/11/2026)
+
+- **E87:** το πρώτο καρέ της Αρχικής είχε πλήρη διάταξη τόσο σε cold start
+  (προεπιλεγμένη και αποθηκευμένη) όσο και μετά από logout/login· κανένα καρέ
+  μόνο με το κουμπί «Επεξεργασία Διάταξης».
+- **E88:** παλιά σειρά χωρίς `graf_7` → σωστό ζευγάρωμα· `graf_7` ορατό,
+  `graf_6` κρυφό· τα prefs έμειναν αμετάβλητα (read-only loader).
+- **E89a:** ορατότητα 5 τιμών για 7 γραφήματα → editor χωρίς `RangeError`,
+  τα λείποντα ορατά.
+- **E89b:** σειρά χωρίς `graf_1` → προστέθηκε στο τέλος· editor/save σωστά.
+- **Καθαρισμός:** αρχικά prefs (μόνο περίοδοι), `fingerprint_enabled=true`,
+  rotation/font/animations/airplane όπως αρχικά, temp files removed,
+  app force-stopped, launcher foreground· demo λογαριασμός/δεδομένα άθικτα.
+- Λεπτομέρειες/αποδείξεις: `device test/E87_E88_device_tests.md`,
+  `device test/logs/e87_final_state.txt`.
 
 ### Τι δεν άλλαξε
 
