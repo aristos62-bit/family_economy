@@ -2,7 +2,8 @@
 
 https://github.com/aristos62-bit/family_economy
 
-> **Τεχνική αλήθεια:** ό,τι αφορά stack, εκδόσεις, δομή, αρχιτεκτονική, Firestore, build και tests βρίσκεται **μόνο** στο [`DESIGN.md`](DESIGN.md).
+> **Τεχνική αλήθεια:** ό,τι αφορά stack, εκδόσεις, δομή, αρχιτεκτονική, Firestore και build βρίσκεται **μόνο** στο [`DESIGN.md`](DESIGN.md).
+> Πρόοδος, tests και device tests βρίσκονται **μόνο** στο `oldsessions/`.
 > Το αρχείο αυτό περιέχει **μόνο κανόνες λειτουργίας**.
 
 ---
@@ -21,6 +22,7 @@ https://github.com/aristos62-bit/family_economy
 10. Κάθε φάση προόδου = **νέο αρχείο** `oldsessions/NN-slug.md` (επόμενο νούμερο, ποτέ επανάχρηση) + **1 γραμμή** στον πίνακα «Κεφάλαια» του `oldsessions.md`· όριο **150 γραμμές** ανά κεφάλαιο, αν ξεπερνά σπάει σε δύο
 11. Αν δεν είσαι σίγουρος τι πρέπει να κάνεις ή δε θυμάσαι αυτούς τους κανόνες, διάβασε AGENTS.md
 12. Στην αρχή κάθε session διάβασε και το `error_list.md`: εκεί είναι **η σειρά των εκκρεμοτήτων**. Κάθε νέο εύρημα καταγράφεται εκεί και ενημερώνεται όταν διορθώνεται
+13. Οι ρόλοι των docs **δεν** μπερδεύονται: `README.md` = μόνο λειτουργίες για χρήστες · `DESIGN.md` = μόνο αρχιτεκτονική/τεχνολογία · `oldsessions/` = πρόοδος, tests, device tests · `error_list.md` = εκκρεμότητες
 
 Γλώσσα εφαρμογής και επικοινωνίας: **Ελληνικά**. Όλες οι απαντήσεις στα ελληνικά.
 
@@ -38,7 +40,7 @@ https://github.com/aristos62-bit/family_economy
 | Firestore schema & indexes | `DESIGN.md` §6 |
 | Κανόνες ασφάλειας & όρια | `DESIGN.md` §7 |
 | Patterns & συμβάσεις | `DESIGN.md` §8 |
-| Tests & quality gates | `DESIGN.md` §9 |
+| Tests, quality gates & device tests | `oldsessions/` (κεφάλαια) + `error_list.md` |
 | Tooling & repo hygiene | `DESIGN.md` §10 |
 | Γνωστοί τεχνικοί περιορισμοί | `DESIGN.md` §11 |
 | Χάρτης τεκμηρίωσης | `DESIGN.md` §12 |
@@ -55,7 +57,7 @@ https://github.com/aristos62-bit/family_economy
 |---|---|
 | `flutter pub get` | Εγκατάσταση dependencies |
 | `flutter analyze` | **0 errors / 0 warnings / 0 info** (No issues found) |
-| `flutter test` | **Όλα περνούν** (πλήθος: `DESIGN.md` §9) |
+| `flutter test` | **Όλα περνούν** |
 | `flutter build apk --debug` | ✅ `√ Built build\app\outputs\flutter-apk\app-debug.apk` |
 | `flutter run -d windows` | Desktop build — απαιτεί VS 2026 18.1.1 + SDK 10.0.26100 (`DESIGN.md` §2.5) |
 | `flutter run -d chrome` | Web build |
@@ -67,7 +69,7 @@ https://github.com/aristos62-bit/family_economy
 
 ## Σταθερές του project (μη αμφισβητούμενες)
 
-- **Πλατφόρμες επιβεβαιωμένες:** Android, Web, **Windows**. Το Windows απαιτεί VS 2026 18.1.1 + SDK 10.0.26100· με παλιότερο toolchain (π.χ. VS 2022) αποτυγχάνει το link (LNK2019 — `DESIGN.md` §2.5, §2.7). Τα iOS/macOS/Linux **δεν** έχουν `Podfile` → ανεπιβεβαίωτα (`DESIGN.md` §2.3).
+- **Πλατφόρμες επιβεβαιωμένες:** Android, Web, **Windows**. Το Windows απαιτεί VS 2026 18.1.1 + SDK 10.0.26100· με παλιότερο toolchain (π.χ. VS 2022) αποτυγχάνει το link (LNK2019 — `DESIGN.md` §2.5, §11 L33). Τα iOS/macOS/Linux **δεν** έχουν `Podfile` → ανεπιβεβαίωτα (`DESIGN.md` §2.3).
 - **Firestore:** όλα τα δεδομένα κάτω από `users/{uid}/...`· soft-delete παντού (`DESIGN.md` §6).
 - **State management:** αποκλειστικά Provider/`ChangeNotifier` (`DESIGN.md` §5).
 - **Γλώσσα UI:** Ελληνικά (el-GR), fallback en-US (`DESIGN.md` §8.6).

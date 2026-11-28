@@ -1,7 +1,7 @@
 # Family Economy — DESIGN.md
 
 > **Μοναδική πηγή τεχνικής αλήθειας για το project.**
-> Τελευταία επαλήθευση: **28/11/2026** (Flutter 3.50.1 / Dart 3.14.0 — toolchain, πλήθη `lib/`/tests, `pub outdated`, snapshot repo).
+> Περιέχει **μόνο** αρχιτεκτονική & τεχνολογίες — πρόοδος, tests και device tests καταγράφονται στο `oldsessions/`.
 > Κάθε τιμή εδώ **μετρήθηκε** από κώδικα, config ή toolchain — δεν γράφτηκε από μνήμη.
 
 ---
@@ -12,7 +12,7 @@
 
 | Αρχείο | Ρόλος | Επιτρεπόμενο περιεχόμενο |
 |---|---|---|
-| `DESIGN.md` (αυτό) | **Τεχνική αλήθεια** | Stack, δομή, αρχιτεκτονική, Firestore schema, build, testing |
+| `DESIGN.md` (αυτό) | **Τεχνική αλήθεια** | Stack, δομή, αρχιτεκτονική, Firestore schema, build — **χωρίς** πρόοδο/tests |
 | `AGENTS.md` | Κανόνες λειτουργίας agent | Μόνο διαδικασία/κανόνες + παραπομπή εδώ |
 | `oldsessions.md` | Ιστορικό (ευρετήριο) | Πίνακας κεφαλαίων + κανόνες ενημέρωσης |
 | `oldsessions/` | Κεφάλαια ιστορικού | 1 αρχείο ανά φάση (`NN-slug.md`) |
@@ -22,26 +22,27 @@
 
 ### 0.2 Κανόνες περιεχομένου
 
-1. Γράφονται **μόνο επαληθευμένα** στοιχεία, με ημερομηνία ελέγχου.
+1. Γράφονται **μόνο επαληθευμένα** στοιχεία — η επαλήθευση/ημερομηνία της καταγράφεται στο `oldsessions/`.
 2. Ό,τι περιγράφεται ως «πραγματικό» έχει μετρηθεί· ό,τι είναι πρόθεση/στόχος σημειώνεται ρητά ως τέτοιο.
 3. **Καμία τιμή διαπιστευτηρίου** (κλειδιά, secrets, tokens, service accounts).
 4. **Καμία οδηγία κατάχρησης** αδυναμίας — μόνο ουδέτερη περιγραφή κατάστασης.
 5. Χωρίς προσωπικά paths ή ονόματα μηχανημάτων.
 6. Ιστορικό αλλαγών/fixes → νέο κεφάλαιο στο `oldsessions/` + γραμμή στο `oldsessions.md`, όχι εδώ.
+7. **Καμία** πληροφορία προόδου, tests ή device tests — αυτά ανήκουν **μόνο** στο `oldsessions/`.
+8. Οι αριθμοί ενοτήτων και οι κωδικοί `L` είναι **σταθερά αναγνωριστικά**· αν ένα τμήμα αφαιρεθεί, ο αριθμός **δεν** επαναχρησιμοποιείται (γι' αυτό μπορεί να υπάρχουν κενά).
 
 ### 0.3 Πώς επαληθεύεται το περιεχόμενο
 
 ```powershell
 flutter --version                  # toolchain
 flutter analyze                    # static analysis (μόνο lib/ + test/)
-flutter test                       # 400 tests
 Get-Content pubspec.lock           # resolved εκδόσεις πακέτων
 git ls-files | Measure-Object      # τι είναι tracked
 ```
 
 **Κανόνας μέτρησης:** τα πλήθη κώδικα μετρώνται με
 `Get-ChildItem lib -Recurse -Filter *.dart | Select-String -Pattern <X> | Measure-Object`
-και γράφονται με ημερομηνία. Όπου ένα πλήθος **δεν** είναι σταθερό ή αναπαραγώγιμο
+και γράφονται ως τρέχουσα κατάσταση (η ημερομηνία μέτρησης πάει στο `oldsessions/`). Όπου ένα πλήθος **δεν** είναι σταθερό ή αναπαραγώγιμο
 (π.χ. εξαρτάται από το φίλτρο/εργαλείο), χρησιμοποιείται **ποιοτική** διατύπωση
 («δεκάδες», «σε όλα τα σημεία») αντί για ακριβές νούμερο.
 
@@ -49,18 +50,18 @@ git ls-files | Measure-Object      # τι είναι tracked
 
 ## 1. Stack & εκδόσεις
 
-### 1.1 Toolchain (Flutter/Dart/DevTools επαληθευμένα 26/11/2026· JDK/VS 24/11/2026)
+### 1.1 Toolchain
 
 | Στοιχείο | Τιμή |
 |---|---|
 | Flutter | **3.50.1** — channel stable, framework `ae9b586f34` (18/11/2026), engine `51379e6df48ea8ee7205623b90fe66491cad8df3` |
 | Dart | **3.14.0** |
 | DevTools | 2.61.0 |
-| JDK (CLI) | **21.0.2** σε αυτό το μηχάνημα (με αυτό έγιναν τα builds 24/11/2026) · **22.0.1** στο άλλο (`flutter config --jdk-dir`) — και τα δύο δουλεύουν με Gradle 9.5.0 / AGP 9.3.1 |
+| JDK (CLI) | **21.0.2** (default) · **22.0.1** εναλλακτικά (`flutter config --jdk-dir`) — και τα δύο δουλεύουν με Gradle 9.5.0 / AGP 9.3.1 |
 | Android SDK | 36.0.0 · platform `android-36` · build-tools 36.0.0 |
 | Gradle / AGP / Kotlin | **9.5.0 / 9.3.1 / 2.4.20** (βλ. §2.1) |
-| Visual Studio | Community **2026 18.1.1** · Windows SDK **10.0.26100.0** — ✅ Windows release build επιβεβαιωμένο 24/11/2026· ⚠️ με **2022 17.10.1** + SDK 10.0.22621.0 αποτυγχάνει (§2.5, §11 L33) |
-| App version | **`2.3.17+24`** (`pubspec.yaml`, επαληθεύτηκε 28/11/2026) |
+| Visual Studio | Community **2026 18.1.1** · Windows SDK **10.0.26100.0**· ⚠️ με **2022 17.10.1** + SDK 10.0.22621.0 αποτυγχάνει (§2.5, §11 L33) |
+| App version | **`2.3.19+26`** (`pubspec.yaml`) |
 
 ### 1.2 Constraint vs resolved
 
@@ -89,7 +90,7 @@ git ls-files | Measure-Object      # τι είναι tracked
 | package_info_plus | `^9.0.1` | **9.0.1** |
 | flutter_lints (dev) | `^6.0.0` | 6.0.0 |
 
-`flutter pub outdated` (26/11/2026) → **47** upgradable (locked στο `pubspec.lock`) · **26** constrained σε παλαιότερη από τη resolvable έκδοση.
+`flutter pub outdated` → **47** upgradable (locked στο `pubspec.lock`) · **26** constrained σε παλαιότερη από τη resolvable έκδοση.
 Τα πλήθη **δεν** είναι σταθερά (αλλάζουν με κάθε publish) — βλ. κανόνα μέτρησης §0.3.
 
 ### 1.3 Πακέτα χωρίς (ή με ελάχιστη) χρήση
@@ -111,6 +112,8 @@ git ls-files | Measure-Object      # τι είναι tracked
 | `assets/images/` | ✅ Υπάρχει (άδειος φάκελος + `.gitkeep`)· δηλώνεται στο `pubspec.yaml` |
 
 Η γραμματοσειρά που εφαρμόζεται πραγματικά στο UI είναι **Roboto** (`TypographyUI.primaryFont` στο `core/theme/ui_tokens.dart`). Το NotoSans είναι δηλωμένο αλλά **δεν** χρησιμοποιείται από το theme.
+
+**Περιορισμός build:** το `assets/images/` δηλώνεται στο `pubspec.yaml`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
 
 ### 1.5 Versioning
 
@@ -163,28 +166,6 @@ pubspec.yaml  (version: 2.3.19+26)        ← ΜΟΝΟ εδώ αλλάζει η 
 | Προαιρετικό νέο πεδίο (με default) | MINOR |
 | Μόνο rebuild / νέος installer | BUILD |
 
-#### 1.5.4 Επίπεδα versioning & εκκρεμότητες
-
-| # | Επίπεδο | Κατάσταση | Σημείωση |
-|---|---|---|---|
-| V1 | Κανόνας SemVer (τεκμηρίωση) | ✅ **Ισχύει** (αυτή η ενότητα) | — |
-| V2 | Git tags ανά release (`v2.0.1`, `v2.1.0`) | ✅ **Υλοποιήθηκε** (19/11/2026) | `v2.0.1` = πρώτο tag · `v2.1.0` = E4 |
-| V3 | Εμφάνιση έκδοσης στην εφαρμογή | ✅ **Υλοποιήθηκε** (19/11/2026) | `package_info_plus ^9.0.1` + footer Επιλογών |
-| V4 | Versioning **δεδομένων** | ✅ **Υλοποιήθηκε** (19/11/2026, Session 14) | `schema_version` (int) στο root doc + gate στην εκκίνηση· **χωρίς** SharedPreferences (σκόπιμη απόκλιση — βλ. §6.2) |
-
-**Εκκρεμότητες:**
-
-| # | Εκκρεμότητα | Κατάσταση |
-|---|---|---|
-| **E1** | Git tags `v<version>` + commit `release: v<version>` σε κάθε release | ✅ `v2.0.1` → `v2.1.0` |
-| **E2** | Αφαίρεση/συγχρονισμός του hardcoded `MyAppVersion` στο `fam_eco_new.iss` | ✅ `#error` guard — αδύνατο stale installer |
-| **E3** | Εμφάνιση έκδοσης στις Ρυθμίσεις | ✅ footer «Έκδοση X (build N)» |
-| **E4** | `schema_version` + migration στην εκκίνηση — Firestore **μόνο** (χωρίς prefs) | ✅ 19/11/2026 (Session 14) |
-
-> Τα **E1–E4** υλοποιήθηκαν στις 19/11/2026: **E1–E3** = Session 13, **E4** = Session 14 (βλ. `oldsessions.md`). Η απόφαση «χωρίς SharedPreferences» είναι σκόπιμη — βλ. §6.2.
->
-> **Δεν** αλλάζουν (σκόπιμα): `MARKETING_VERSION = 1.0` στα `project.pbxproj` (iOS/macOS) — το `Info.plist` χρησιμοποιεί `$(FLUTTER_BUILD_NAME)`, άρα η τιμή αγνοείται· το `flutter create` θα την ξαναγράψει. Το `Runner.rc` γράφεται αυτόματα από το Flutter και δείχνει **πάντα** την τρέχουσα έκδοση του build (πληροφοριακό). Το `Greek.isl` δεν περιέχει έκδοση εφαρμογής.
-
 ---
 
 ## 2. Πλατφόρμες & build
@@ -223,6 +204,8 @@ pubspec.yaml  (version: 2.3.19+26)        ← ΜΟΝΟ εδώ αλλάζει η 
 | Bundle id (iOS/macOS) | `com.example.familyEconomy` (**διαφέρει** από το Android) |
 | `Info.plist` | `NSFaceIDUsageDescription` ✅, display name «Family Economy» ✅ |
 
+> **Versioning iOS/macOS:** το `MARKETING_VERSION = 1.0` στα `project.pbxproj` **δεν** χρησιμοποιείται — το `Info.plist` διαβάζει `$(FLUTTER_BUILD_NAME)`· το `flutter create` θα το ξαναγράψει. Το `Runner.rc` (Windows) γράφεται αυτόματα από το Flutter. Το `Greek.isl` δεν περιέχει έκδοση εφαρμογής.
+
 ### 2.4 Web
 
 - `web/index.html` + `web/manifest.json`: τίτλος/όνομα **«Οικογενειακός Προϋπολογισμός»**, `lang=el`, τοπικοποιημένη περιγραφή.
@@ -230,7 +213,7 @@ pubspec.yaml  (version: 2.3.19+26)        ← ΜΟΝΟ εδώ αλλάζει η 
 
 ### 2.5 Windows
 
-- Απαιτεί **Visual Studio 2026 (18.1.1)** + Windows SDK **10.0.26100.0** — ✅ `flutter build windows --release` επιβεβαιωμένο 24/11/2026 (`build\windows\x64\runner\Release\family_economy.exe`).
+- Απαιτεί **Visual Studio 2026 (18.1.1)** + Windows SDK **10.0.26100.0** (βλ. §11 L33).
 - ⚠️ Με **VS 2022 17.10.1 + SDK 10.0.22621.0** το build αποτυγχάνει σε linker (LNK2019/LNK1120, Firebase C++ SDK 13.13.1) — βλ. §11 L33.
 - Target output: `build/windows/x64/runner/Release/` (release) ή `build/windows/x64/runner/Debug/` (debug) — τοπικό build.
 
@@ -251,37 +234,23 @@ pubspec.yaml  (version: 2.3.19+26)        ← ΜΟΝΟ εδώ αλλάζει η 
 | Σημείωση | Το `.iss` χρησιμοποιεί **σχετικές** διαδρομές (`{#SourcePath}` / script dir) → μεταφέρεται σε άλλο PC |
 | `InstallerOutput/` | ✅ στο `.gitignore` (38+ MB exe — δεν ανεβαίνει ποτέ) |
 
-### 2.7 Κατάσταση build (builds 25/11/2026· tests 28/11/2026)
-
-| Έλεγχος | Αποτέλεσμα |
-|---|---|
-| `flutter build apk --debug` | ✅ `√ Built build\app\outputs\flutter-apk\app-debug.apk` |
-| `flutter build web --release` | ✅ `√ Built build\web` (Wasm dry-run warnings από `image`) |
-| `flutter build windows --debug` | ❌ LNK2019/LNK1120 — **μόνο με VS 2022** 17.10.1 + SDK 10.0.22621.0 (βλ. §11 L33) |
-| `flutter build windows --release` | ✅ `√ Built build\windows\x64\runner\Release\family_economy.exe` — **VS 2026 18.1.1 + SDK 10.0.26100** (24/11/2026, επιβεβαιωμένο· το ❌ ισχύει μόνο με VS 2022) |
-| `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ **400/400** |
-
-**Περιορισμός που πρέπει να διατηρηθεί:** το `pubspec.yaml` δηλώνει `assets/images/`. Ο φάκελος είναι **άδειος**, και το git δεν παρακολουθεί κενούς φακέλους — γι' αυτό υπάρχει `assets/images/.gitkeep`. Αν το `.gitkeep` αφαιρεθεί και γίνει clone, το build αποτυγχάνει με `unable to find directory entry in pubspec.yaml`.
-
 ---
 
 ## 3. Δομή repo & `lib/`
 
-### 3.1 Μετρήσεις (28/11/2026)
+### 3.1 Μετρήσεις
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **119** (κανένα `*.backup` στο τρέχον clone· +`onboarding_defaults.dart`, `user_doc_policy.dart`, `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`, `account_deletion_policy.dart`, `account_deletion_service.dart`, `chart_layout_prefs.dart`, `deletion_guard_policy.dart`, `deletion_guard_service.dart`, `account_password_dialog.dart`, `password_change_policy.dart`) |
+| Dart αρχεία στο `lib/` | **119** (κανένα `*.backup`) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 29 αρχεία · **400** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
-### 3.2 Δέντρο `lib/` (επαληθευμένο)
+### 3.2 Δέντρο `lib/`
 
 ```
 lib/
@@ -389,9 +358,9 @@ lib/
 
 ### 3.3 Νεκρός ή ανενεργός κώδικας
 
-**Κανένα γνωστό νεκρό αρχείο** (25/11/2026). Τα `core/widgets/biometric_gate.dart` (195 γρ.), `core/services/message_service.dart` (288 γρ.), `core/widgets/offline_banner.dart` (η αχρησιμοποίητη κλάση `OfflineBanner`, 94 γρ.) και `services/recurring_notifications_service.dart` (296 γρ.) **αφαιρέθηκαν** — 0 imports/call sites, βλ. `error_list.md` E15/L6.
+**Κανένα γνωστό νεκρό αρχείο.** Ο κώδικας που αφαιρέθηκε (`biometric_gate`, `message_service`, `OfflineBanner`, `recurring_notifications_service`) καταγράφεται στο `oldsessions/` και στο `error_list.md` (E15/L6).
 
-> **L11 ✅ FIXED 27/11/2026:** όλα τα μηνύματα περνούν πλέον από `core/messaging/app_messenger.dart` (0 άμεσα `SnackBar(` έξω από τον presenter· guard test v2 στο `test/unit/core/messaging/l11_guard_test.dart`). Ο post-commit έλεγχος βρήκε **E77–E83**· όλα διορθώθηκαν και το νέο device test σε `2.3.14+21` πέρασε — βλ. `error_list.md`.
+> **Μηνύματα:** όλα περνούν από `core/messaging/app_messenger.dart` (0 άμεσα `SnackBar(` έξω από τον presenter)· guard test στο `test/unit/core/messaging/l11_guard_test.dart`.
 
 ---
 
@@ -437,7 +406,7 @@ lib/
 | 8 | **Προφόρτωση διάταξης γραφημάτων:** ξεκινά μόλις γίνει γνωστό το `uid` (παράλληλα με 2–7) και περιμένει πριν τη μετάβαση· όριο **500 ms** με fallback `null` | 87, 166 |
 | 9 | `MultiProvider` (Accounts, Categories, Transactions, Notifications, Budgets, Tags) + `SessionScope(Session(uid, currency))` + `HomePage(initialChartLayout)` | 169–210 |
 
-> Οι recurring ειδοποιήσεις παράγονται από το `NotificationsProvider` (§5.10)· το νεκρό `recurring_notifications_service.dart` **αφαιρέθηκε** 25/11/2026 (L6), μαζί με τα σχολιασμένα `generateAhead` εδώ και στο `login_page.dart`.
+> Οι recurring ειδοποιήσεις παράγονται από το `NotificationsProvider` (§5.10)· το νεκρό `recurring_notifications_service.dart` **αφαιρέθηκε** (L6), μαζί με τα σχολιασμένα `generateAhead` εδώ και στο `login_page.dart`.
 
 > **Σειρά σημαντική:** το E4 gate τρέχει **μετά** το βιομετρικό και **πριν** τις scheduled transactions (που γράφουν). `SchemaBlockedException` → typed catch (180) → `StartupErrorView` (310) με «Ξανά» / «Αποσύνδεση». Από `2.3.12+19` το E64 ensure εκτελείται πριν το βιομετρικό· μπορεί να γράψει μόνο όταν ο server επιβεβαιώσει ότι λείπει το doc (E64). Από `2.3.13+20` το βιομετρικό διαβάζεται από το **ίδιο** doc (E65, 0 επιπλέον reads)· αν το doc δεν είναι διαθέσιμο (offline + κενό cache), η είσοδος μπλοκάρει fail-closed με σαφές μήνυμα — το βιομετρικό gate δεν παρακάμπτεται.
 
@@ -446,9 +415,9 @@ lib/
 ### 4.4 `MyApp` / `ErrorApp`
 
 - **E59 (`2.3.10+17`):** ο `Phoenix` wrapper και η εξάρτηση `flutter_phoenix` **αφαιρέθηκαν** — το `MyApp.build` επιστρέφει απευθείας το `MaterialApp`. Καμία αναφορά δεν έμεινε σε `lib/`/`test/` (`pubspec.lock`: μόνο το `flutter_phoenix` έφυγε, το transitive `nested` προέρχεται από άλλο πακέτο).
-- **E15/L6 (25/11/2026):** το `MyApp` είναι πλέον `StatelessWidget` χωρίς `connectivityService` παράμετρο· δεν υπάρχει `initState`/`dispose` ούτε callback συγχρονισμού. Ο `ConnectivityService` μένει στο `MultiProvider` (`.value`) και το διαβάζουν οι οθόνες.
+- **E15/L6:** το `MyApp` είναι πλέον `StatelessWidget` χωρίς `connectivityService` παράμετρο· δεν υπάρχει `initState`/`dispose` ούτε callback συγχρονισμού. Ο `ConnectivityService` μένει στο `MultiProvider` (`.value`) και το διαβάζουν οι οθόνες.
 - `ErrorApp` → κοινό `StartupErrorView` (`core/widgets/startup_error_view.dart`)· **ίδια** κείμενα, ίδιο `Scaffold` background.
-- ✅ Το «Επανεκκίνηση» πετούσε `Null check` — **διορθώθηκε 25/11/2026 (L18)**: το `ErrorApp` είναι πλέον stateful, το κουμπί «Δοκιμή ξανά» καλεί ξανά την πλήρη εκκίνηση (`_startApplication`, `main.dart:103`) και ανοίγει την εφαρμογή· σε αποτυχία δείχνει το νέο σφάλμα + μετρητή προσπαθειών. Δεν υπάρχει πια `Phoenix.rebirth`.
+- Το `ErrorApp` είναι stateful· το κουμπί «Δοκιμή ξανά» καλεί ξανά την πλήρη εκκίνηση (`_startApplication`, `main.dart:103`) και ανοίγει την εφαρμογή· σε αποτυχία δείχνει το νέο σφάλμα + μετρητή προσπαθειών (L18). Δεν υπάρχει `Phoenix.rebirth`.
 - **E58 (`2.3.10+17`):** καμία αρχικοποίηση δεν μένει εκτός δοχείου σφάλματος. Το `prepareStartup` (`main.dart:63`) τρέχει theme (όριο 4s) και notifications (όριο 6s) **best-effort** — σε throw/λήξη γράφει log και συνεχίζει· το `ConnectivityService` δημιουργείται **μία φορά ανά διεργασία** (`??=`, `main.dart:94-96`) μέσα στην ίδια ροή, ώστε ένα σφάλμα να οδηγεί σε `ErrorApp` αντί για κενή οθόνη και το «Δοκιμή ξανά» να μην προσθέτει δεύτερο instance/listener. Η άδεια ειδοποιήσεων ζητείται **μετά το πρώτο frame** (`SplashScreen`, `notifications_service.dart` → δημόσιο `requestPermissions()`), όχι πριν το `runApp`.
 - **Retry hardening (`2.3.9+16`, μετά από code review):** η προσπάθεια έχει όριο **20s** (`Future.timeout` + `ignore()` ώστε μια καθυστερημένη ολοκλήρωση να μη βγει uncaught) και σε λήξη εμφανίζεται σχετικό μήνυμα αντί για μόνιμο «Νέα προσπάθεια…»· το κουμπί είναι **disabled** όσο τρέχει (`StartupErrorView.primaryEnabled`, default `true` ώστε το `AppStart` να μη μεταβληθεί)· κάθε αποτυχία/λήξη γράφεται με `DebugConfig.print`.
 - `localizationsDelegates`: Material/Widgets/Cupertino.
@@ -472,7 +441,7 @@ lib/
 | Firestore | `users/{userId}/...` | ✅ |
 
 **Κανόνας που ισχύει ως πρόθεση, όχι ως πραγματικότητα:** «Firestore μόνο από Providers/Services».
-Μετρημένο (26/11/2026): **70 άμεσες κλήσεις `FirebaseFirestore.instance` σε 30 αρχεία**
+Μετρημένο: **70 άμεσες κλήσεις `FirebaseFirestore.instance` σε 30 αρχεία**
 
 | Στρώμα | Κλήσεις |
 |---|---|
@@ -523,7 +492,7 @@ lib/
 
 ### 5.5 Μηνύματα προς χρήστη
 
-**Αρχιτεκτονική (L11, 27/11/2026):** μία διαδρομή — καμία οθόνη δεν καλεί `ScaffoldMessenger`/`SnackBar` απευθείας.
+**Αρχιτεκτονική (L11):** μία διαδρομή — καμία οθόνη δεν καλεί `ScaffoldMessenger`/`SnackBar` απευθείας.
 
 | Στοιχείο | Ρόλος |
 |---|---|
@@ -534,9 +503,9 @@ lib/
 
 | Μέτρηση | Τιμή |
 |---|---|
-| Άμεσα `SnackBar(...)` στο `lib/` | **0** — μόνο η κατασκευή μέσα στον presenter (μέτρηση 27/11/2026) |
+| Άμεσα `SnackBar(...)` στο `lib/` | **0** — μόνο η κατασκευή μέσα στον presenter |
 | Αρχεία που καλούν `AppMessenger` | 28 |
-| Κεντρικό `MessageService` | **Αφαιρέθηκε** 25/11/2026 (E15) — αντικαταστάθηκε από το παραπάνω ζεύγος |
+| Κεντρικό `MessageService` | **Αφαιρέθηκε** (E15) — αντικαταστάθηκε από το παραπάνω ζεύγος |
 
 ### 5.6 Budgets — υπολογισμός spent
 
@@ -632,13 +601,13 @@ lib/
 
 > Ο κανόνας E7 **δεν** αγγίζει υπόλοιπα· το E11 αντιστρέφει **μόνο** τα deltas των ζευγών μεταφορών που ακυρώνει. Η αρχειοθέτηση (E26) δεν αγγίζει καμία κίνηση και δεν χρειάζεται preflight για εγγραφή· τα budget docs που δείχνουν σε αρχειοθετημένο λογαριασμό συνεχίζουν να δουλεύουν και δείχνουν σωστό όνομα (E12).
 >
-> **E19 — όπου «επαναφορά», ο κανόνας ζει σε καθαρό Dart** (`account_restore_policy.dart`, 0 I/O, 24 unit tests). Ο διάλογος (`account_duplicate_service.dart`) παίρνει **μόνο** `ConnectivityService` από το δικό του context (root provider)· `userId`/νόμισμα/όνομα περνούν ως παράμετροι (ο `AccountsProvider` δημιουργείται **μέσα** στο `MaterialPageRoute` του `app_start.dart`).
+> **E19 — όπου «επαναφορά», ο κανόνας ζει σε καθαρό Dart** (`account_restore_policy.dart`, 0 I/O). Ο διάλογος (`account_duplicate_service.dart`) παίρνει **μόνο** `ConnectivityService` από το δικό του context (root provider)· `userId`/νόμισμα/όνομα περνούν ως παράμετροι (ο `AccountsProvider` δημιουργείται **μέσα** στο `MaterialPageRoute` του `app_start.dart`).
 
 ### 5.14 Καθαρισμός βάσης (E34)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Κανόνας | `core/utils/database_cleanup_policy.dart` — καθαρό Dart, **0 I/O**, 41 unit tests |
+| Κανόνας | `core/utils/database_cleanup_policy.dart` — καθαρό Dart, **0 I/O** |
 | I/O | `core/services/database_cleanup_service.dart` (`users/{uid}/...`, `Source.server`) |
 | Εργασίες | Υπενθυμίσεις · Προϋπολογισμοί · Συναλλαγές · **Κατηγορίες & Υποκατηγορίες (μία)** · Δεξαμενή Πετρελαίου |
 | Chunking | **Νέο** `WriteBatch` ανά chunk ≤**499** — ποτέ επανάχρηση μετά το `commit()` (E34) |
@@ -650,13 +619,12 @@ lib/
 | Αποτέλεσμα | **3 καταστάσεις**: `complete` / `partial` (συνέχεια στις υπόλοιπες εργασίες + λίστα αποτυχιών) / `cancelled` |
 | Oil | `oil_purchases` (chunked) + `settings/oil_tank` (ξεχωριστό batch)· το `oil_page` ξαναδημιουργεί defaults |
 | Επίπτωση | Hard delete κατηγορίας: οι κινήσεις δείχνουν ήδη «Χωρίς κατηγορία»· μόνο `ScheduledTransactionsService.getCategoryName` → «Άγνωστη Κατηγορία/Υποκατηγορία» (L32) |
-| Έκδοση | `2.3.5+12` (PATCH — μόνο διόρθωση συμπεριφοράς) |
 
 ### 5.15 Πλήρης διαγραφή λογαριασμού (SEC-005)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Κανόνας | `core/utils/account_deletion_policy.dart` — καθαρό Dart, **0 I/O**, 19 unit tests |
+| Κανόνας | `core/utils/account_deletion_policy.dart` — καθαρό Dart, **0 I/O** |
 | I/O | `core/services/account_deletion_service.dart` (`users/{uid}/...`, `Source.server`) |
 | Σειρά | offline guard → διπλή επιβεβαίωση → **reauth** (κωδικός) → `cancelAll` (best effort, πριν το root delete) → marker `deleted:true` + `deleted_at` (**transaction + verify**, SEC-005c) → cascade 12 συλλογών → root doc → `user.delete()` |
 | Συλλογές | `transaction_tags`, `transaction_splits`, `attachments`, `account_snapshots`, `settings`, `oil_purchases`, `tags`, `accounts`, `budgets`, `transactions`, `notifications`, `categories` (υποκατηγορίες πριν τις κατηγορίες) — **εκτός** το global `exchange_rates` |
@@ -671,7 +639,6 @@ lib/
 | Ειδοποιήσεις | `NotificationsService.cancelAllNotifications` best-effort μετά την επιτυχία· οι ειδοποιήσεις άλλων λογαριασμών επανέρχονται στο επόμενο login (diff-based reschedule) |
 | UI | `PopScope` + κλείδωμα κουμπιών κατά την εκτέλεση· κανένα raw σφάλμα (L11) |
 | Γνωστός περιορισμός | Cache-first (E64): αν το marker γράφτηκε σε **άλλη** συσκευή, η ανίχνευση του resume γίνεται στον επόμενο server read· ο guard SEC-006a κλείνει το παράθυρο εγγραφών περιμένοντας **server-confirmed** snapshot (η cache αγνοείται) |
-| Έκδοση | `2.3.19+26` (PATCH) |
 
 ---
 
@@ -892,7 +859,7 @@ Emulator tests: `tools/rules_test/firestore.rules.test.js` → `npm run test:rul
 - `notifyListeners()` σε **δεκάδες** σημεία σε providers/UI.
 - Τοπική αλλαγή state → ενημέρωση UI → Firestore write στο background.
 - `Settings(persistenceEnabled: true, cacheSizeUnlimited)` → offline writes επιτρέπονται.
-- `ConnectivityService` (2s debounce) → ενημέρωση ένδειξης `OFFLINE` (`OfflineAppBarChip`)· κανένα μήνυμα συγχρονισμού (E15· το E61 έκλεισε ως 🚫 WON'T FIX).
+- `ConnectivityService` (2s debounce) → ενημέρωση ένδειξης `OFFLINE` (`OfflineAppBarChip`)· κανένα μήνυμα συγχρονισμού (E15, E61).
 - **Onboarding (E5, `2.3.11+18`): εξαίρεση από το offline-first.** Το `OnboardingService` διαβάζει πρώτα το root doc με `Source.server` (timeout 8s) και γράφει **μόνο** αν ο server επιβεβαιώσει `onboarding_completed: false`. Offline: καμία εγγραφή, ορατό μήνυμα (overlay + SnackBar) και η είσοδος συνεχίζει· η επανάληψη γίνεται στην επόμενη εκκίνηση (`AppStart`). Το `login_page`/`AppStart` κάνουν και fast gate με `ConnectivityService.isConfirmedOffline` πριν περιμένουν τον server.
 - **User document (E64, `2.3.12+19`):** το `AuthService.ensureUserDocument` ακολουθεί cache → server (`Source.server`, timeout 8s) → create. Offline ή timeout: **καμία εγγραφή**· η είσοδος συνεχίζει με τα διαθέσιμα δεδομένα. Καταργήθηκαν το poll 15×500ms και η διπλή δημιουργία σε `login_page`/`AppStart`.
 - **Βιομετρικό gate (E65, `2.3.13+20`):** το `AppStart` παίρνει `fingerprint_enabled` / `biometric_mode` / `biometric_remember` από το doc του E64 (**0 επιπλέον reads**) αντί για δεύτερο `get()`. Αν το doc δεν είναι διαθέσιμο (offline + κενό cache), η είσοδος μπλοκάρει **fail-closed** με σαφές ελληνικό μήνυμα· δεν χρησιμοποιούνται defaults, για να μην παρακαμφθεί το βιομετρικό.
@@ -935,7 +902,7 @@ Emulator tests: `tools/rules_test/firestore.rules.test.js` → `npm run test:rul
 ### 8.9 Budgets
 
 - `budget_type`: `total` / `category` / `subcategory`.
-- `matchesTransaction(...)` αποφασίζει αν μια συναλλαγή «πέφτει» στο budget (καλύπτεται από tests).
+- `matchesTransaction(...)` αποφασίζει αν μια συναλλαγή «πέφτει» στο budget.
 - Spent: cache path + per-budget path (βλ. §5.6).
 
 ### 8.10 Accessibility
@@ -949,67 +916,6 @@ Emulator tests: `tools/rules_test/firestore.rules.test.js` → `npm run test:rul
 - Ο κωδικός χρησιμοποιείται **πάντα ως έχει** (raw) σε `signIn` / `register` / `reauthenticate` / `updatePassword` — ποτέ `trim()`.
 - Το `trim()` επιτρέπεται **μόνο** για τον έλεγχο «μόνο κενά»· το μήκος ≥6 μετριέται στο raw.
 - Ενιαίοι κανόνες/μηνύματα: `PasswordChangePolicy` (`core/utils/password_change_policy.dart`, καθαρό Dart) για login, εγγραφή και αλλαγή κωδικού.
-
----
-
-## 9. Tests & quality gates
-
-### 9.1 Εργαλεία και scope
-
-| Στοιχείο | Τιμή |
-|---|---|
-| Framework | `flutter_test` (400 `test()` / `testWidgets()`) |
-| Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
-| Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
-| `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 400/400 |
-| CI | ❌ καμία αυτοματοποίηση |
-
-> Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
-
-### 9.2 Τι καλύπτεται
-
-| Αρχείο | Πλήθος | Αντικείμενο |
-|---|---|---|
-| `chart_helpers_test.dart` | 9 | Εύρος ημερομηνιών, μορφοποίηση περιόδου, `parseAmount` |
-| `period_prefs_test.dart` | 13 | `PeriodPrefs` (E57): εγκυρότητα επιλογών/`Custom_`, fallback, επιδιόρθωση CP437/CP1252, self-healing εγγραφή |
-| `currency_formatter_test.dart` | 15 | Μορφοποίηση/compact/parse, αριθμητική, overspend |
-| `monthly_trend_test.dart` | 11 | `computeMonthlyTrend` (φίλτρα, ποσοστά, edges) |
-| `budget_model_test.dart` | 8 | `matchesTransaction` (category/subcategory/total/account/date) |
-| `transactions_provider_test.dart` | 6 | `TransactionModel.isTransfer/isIncome/isExpense` |
-| `widget_test.dart` | 4 | `ErrorApp` (L11: χωρίς raw σφάλμα): γενικό μήνυμα, σταθερό μήνυμα σε αποτυχημένη επανάληψη + μετρητής, guard/disabled διπλού πατήματος, λήξη χρόνου επανάληψης (L18) |
-| `prepare_startup_test.dart` | 5 | E58: σειρά βημάτων, timeout theme, αποτυχία notifications, διάδοση σφάλματος connectivity, επαναχρησιμοποίηση instance στο retry |
-| `schema_test.dart` | 34 | `readVersion` / `decide` / `failureFor` / `resolveWrite`: parser, baseline, φραγή, timeout |
-| `onboarding_defaults_test.dart` | 18 | E5: σταθερά ids (`default-account`, `cat-*`, `sub-*`), πλήθη 6+8 κατηγοριών / 24+71 υποκατηγοριών, μοναδικότητα, μη κενά ονόματα, sequential icons, χρώματα |
-| `user_doc_policy_test.dart` | 17 | E64: cache hit/miss, offline gate, server exists/create, timeout & offline codes, permission-denied, σταθερές 8s / 3 κωδικοί· SEC-005: marker `deleted:true` → `deletionPending` |
-| `startup_error_view_test.dart` | 6 | Κείμενα, ενέργειες, λεπτομέρειες, `primaryEnabled=false`, `textScale 1.45` χωρίς overflow |
-| `ui_tokens_test.dart` | 9 | `ColorsUI.contrastRatio` (E67): λόγος αντίθεσης, όρια 4.5:1· `getAccessibleTextColor` (E67): tokens, fallback black/white σε μεσαία φωτεινότητα, sweep 256 γκρι ≥ 4.5:1 |
-| `message_policy_test.dart` | 20 | L11: χρόνοι 3/3/5/6s, semantic χρώματα + contrast ≥4.5:1 (light/dark), persist ανά action, πλάτος 560, `fromError`/`fromProvider` με allowlist |
-| `app_messenger_test.dart` | 10 | L11: floating/πλάτος/χρώματα, action, persist, ουρά (replace μη-persist, προστασία persistent), nested `ScaffoldMessengerState` |
-| `l11_guard_test.dart` | 2 | L11 guard (D10): 0 άμεσα `SnackBar(` έξω από τον presenter· 0 raw `$e`/`$error` σε `Text(`/`content:`/`label:`/`hintText:` (στενός — βλ. E82) |
-| `account_delete_guard_test.dart` | 41 | Φραγή τελευταίου (E7) + πλάνο ακύρωσης/επαναφοράς μεταφορών, deltas, chunks (E11) + απόφαση διαγραφής/αρχειοθέτησης, ενικός/πληθυντικός & μετρήσεις (E26) + `targetIsVisible` αρχειοθετημένου στόχου (E32) + πεδία budgets στο πλάνο (L26) |
-| `account_budget_usage_test.dart` | 13 | Μέτρηση όλων των μη διαγραμμένων budgets (L26): soft-deleted, legacy χωρίς `is_active`/`deleted`, «Όλοι», άλλος λογαριασμός, ανενεργά, trim, κενά |
-| `account_restore_policy_test.dart` | 24 | Κανόνας επαναφοράς (E19/E14): μόνο marked ζεύγη, κρυφές κινήσεις χρήστη, εκκρεμή, missing/deleted peers, απόλυτο υπόλοιπο σε cents, chunks ≤499, fingerprint, μηνύματα |
-| `account_totals_test.dart` | 7 | `countsInTotal`, εξαιρέσεις χρήστη (και «όλοι εξαιρεμένοι»), legacy `is_active=false`, αρνητικά υπόλοιπα (E26/E27) |
-| `account_balance_test.dart` | 20 | Κανόνας «μετράει στο υπόλοιπο» (E20): εκκρεμείς/εκτελεσμένες/διαγραμμένες, «Άμεση» μελλοντική, ζεύγη, cents, μηνύματα |
-| `database_cleanup_policy_test.dart` | 41 | Κανόνας καθαρισμού (E34): chunks ≤499, όρια ημερών, parser ημερομηνιών, κριτήρια υπενθυμίσεων/budgets, soft-deleted (E39), aged docs, μηνύματα |
-| `account_deletion_policy_test.dart` | 19 | SEC-005: 12 συλλογές (χωρίς διπλότυπα, `categories` τελευταίο), marker `deleted:true`, chunks ≤499 (499/500/1000), timeout 20s, μηνύματα |
-| `firestore_indexes_test.dart` | 3 | Guard (E17): δομή JSON, 5 απαιτούμενα composite signatures, κανένα διπλότυπο |
-| `chart_layout_prefs_test.dart` | 16 | E87/E88: προεπιλεγμένη/προσαρμοσμένη σειρά, άγνωστα/διπλά ids, migration `graf_7` πριν από `graf_6`, λείποντα/κοντύτερη ορατότητα, χαλασμένες τιμές, περίοδοι (`PeriodPrefs`), καμία περιττή εγγραφή, `fallback`, `loadWithin` |
-| `deletion_guard_policy_test.dart` | 7 | SEC-006a: cache snapshot (με/χωρίς doc, με `deleted:true`) → ignore, pending write → ignore, server-confirmed missing/`deleted:true` → lock, ενεργό doc → ignore, cache+pending → ignore |
-| `account_password_dialog_test.dart` | 4 | E90: κενός κωδικός → inline σφάλμα και ανοιχτός διάλογος, raw κωδικός με κενά, Άκυρο → null, καθαρισμός σφάλματος στην πληκτρολόγηση |
-| `notification_edit_dialog_test.dart` | 3 | E91: κενό μήνυμα → inline σφάλμα, έγκυρο μήνυμα → κλείσιμο/επιστροφή, μικρή οθόνη → σφάλμα ορατό μετά το Save |
-| `password_change_policy_test.dart` | 12 | E93: raw κωδικός χωρίς trim — κενά στις άκρες, exact confirmation, μήκος στο raw, μόνο κενά, login validators, source guard |
-
-### 9.3 Τι **δεν** καλύπτεται
-
-- Καμία δοκιμή σε providers με Firestore (κανένα mock/fake).
-- Καμία δοκιμή σε notifications, scheduled transactions, biometrics.
-- Καμία UI/integration δοκιμή ροών (login, entry, transfers, exports).
-- Καμία δοκιμή σε oil module, tags. Τα **default δεδομένα** onboarding καλύπτονται από `onboarding_defaults_test.dart` (καθαρό Dart)· η ίδια η ροή Firestore/offline του onboarding παραμένει σε device tests.
-- Καμία δοκιμή στο **I/O** του cleanup (καλύπτεται μόνο ο καθαρός κανόνας + device test).
-- Καμία δοκιμή στις αναφορές περιόδου/tags (E28 — καλύπτεται μόνο με device test).
-- Καμία δοκιμή στο I/O του `DeletionGuardService`/`AccountDeletionService` (καλύπτονται μόνο οι καθαροί κανόνες + device tests)· οι κανόνες Firestore καλύπτονται από emulator tests (`npm run test:rules`), όχι από `flutter test`.
 
 ---
 
@@ -1031,20 +937,6 @@ Emulator tests: `tools/rules_test/firestore.rules.test.js` → `npm run test:rul
 | `docs/` (15) | Legacy τεκμηρίωση schema |
 | `backups/` | Τοπικά αντίγραφα — **ignored** (0 tracked) |
 | `Dependencies/VC_redist.x64.exe` | Εξάρτηση installer (17,7 MB) |
-
-### 10.2 Κατάσταση repository (26/11/2026, μετά το `3d88f87`)
-
-| Μέτρηση | Τιμή |
-|---|---|
-| Tracked αρχεία | **626** |
-| Commits | 79 |
-| Tags | **2** (`v2.0.1`, `v2.1.0`) |
-| Μέγεθος `.git` | **26,9 MB** |
-| `.gitignore` | 64 γραμμές (`/build/`, `/android/build/`, `build_logs/`, `InstallerOutput/`, `serviceAccountKey.json`, `node_modules/`, `backups/`, `*.backup`, …) |
-| CI/CD | ❌ κανένα |
-| Ιδιαιτερότητες | **Κανένα backup στο git** — `backups/` και `*.backup` είναι untracked/ignored (0 tracked) |
-
-> Tracked αρχεία & commits αλλάζουν με κάθε commit — η τιμή ισχύει **μόνο** για το αναφερόμενο commit.
 
 ### 10.3 `import-data.js` (script εισαγωγής)
 
@@ -1083,11 +975,13 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 ```
 
 > Το `gcloud` default project μπορεί να είναι άλλο (π.χ. `nearme-eu`) → πάντα `--project` και header `x-goog-user-project`.
-> Αναμενόμενο (23/11/2026): **7 indexes `READY`**, **0 creations/deletions**, ruleset `76aa78a0-4172-40f0-95bd-752ca2caf7e5`.
+> Αναμενόμενο: **7 indexes `READY`** και **0 creations/deletions**.
 
 ---
 
 ## 11. Γνωστοί τεχνικοί περιορισμοί
+
+> Εμφανίζονται **μόνο οι ενεργοί** περιορισμοί· το ιστορικό τους (προσθήκη/κλείσιμο) βρίσκεται στο `error_list.md` και στο `oldsessions/`. Οι αριθμοί `L` είναι σταθερά αναγνωριστικά και **δεν** επαναχρησιμοποιούνται.
 
 | # | Περιορισμός | Στοιχείο |
 |---|---|---|
@@ -1096,38 +990,26 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 | L3 | 5 συλλογές υπάρχουν στους κανόνες αλλά δεν χρησιμοποιούνται | §6.1 |
 | L4 | Κανόνες χωρίς validation πεδίων/ορίων | §7.2 |
 | L5 | Cascade διαγραφή **μόνο** για τα ζεύγη μεταφορών κατά τη διαγραφή λογαριασμού (E11)· καμία άλλη cascade δεδομένων χρήστη | §5.13 |
-| L6 | **✅ Διορθώθηκε 25/11/2026 (E15)** — ο νεκρός κώδικας (`biometric_gate`, `recurring_notifications_service`, `message_service`, η αχρησιμοποίητη `OfflineBanner`) **αφαιρέθηκε**: 0 imports/call sites. Η διαδρομή `recurring_notifications` δεν έχει πλέον ούτε rule ούτε client — αν ξαναχρειαστεί, χρειάζεται **και** rule | §3.3 |
 | L7 | 3 πακέτα με 0 χρήση + πακέτα με νεότερες εκδόσεις εκτός constraints (πλήθη: §1.2) | §1.2, §1.3 |
 | L8 | iOS/macOS χωρίς `Podfile` → builds ανεπιβεβαίωτα | §2.3 |
 | L9 | Καμία CI (analyze/test/build χειροκίνητα) | §2.6 |
 | L10 | Android release υπογράφεται με **debug key**, minify/shrink off | §2.1 |
-| L11 | **✅ Διορθώθηκε 27/11/2026 (E66, `2.3.14+21`)** — 89 άμεσα `SnackBar(...)` → `AppMessenger` (+ `MessagePolicy`, `UserMessageException`, inline validation σε λογαριασμούς/κατηγορίες/tags/oil/notification), **0** άμεσα constructors στο `lib/`· guard test v2 για `SnackBar(` και raw σφάλματα σε UI sinks (taint tracking ανά αρχείο). Τα **E77–E83** διορθώθηκαν και το device test πέρασε | §5.5 |
 | L12 | Budgets spent με **3** διαδρομές υπολογισμού | §5.6 |
-| L13 | *(λύθηκε 19/11/2026)* Web title/manifest τοπικοποιήθηκαν | §2.4 |
-| L14 | *(λύθηκε 19/11/2026)* Installer με σχετικές διαδρομές | §2.6 |
-| L15 | `assets/images/` άδειος — εξαρτάται από `.gitkeep` | §2.7 |
-| L16 | Καμία UI/integration δοκιμή | §9.3 |
-| L17 | *(λύθηκε 19/11/2026)* Versioning **δεδομένων** — E4 | §1.5.4 |
-| L18 | **✅ Διορθώθηκε 25/11/2026 (`2.3.8+15`)** — το `ErrorApp` χτίζεται έξω από το `Phoenix` (το `runApp` γίνεται όταν το Firebase init αποτυγχάνει), άρα το `Phoenix.rebirth` (`findAncestorStateOfType()!`) πετούσε `Null check`. Πλέον το κουμπί «Δοκιμή ξανά» καλεί το `_startApplication` (`main.dart:103`), που ξανατρέχει Firebase init + Firestore settings (best-effort) και κάνει `runApp`· σε αποτυχία η οθόνη δείχνει το νέο σφάλμα + μετρητή. Το `runApp` μπορεί να κληθεί ξανά (api.flutter.dev/flutter/widgets/runApp.html). **Hardening `2.3.9+16`:** timeout 20s στην επανάληψη, disabled κουμπί όσο τρέχει, debug log σε αποτυχία. **E58/E59 (`2.3.10+17`):** όλη η εκκίνηση μπήκε σε δοχείο σφάλματος (`prepareStartup`) και το νεκρό `Phoenix`/`flutter_phoenix` αφαιρέθηκε | §4.4 |
+| L15 | `assets/images/` άδειος — εξαρτάται από `.gitkeep` | §1.4 |
 | L19 | Web: `persistentLocalCache` **χωρίς** multi-tab manager → 2 tabs μπορεί να δουν διαφορετικά δεδομένα | §2.4 |
 | L20 | `schema_version` χωρίς field validation στους rules (γράφεται μόνο από την εφαρμογή, στον δικό της λογαριασμό) | §7.2 |
 | L21 | Φραγή διαγραφής **μόνο τοπικά**: δύο συσκευές μπορούν να διαγράψουν ταυτόχρονα τους δύο τελευταίους λογαριασμούς → 0 ενεργοί (καλύπτεται από κενή κατάσταση + CTA, χωρίς server-side guard) | §5.13 |
 | L22 | Offline διαγραφή λογαριασμού με **ατελή cache** θα άφηνε ορφανές κινήσεις (και peer leg) → η διαγραφή **μπλοκάρεται** offline (E24) | §5.13 |
-| L23 | **🚫 Έκλεισε 26/11/2026 (WON'T FIX — κρίθηκε υπερβολή):** read-only έλεγχος σε **όλα** τα δεδομένα (6 χρήστες, 2.312 κινήσεις, 146 transfer legs, 73 groups — μόνο GET) → **0** σπασμένα/ημιτελή ζεύγη μεταφοράς. Δεν υλοποιείται fail-closed guard· η κανονική ροή καλύπτεται από E11 | §5.13 |
-| L24 | *(λύθηκε 23/11/2026 — E19)* Η επαναφορά λογαριασμού επαναφέρει **μόνο** ολοκληρωμένα ζεύγη μεταφορών με marker· οι κινήσεις που διέγραψε ο χρήστης μένουν κρυφές | §5.13 |
 | L25 | Αρχειοθέτηση **offline**: ο έλεγχος εκκρεμών είναι best-effort από cache — αν εκκρεμεί κίνηση άλλης συσκευής, θα εκτελεστεί σε αρχειοθετημένο λογαριασμό (υπόλοιπο/σύνολο μένουν σωστά· καμία απώλεια) | §5.13 |
-| L26 | **✅ Διορθώθηκε `2.3.6+13`** — το gate budgets μετρά πλέον **όλα** τα μη διαγραμμένα budgets (όχι μόνο `is_active=true`) μέσω server query + `AccountBudgetUsage`· φρέσκος έλεγχος πριν τη γραφή με επαναξιολόγηση (E50) | §5.13 |
 | L27 | Επανυπολογισμός υπολοίπου (E20): παράθυρο read→write — κίνηση που γράφεται **ανάμεσα** στην ανάγνωση και την εγγραφή δεν μετριέται· χειροκίνητη ενέργεια, χωρίς transaction (θα απαιτούσε εκατοντάδες reads) | §5.4 |
 | L28 | Εξαιρέσεις λογαριασμών (E27): **τοπική** προτίμηση ανά συσκευή (δεν συγχρονίζεται)· αρχειοθετημένος + εξαιρεμένος λογαριασμός δεν έχει checkbox επανένταξης (μόνο «Επαναφορά») | §5.2, §5.8 |
 | L29 | Επαναφορά λογαριασμού (E19): ίδιο παράθυρο read→write με L27 — μετριάζεται με **επανέλεγχο** πριν τη γραφή (ματαίωση σε drift), όχι με transaction | §5.13 |
 | L30 | Επαναφορά: τα legs παίρνουν νέο `updated_at` → νέο παράθυρο 30 ημερών για τον cleanup (η αρχική `date` μένει) — βλ. E14/E34 | §5.13 |
 | L31 | Καθαρισμός (E34): αν χαθεί η σύνδεση **μέσα** στην εκτέλεση, με persistence ON τα writes μπαίνουν σε **ουρά** — η αναφορά μπορεί να δείξει μερικό αποτέλεσμα ενώ οι διαγραφές εφαρμόζονται αργότερα | §5.14 |
 | L32 | Καθαρισμός (E34): hard delete κατηγορίας → μόνο το `ScheduledTransactionsService.getCategoryName/getSubcategoryName` δείχνει «Άγνωστη Κατηγορία/Υποκατηγορία» (οι κινήσεις δείχνουν ήδη «Χωρίς κατηγορία») | §5.14 |
-| L33 | **Windows build:** με VS 2022 17.10.1 + Windows SDK 10.0.22621.0 το link αποτυγχάνει (LNK2019/LNK1120: `__std_*`, `_Cnd_timedwait_for_unchecked`, `_Avx2WmemEnabled` από Firebase C++ SDK 13.13.1). Απαιτείται VS 2026 18.1.1 + SDK 10.0.26100 (flutterfire #17270) — ✅ **επιβεβαιωμένο 24/11/2026**: και τα τρία builds (apk/web/windows release) περνούν | §2.5 |
+| L33 | **Windows build:** με VS 2022 17.10.1 + Windows SDK 10.0.22621.0 το link αποτυγχάνει (LNK2019/LNK1120: `__std_*`, `_Cnd_timedwait_for_unchecked`, `_Avx2WmemEnabled` από Firebase C++ SDK 13.13.1). Απαιτείται VS 2026 18.1.1 + SDK 10.0.26100 (flutterfire #17270) | §2.5 |
 | L34 | **KGP:** `file_picker`, `firebase_auth`, `firebase_core`, `package_info_plus`, `shared_preferences_android` εφαρμόζουν ακόμα Kotlin Gradle Plugin· μελλοντική Flutter θα αποτύχει μέχρι να υιοθετήσουν Built-in Kotlin | §2.1 |
-| L35 | **✅ Διορθώθηκε 25/11/2026 (E56)** — migration σε `material_ui` **1.11.1**: 70 imports (`lib/` + `test/`) → `package:material_ui/material_ui.dart` + `GlobalMaterialLocalizations.delegates` στο `main.dart`. Το `package:flutter/material.dart` παραμένει deprecated στο SDK, αλλά **δεν** χρησιμοποιείται πλέον από τον κώδικα της εφαρμογής | §9.1 |
-| L36 | `ConnectivityService`: το `dispose()` (ακύρωση debounce timer + stream subscription, `connectivity_service.dart:111-116`) **δεν καλείται** πουθενά — ο provider χρησιμοποιεί `.value` (`main.dart:181-183`) και το `MyApp` είναι πλέον `StatelessWidget` (χωρίς `dispose`). Σκόπιμο singleton που ζει όσο η διεργασία· επίπτωση μόνο σε hot-restart/tests, καμία στη λειτουργία | §4.1, §5.9 |
-| L37 | **✅ Διορθώθηκε 27/11/2026 (`2.3.15+22`, E67):** `ColorsUI.getAccessibleTextColor` (`ui_tokens.dart:295`) προτιμά τα tokens του theme και, αν κανένα δεν φτάνει το όριο (μεσαία φωτεινότητα), πέφτει σε καθαρό black/white → **εγγυημένη** αντίθεση ≥ `ColorsUI.minContrastRatio` (4.5:1, WCAG AA). Η εγγύηση αφορά **αδιαφανές** background. Χρήση: `stats_page.dart:1706`, `tag_stats_page.dart:2103` — εκεί το `fg` δεν φτάνει σε ορατό στοιχείο (E85, 🚫 WON'T FIX) | §5.5, §8.10 |
+| L36 | `ConnectivityService`: το `dispose()` (ακύρωση debounce timer + stream subscription, `connectivity_service.dart:111-116`) **δεν καλείται** πουθενά — ο provider χρησιμοποιεί `.value` (`main.dart:181-183`) και το `MyApp` είναι πλέον `StatelessWidget` (χωρίς `dispose`). Σκόπιμο singleton που ζει όσο η διεργασία· επίπτωση μόνο σε hot-restart, καμία στη λειτουργία | §4.1, §5.9 |
 
 ---
 
@@ -1137,7 +1019,7 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 
 | Αρχείο | Ρόλος | Επιτρεπόμενο περιεχόμενο |
 |---|---|---|
-| `DESIGN.md` | **Τεχνική αλήθεια** | Ό,τι περιγράφεται σε αυτό το αρχείο |
+| `DESIGN.md` | **Τεχνική αλήθεια** | Μόνο αρχιτεκτονική, τεχνολογίες, δομή, schema, build — **καμία** πρόοδος/tests/device tests |
 | `AGENTS.md` | Κανόνες agent | Διαδικασία + παραπομπή εδώ |
 | `oldsessions.md` | Ευρετήριο ιστορικού | Πίνακας κεφαλαίων + τρέχουσα κατάσταση |
 | `oldsessions/` | Ιστορικό ανά φάση | 1 αρχείο ανά κεφάλαιο, ποτέ επανάχρηση νούμερου, ≤150 γραμμές |
@@ -1172,8 +1054,9 @@ Invoke-RestMethod -Uri "https://firebaserules.googleapis.com/v1/projects/family-
 
 ### 12.3 Κανόνας συντήρησης
 
-1. Αλλαγή σε stack/δομή/schema → **μόνο** `DESIGN.md` (με ημερομηνία επαλήθευσης).
+1. Αλλαγή σε stack/δομή/schema/τεχνολογία → **μόνο** `DESIGN.md` (αρχιτεκτονική αλήθεια).
 2. Αλλαγή σε κανόνες λειτουργίας → `AGENTS.md`.
-3. Κάθε session/fix → νέο κεφάλαιο `oldsessions/NN-slug.md` + γραμμή στο ευρετήριο `oldsessions.md`.
+3. Κάθε session/fix/device test → νέο κεφάλαιο `oldsessions/NN-slug.md` + γραμμή στο ευρετήριο `oldsessions.md`.
 4. Κάθε νέο εύρημα/διόρθωση → `error_list.md` (μόνο εκεί η λίστα εκκρεμοτήτων).
 5. Καμία αντιγραφή τεχνικών ενοτήτων σε άλλα αρχεία.
+6. Πρόοδος, tests, device tests και ημερομηνίες επαλήθευσης → **μόνο** `oldsessions/`.
