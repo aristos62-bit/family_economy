@@ -146,6 +146,7 @@ class _HomePageState extends State<HomePage> {
       actionLabel: 'ΟΚ',
       onAction: () {},
       persist: false,
+      duration: const Duration(seconds: 5),
     );
   }
 
