@@ -9,7 +9,9 @@
 
 | # | Ενέργεια | ID |
 |---|---|---|
-| — | Καμία εκκρεμότητα — τα **E86**, **E67** (27/11/2026), **E87–E89** και **SEC-005b** (28/11/2026) έκλεισαν | — |
+| 1 | `trim()` στον κωδικό σε login/change — LOW, εκτός scope SEC-006 | E93 |
+
+> Τα **SEC-005c**, **SEC-006a**, **SEC-006b**, **E90**, **E91**, **E92** διορθώθηκαν 28/11/2026 (`2.3.19+26`). Το **E93** μένει ανοιχτό ως LOW.
 
 > **L11** ✅ **FIXED** 27/11/2026 (`2.3.14+21`): ο κεντρικός presenter `AppMessenger` + `MessagePolicy` ολοκληρώθηκε και τα 89 sites μεταφέρθηκαν (0 άμεσα `SnackBar(`). Ο post-commit έλεγχος βρήκε **E77–E83**· **όλα διορθώθηκαν** και το νέο device test πέρασε. Λεπτομέρειες παρακάτω.
 
@@ -134,6 +136,13 @@
 | E88 | Κατά την προσθήκη του `graf_7` η σειρά το βάζει πριν από το `graf_6`, αλλά η ορατότητα συμπληρώνεται στο τέλος → μετατοπισμένα κρυφά/ορατά γραφήματα, μόνιμα | — | ✅ FIXED | 2026-11-28 |
 | E89 | Στον editor, αν η αποθηκευμένη ορατότητα είναι μικρότερη από τη σειρά → πιθανό `RangeError`· λείπον γράφημα εμφανίζεται πρώτο λόγω `indexOf` = -1 | — | ✅ FIXED | 2026-11-28 |
 | SEC-005b | Αν αποτύχει το `user.delete()` μετά το root delete, δεν μένει marker → νέο login δημιουργεί άδειο user doc (χωρίς resume) | — | ✅ FIXED | 2026-11-28 |
+| SEC-005c | Marker με timeout που δεν ακυρώνει το write → «Αποτυχία» που μπορεί να κλειδώσει αργότερα | — | ✅ FIXED | 2026-11-28 |
+| SEC-006a | Δεύτερη συσκευή γράφει μετά τη διαγραφή (cache-first, κανένας listener) | — | ✅ FIXED | 2026-11-28 |
+| SEC-006b | Rules χωρίς parent/marker guard → orphan writes δεκτά | — | ✅ FIXED | 2026-11-28 |
+| E90 | Κενός κωδικός κλείνει τον διάλογο· `trim()` αλλοιώνει κωδικούς | — | ✅ FIXED | 2026-11-28 |
+| E91 | Σφάλμα εκτός ορατού χώρου· νεκρός κλάδος `mo < 1` | — | ✅ FIXED | 2026-11-28 |
+| E92 | Καμία behavior test για τους δύο διαλόγους | — | ✅ FIXED | 2026-11-28 |
+| E93 | `trim()` στον κωδικό σε login/change — σπάει κωδικούς με κενά | `login_page.dart:202`, `change_password_page.dart:61-63,116,121` | ⏳ OPEN (LOW) | 2026-11-28 |
 
 ### Λεπτομέρειες
 
@@ -680,6 +689,17 @@
 - **Tests:** `account_deletion_policy_test.dart` (19, επεκτάθηκε το test μηνυμάτων) → **374/374**, `flutter analyze` 0/0/0. Device tests POCO X3 ✅ (retry, close→re-login resume, light theme, release smoke `2.3.18+25`).
 - **Περιορισμός:** αν η εφαρμογή κλείσει βίαια ανάμεσα στο root delete και την επανεγγραφή του marker, το πρόβλημα μπορεί να εμφανιστεί ακόμη· το παράθυρο είναι μικρό αλλά όχι μηδενικό.
 - **Κατάσταση:** ✅ FIXED 28/11/2026.
+
+**SEC-005c / SEC-006a / SEC-006b / E90–E92 — Ασφάλεια διαγραφής & διάλογοι (✅ FIXED 28/11/2026, `2.3.19+26`)**
+
+- **SEC-005c:** το `_writeMarker()` είχε `.timeout` που **δεν** ακυρώνει το write → σε timeout η διαγραφή δήλωνε αποτυχία ενώ ο marker μπορούσε να γραφτεί αργότερα. **Διόρθωση:** `_writeMarkerConfirmed()` με `runTransaction` + `set(merge:true)` (δεν μπαίνει στην offline ουρά) και, σε timeout/σφάλμα, **server read** που επιβεβαιώνει το `deleted:true` πριν δηλωθεί αποτυχία. Ο restore marker του SEC-005b μένει queued επίτηδες.
+- **SEC-006a:** κανένας listener στο root doc → δεύτερη συσκευή με παλιό cache συνέχιζε να γράφει μετά τη διαγραφή. **Διόρθωση:** `DeletionGuardPolicy` (pure) + `DeletionGuardService` (listener, μόνο server-confirmed snapshots) → `cancelAll` + `signOut` + πλοήγηση στη σύνδεση με μήνυμα· `suspend()`/`resume()` γύρω από τις ροές διαγραφής (σελίδα + resume login).
+- **SEC-006b:** `firestore.rules` δεχόταν writes σε υποσυλλογές χωρίς έλεγχο γονέα. **Διόρθωση:** `parentActive()` (`exists` + `get().data.get('deleted', false) != true`) **μόνο σε `create`** σε όλες τις υποσυλλογές — τα delete μένουν ελεύθερα για το cascade, τα updates καλύπτονται από το not-found, τα batches δεν ξεπερνούν το όριο 20 access calls. Emulator tests `tools/rules_test/firestore.rules.test.js` (6/6 PASS).
+- **E90:** ο διάλογος κωδικού έκλεινε με κενό κωδικό (info dialog) και το `trim()` αλλοίωνε κωδικούς. **Διόρθωση:** `AccountPasswordDialog` με inline `errorText`, παραμένει ανοιχτός, επιστρέφει **raw** κείμενο· το `trim()` μένει μόνο για τον έλεγχο κενού.
+- **E91:** το σφάλμα του μηνύματος/stop condition μπορούσε να είναι εκτός ορατού χώρου· νεκρός κλάδος `mo < 1`. **Διόρθωση:** `GlobalKey` + `Scrollable.ensureVisible` (post-frame) σε κάθε αποτυχία validation, αφαίρεση νεκρού κλάδου, καθαρισμός `_stopError` στα βήματα επαναλήψεων.
+- **E92:** καμία behavior test για τους δύο διαλόγους. **Διόρθωση:** 3 νέα αρχεία (`deletion_guard_policy_test.dart` 7, `account_password_dialog_test.dart` 4, `notification_edit_dialog_test.dart` 3) → **388/388**, `flutter analyze` 0/0/0.
+- **Αρχεία:** `account_deletion_service.dart`, `account_deletion_policy.dart`, `deletion_guard_policy.dart` (νέο), `deletion_guard_service.dart` (νέο), `account_password_dialog.dart` (νέο), `delete_account_page.dart`, `login_page.dart`, `app_start.dart`, `main.dart`, `notification_edit_dialog.dart`, `firestore.rules`, `package.json`, `tools/rules_test/`.
+- **Κατάσταση:** ✅ FIXED 28/11/2026 (device tests: βλ. `oldsessions/52-*`).
 
 ## Πώς προσθέτω εύρημα
 

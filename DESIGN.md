@@ -272,12 +272,12 @@ pubspec.yaml  (version: 2.3.16+23)        ← ΜΟΝΟ εδώ αλλάζει η 
 
 | Στοιχείο | Πλήθος |
 |---|---|
-| Dart αρχεία στο `lib/` | **115** (κανένα `*.backup` στο τρέχον clone· +`onboarding_defaults.dart`, `user_doc_policy.dart`, `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`, `account_deletion_policy.dart`, `account_deletion_service.dart`, `chart_layout_prefs.dart`) |
+| Dart αρχεία στο `lib/` | **118** (κανένα `*.backup` στο τρέχον clone· +`onboarding_defaults.dart`, `user_doc_policy.dart`, `user_message_exception.dart`, `message_policy.dart`, `app_messenger.dart`, `account_deletion_policy.dart`, `account_deletion_service.dart`, `chart_layout_prefs.dart`, `deletion_guard_policy.dart`, `deletion_guard_service.dart`, `account_password_dialog.dart`) |
 | Σελίδες (`*_page.dart`) | 32 |
 | Αρχεία Oil module | 13 (`oil_page.dart` + `oil/`) |
 | Providers | 7 |
 | Μοντέλα | 2 στο `models/` + 5 ορίζονται **μέσα** σε providers (`AccountModel`, `CategoryModel`, `SubcategoryModel`, `TagModel`, `TransactionModel`) |
-| Tests | 25 αρχεία · **374** `test()`/`testWidgets()` |
+| Tests | 28 αρχεία · **388** `test()`/`testWidgets()` |
 | `docs/` (legacy) | 15 αρχεία (πίνακες + rules) — δεν αναφέρονται από κώδικα/build |
 | `node_modules/` | **Δεν υπάρχει** στο τρέχον clone· δημιουργείται μόνο αν τρέξει το `import-data.js` (**ignored**) |
 
@@ -657,17 +657,20 @@ lib/
 |---|---|
 | Κανόνας | `core/utils/account_deletion_policy.dart` — καθαρό Dart, **0 I/O**, 19 unit tests |
 | I/O | `core/services/account_deletion_service.dart` (`users/{uid}/...`, `Source.server`) |
-| Σειρά | offline guard → διπλή επιβεβαίωση → **reauth** (κωδικός) → `cancelAll` (best effort, πριν το root delete) → marker `deleted:true` + `deleted_at` → cascade 12 συλλογών → root doc → `user.delete()` |
+| Σειρά | offline guard → διπλή επιβεβαίωση → **reauth** (κωδικός) → `cancelAll` (best effort, πριν το root delete) → marker `deleted:true` + `deleted_at` (**transaction + verify**, SEC-005c) → cascade 12 συλλογών → root doc → `user.delete()` |
 | Συλλογές | `transaction_tags`, `transaction_splits`, `attachments`, `account_snapshots`, `settings`, `oil_purchases`, `tags`, `accounts`, `budgets`, `transactions`, `notifications`, `categories` (υποκατηγορίες πριν τις κατηγορίες) — **εκτός** το global `exchange_rates` |
 | Chunking | Νέο `WriteBatch` ανά chunk ≤**499**· timeout **20s** ανά ανάγνωση/batch |
 | Resume guard | `UserDocOutcome.deletionPending` από `ensureUserDocument` (cache ή server)· το `AppStart` κλειδώνει με οδηγία «Αποσύνδεση»· η σελίδα σύνδεσης προσφέρει «Συνέχισε τη διαγραφή» με τα credentials της φόρμας |
 | Μερική αποτυχία | Το root doc **δεν** διαγράφεται· διάλογος με «Συνέχισε τη διαγραφή» (idempotent cascade, χωρίς νέο login) |
 | Auth αποτυχία (SEC-005b) | Αν το `user.delete()` αποτύχει μετά το root delete, ξαναγράφεται ο marker `deleted:true`· διάλογος «Η διαγραφή δεν ολοκληρώθηκε» με «Συνέχισε τη διαγραφή»/«Κλείσιμο»· το «Κλείσιμο» αποσυνδέει και η επόμενη σύνδεση συνεχίζει τη διαγραφή |
+| Marker (SEC-005c) | `_writeMarkerConfirmed()`: `runTransaction` + `set(merge:true)` — δεν μπαίνει στην offline ουρά· σε timeout/σφάλμα μία **server read** επιβεβαιώνει το `deleted:true` πριν δηλωθεί αποτυχία. Ο restore marker του SEC-005b μένει **queued επίτηδες** (πρέπει να επιβιώσει restart) |
+| Guard 2ης συσκευής (SEC-006a) | `DeletionGuardService`: listener στο `users/{uid}`· μόνο **server-confirmed** snapshots (`!fromCache && !hasPendingWrites`) με missing doc ή `deleted:true` → `cancelAll` (best effort) → `signOut` → πλοήγηση στη σύνδεση με μήνυμα «Ο λογαριασμός διαγράφηκε σε άλλη συσκευή». `suspend()`/`resume()` γύρω από τις δύο ροές διαγραφής (ίδια συσκευή) |
+| Διάλογος κωδικού (E90) | `AccountPasswordDialog`: κενός κωδικός → inline σφάλμα, ο διάλογος μένει ανοιχτός· επιστρέφεται το **raw** κείμενο (όχι trimmed) |
 | Auth | `reauthenticateWithPassword` πριν από κάθε προσπάθεια· `requires-recent-login` → **μία** επανάληψη reauth· μετά το root delete μένει μόνο το `user.delete()` |
 | Ειδοποιήσεις | `NotificationsService.cancelAllNotifications` best-effort μετά την επιτυχία· οι ειδοποιήσεις άλλων λογαριασμών επανέρχονται στο επόμενο login (diff-based reschedule) |
 | UI | `PopScope` + κλείδωμα κουμπιών κατά την εκτέλεση· κανένα raw σφάλμα (L11) |
-| Γνωστός περιορισμός | Cache-first (E64): αν το marker γράφτηκε σε **άλλη** συσκευή και υπάρχει παλιό cache, η ανίχνευση γίνεται στον επόμενο server read· το resume αφορά κατά κύριο λόγο την ίδια συσκευή |
-| Έκδοση | `2.3.18+25` (PATCH) |
+| Γνωστός περιορισμός | Cache-first (E64): αν το marker γράφτηκε σε **άλλη** συσκευή, η ανίχνευση του resume γίνεται στον επόμενο server read· ο guard SEC-006a κλείνει το παράθυρο εγγραφών περιμένοντας **server-confirmed** snapshot (η cache αγνοείται) |
+| Έκδοση | `2.3.19+26` (PATCH) |
 
 ---
 
@@ -831,6 +834,18 @@ schema_version (int), schema_updated_at (Timestamp)
 
 Συνθήκη σε όλα: `isSignedIn() && request.auth.uid == userId && userId != ""`.
 
+**SEC-006b — guard γονέα (create-only):** κάθε `create` σε υποσυλλογή απαιτεί επιπλέον `parentActive()`:
+
+```
+exists(/databases/$(database)/documents/users/$(userId))
+  && get(/databases/$(database)/documents/users/$(userId))
+       .data.get('deleted', false) != true
+```
+
+Το `Map.get(key, default)` είναι υποχρεωτικό — τα κανονικά docs δεν έχουν πεδίο `deleted`. Εφαρμόζεται **μόνο στα `create`**: (α) τα updates σε διαγραμμένα docs αποτυγχάνουν ούτως ή άλλως με not-found, (β) το cascade delete πρέπει να μείνει ελεύθερο (εκείνη τη στιγμή ο marker είναι `deleted:true`), (γ) τα batched writes έχουν όριο **20 access calls** — ένα `get` ανά doc θα το έσπαγε στα chunks των 499. Το root doc και το `exchange_rates` δεν αλλάζουν.
+
+Emulator tests: `tools/rules_test/firestore.rules.test.js` → `npm run test:rules` (6 περιπτώσεις: ενεργός γονέας allow· `deleted:true` deny· missing parent deny· cascade delete allow· root create allow· ξένο uid deny).
+
 ### 7.2 Τι **δεν** κάνουν οι κανόνες
 
 | Θέμα | Κατάσταση |
@@ -840,11 +855,13 @@ schema_version (int), schema_updated_at (Timestamp)
 | Διαχωρισμός ρόλων (admin/user) | ❌ δεν υπάρχει |
 | Server-side έλεγχοι (Cloud Functions) | ❌ δεν υπάρχουν |
 | Cascade διαγραφής | ❌ στους κανόνες — η εφαρμογή το κάνει **client-side** (SEC-005, `AccountDeletionService`) |
+| Guard γονέα σε update/delete | ❌ σκόπιμα — μόνο στα `create` (SEC-006b)· τα orphan updates απορρίπτονται από το not-found του Firestore |
 
 ### 7.3 Όρια ασφάλειας του μοντέλου
 
 - Η απομόνωση βασίζεται **αποκλειστικά** στο `request.auth.uid == userId`.
 - Ο client έχει πλήρη δικαιώματα **μέσα** στον δικό του χώρο (συμπεριλαμβανομένης διαγραφής του root `users/{uid}`).
+- Μετά τη διαγραφή, ο server αρνείται **νέα** docs σε υποσυλλογές (SEC-006b)· τα υπάρχοντα μπορούν να διαβαστούν/ενημερωθούν/διαγραφούν μόνο όσο το root doc υπάρχει (μετά το root delete το Firestore επιστρέφει not-found).
 - Το `exchange_rates` είναι **δημόσια αναγνώσιμο** και μη εγγράψιμο από clients.
 - Δεν υπάρχει διαδρομή διαχειριστή μέσα στην εφαρμογή (όλα μέσω client SDK).
 
@@ -934,11 +951,11 @@ schema_version (int), schema_updated_at (Timestamp)
 
 | Στοιχείο | Τιμή |
 |---|---|
-| Framework | `flutter_test` (374 `test()` / `testWidgets()`) |
+| Framework | `flutter_test` (388 `test()` / `testWidgets()`) |
 | Lints | `flutter_lints 6.0.0` (`analysis_options.yaml`) |
 | Scope ανάλυσης | **μόνο `lib/` + `test/`** — εξαιρούνται `build/`, `backups/`, `android/`, `ios/`, `web/`, `windows/`, `macos/`, `linux/` |
 | `flutter analyze` | ✅ **No issues found** (0 errors / 0 warnings / 0 info) |
-| `flutter test` | ✅ 374/374 |
+| `flutter test` | ✅ 388/388 |
 | CI | ❌ καμία αυτοματοποίηση |
 
 > Από **25/11/2026** το `flutter analyze` είναι **πλήρως καθαρό** (exit code 0) — η migration σε `material_ui` έκλεισε τα 72 info (βλ. L35, E56).
@@ -972,6 +989,9 @@ schema_version (int), schema_updated_at (Timestamp)
 | `account_deletion_policy_test.dart` | 19 | SEC-005: 12 συλλογές (χωρίς διπλότυπα, `categories` τελευταίο), marker `deleted:true`, chunks ≤499 (499/500/1000), timeout 20s, μηνύματα |
 | `firestore_indexes_test.dart` | 3 | Guard (E17): δομή JSON, 5 απαιτούμενα composite signatures, κανένα διπλότυπο |
 | `chart_layout_prefs_test.dart` | 16 | E87/E88: προεπιλεγμένη/προσαρμοσμένη σειρά, άγνωστα/διπλά ids, migration `graf_7` πριν από `graf_6`, λείποντα/κοντύτερη ορατότητα, χαλασμένες τιμές, περίοδοι (`PeriodPrefs`), καμία περιττή εγγραφή, `fallback`, `loadWithin` |
+| `deletion_guard_policy_test.dart` | 7 | SEC-006a: cache snapshot (με/χωρίς doc, με `deleted:true`) → ignore, pending write → ignore, server-confirmed missing/`deleted:true` → lock, ενεργό doc → ignore, cache+pending → ignore |
+| `account_password_dialog_test.dart` | 4 | E90: κενός κωδικός → inline σφάλμα και ανοιχτός διάλογος, raw κωδικός με κενά, Άκυρο → null, καθαρισμός σφάλματος στην πληκτρολόγηση |
+| `notification_edit_dialog_test.dart` | 3 | E91: κενό μήνυμα → inline σφάλμα, έγκυρο μήνυμα → κλείσιμο/επιστροφή, μικρή οθόνη → σφάλμα ορατό μετά το Save |
 
 ### 9.3 Τι **δεν** καλύπτεται
 
@@ -981,6 +1001,7 @@ schema_version (int), schema_updated_at (Timestamp)
 - Καμία δοκιμή σε oil module, tags. Τα **default δεδομένα** onboarding καλύπτονται από `onboarding_defaults_test.dart` (καθαρό Dart)· η ίδια η ροή Firestore/offline του onboarding παραμένει σε device tests.
 - Καμία δοκιμή στο **I/O** του cleanup (καλύπτεται μόνο ο καθαρός κανόνας + device test).
 - Καμία δοκιμή στις αναφορές περιόδου/tags (E28 — καλύπτεται μόνο με device test).
+- Καμία δοκιμή στο I/O του `DeletionGuardService`/`AccountDeletionService` (καλύπτονται μόνο οι καθαροί κανόνες + device tests)· οι κανόνες Firestore καλύπτονται από emulator tests (`npm run test:rules`), όχι από `flutter test`.
 
 ---
 
@@ -996,7 +1017,8 @@ schema_version (int), schema_updated_at (Timestamp)
 | `firestore.rules`, `firestore.indexes.json` | Κανόνες + 7 indexes (5 ενεργά + 2 legacy· deploy μέσω CLI) |
 | `fam_eco_new.iss` | Inno Setup installer (σχετικές διαδρομές, έκδοση από `/D`) |
 | `build_and_setup_final.bat` | Build + packaging script (version από pubspec, logs σε `build_logs/`) |
-| `import-data.js` + `package.json` + `package-lock.json` | Node.js import script (`firebase-admin`) |
+| `import-data.js` + `package.json` + `package-lock.json` | Node.js import script (`firebase-admin`) + `npm run test:rules` (SEC-006b emulator tests) |
+| `tools/rules_test/firestore.rules.test.js` | Emulator tests των κανόνων (6 περιπτώσεις, `@firebase/rules-unit-testing`) |
 | `data/*.json` (14) | Δεδομένα εισαγωγής |
 | `docs/` (15) | Legacy τεκμηρίωση schema |
 | `backups/` | Τοπικά αντίγραφα — **ignored** (0 tracked) |
