@@ -45,7 +45,7 @@ https://github.com/aristos62-bit/family_economy
 | Ιστορικό session/fixes | `oldsessions.md` (ευρετήριο) + `oldsessions/` (1 αρχείο ανά κεφάλαιο) |
 | Ευρήματα & εκκρεμότητες (σειρά διόρθωσης) | `error_list.md` |
 | Οδηγός migration `material_ui` για άλλα projects | `new_material_fix.md` |
-| Παρουσίαση project | `README.md` |
+| Γενική περιγραφή λειτουργιών (μόνο features, χωρίς τεχνικά/πρόοδο) | `README.md` |
 
 ---
 
