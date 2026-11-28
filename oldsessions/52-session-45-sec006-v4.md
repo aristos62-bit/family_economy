@@ -72,7 +72,25 @@
 
 ## Device tests (POCO X3 NFC, Android 12)
 
-_(συμπληρώνεται μετά την εκτέλεση)_
+Release `2.3.19+26` εγκατεστημένο με `adb install -r`· screenshots `device test/screenshots/sec006_*`.
+
+| # | Έλεγχος | Αποτέλεσμα |
+|---|---|---|
+| 1 | Smoke demo: νέα έξοδος 1,00 € (Alfa / Διατροφή / Σούπερ Μάρκετ) → αποθήκευση | ✅ PASS — το create περνά με το `parentActive()` (create-only) |
+| 2 | Διαγραφή ίδιας κίνησης από «Κινήσεις» | ✅ PASS — εξαφανίστηκε, υπόλοιπα/σύνολα επανήλθαν (Έξοδα 1.347,00 €) |
+| 3 | E90 — κενός κωδικός | ✅ PASS — inline «Συμπληρώστε τον κωδικό πρόσβασης.», ο διάλογος μένει ανοιχτός |
+| 4 | E90 — λάθος κωδικός | ✅ PASS — «Αποτυχία διαγραφής / Λάθος email ή κωδικός πρόσβασης», καμία διαγραφή |
+| 5 | E90 — Άκυρο | ✅ PASS — επιστροφή στη σελίδα διαγραφής, λογαριασμός ανέπαφος |
+| 6 | E91 — landscape + `font_scale 1.3`, Save με κενό μήνυμα | ✅ PASS — «Παρακαλώ γράψτε ένα μήνυμα υπενθύμισης» ορατό με auto-scroll· δημιουργία/διαγραφή υπενθύμισης OK |
+| 7 | SEC-005c — temp user με root doc + child `notifications/cascade_test`, διαγραφή μέσω UI | ✅ PASS — επιστροφή στη σύνδεση χωρίς σφάλμα· `signInWithPassword` πλέον αποτυγχάνει (auth deleted) |
+| 8 | SEC-006a — temp user συνδεδεμένος, REST `PATCH deleted=true` στο root doc | ✅ PASS — σε ~5 s μήνυμα «Ο λογαριασμός διαγράφηκε σε άλλη συσκευή…» και επιστροφή στη σύνδεση |
+| 9 | Cleanup | ✅ PASS — temp users διαγράφηκαν (Auth + Firestore), demo ξανά συνδεδεμένο, `font_scale 1.0`, rotation auto |
+
+Σημειώσεις:
+
+- Το root doc του SEC-005c δεν μπορεί να ελεγχθεί unauthenticated (403 από rules)· η επιτυχής ολοκλήρωση του `finalizeDeletion` (επιστροφή στη σύνδεση χωρίς σφάλμα) καλύπτει τη σειρά marker → cascade → root delete → auth delete.
+- Το timeout/server-read path του `_writeMarkerConfirmed()` δεν προσομοιώθηκε σε συσκευή (απαιτεί τεχνητό κόψιμο δικτύου στη μέση του transaction)· καλύπτεται σχεδιαστικά από το transaction και τα unit tests της πολιτικής.
+- Η συσκευή γύρισε σε landscape κατά τη διάρκεια των tests (app + κλείδωμα περιστροφής)· στο τέλος επαναφέρθηκε `accelerometer_rotation=1`, `wm user-rotation free`.
 
 ## Κατάσταση
 

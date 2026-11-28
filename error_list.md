@@ -699,7 +699,7 @@
 - **E91:** το σφάλμα του μηνύματος/stop condition μπορούσε να είναι εκτός ορατού χώρου· νεκρός κλάδος `mo < 1`. **Διόρθωση:** `GlobalKey` + `Scrollable.ensureVisible` (post-frame) σε κάθε αποτυχία validation, αφαίρεση νεκρού κλάδου, καθαρισμός `_stopError` στα βήματα επαναλήψεων.
 - **E92:** καμία behavior test για τους δύο διαλόγους. **Διόρθωση:** 3 νέα αρχεία (`deletion_guard_policy_test.dart` 7, `account_password_dialog_test.dart` 4, `notification_edit_dialog_test.dart` 3) → **388/388**, `flutter analyze` 0/0/0.
 - **Αρχεία:** `account_deletion_service.dart`, `account_deletion_policy.dart`, `deletion_guard_policy.dart` (νέο), `deletion_guard_service.dart` (νέο), `account_password_dialog.dart` (νέο), `delete_account_page.dart`, `login_page.dart`, `app_start.dart`, `main.dart`, `notification_edit_dialog.dart`, `firestore.rules`, `package.json`, `tools/rules_test/`.
-- **Κατάσταση:** ✅ FIXED 28/11/2026 (device tests: βλ. `oldsessions/52-*`).
+- **Κατάσταση:** ✅ FIXED 28/11/2026 (device tests POCO X3: 9/9 PASS — smoke create/delete, E90 κενός/λάθος κωδικός/Άκυρο, E91 μεγάλο textScale, SEC-005c πλήρης διαγραφή temp user, SEC-006a remote lock· βλ. `oldsessions/52-*`).
 
 ## Πώς προσθέτω εύρημα
 
