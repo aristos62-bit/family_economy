@@ -677,7 +677,7 @@
 - **Διόρθωση:** νέο `AccountDeletionService.finalizeDeletion(report, deleteAuthUser)` — προϋπόθεση `report.isComplete` (αλλιώς δεν αγγίζει τίποτα, για να μη μείνουν ορφανές υποσυλλογές), root delete → Auth delete, και σε αποτυχία `_writeMarker()` ώστε η επόμενη σύνδεση να βρει `deleted:true` και να συνεχίσει.
 - **UI:** διάλογος «Η διαγραφή δεν ολοκληρώθηκε» με «Συνέχισε τη διαγραφή»/«Κλείσιμο»· το «Κλείσιμο» αποσυνδέει και πηγαίνει στη σελίδα σύνδεσης. Οι ειδοποιήσεις ακυρώνονται **πριν** το root delete για μικρότερο παράθυρο.
 - **Αρχεία:** `account_deletion_policy.dart`, `account_deletion_service.dart`, `delete_account_page.dart`, `login_page.dart`.
-- **Tests:** `account_deletion_policy_test.dart` (19, επεκτάθηκε το test μηνυμάτων) → **374/374**, `flutter analyze` 0/0/0.
+- **Tests:** `account_deletion_policy_test.dart` (19, επεκτάθηκε το test μηνυμάτων) → **374/374**, `flutter analyze` 0/0/0. Device tests POCO X3 ✅ (retry, close→re-login resume, light theme, release smoke `2.3.18+25`).
 - **Περιορισμός:** αν η εφαρμογή κλείσει βίαια ανάμεσα στο root delete και την επανεγγραφή του marker, το πρόβλημα μπορεί να εμφανιστεί ακόμη· το παράθυρο είναι μικρό αλλά όχι μηδενικό.
 - **Κατάσταση:** ✅ FIXED 28/11/2026.
 

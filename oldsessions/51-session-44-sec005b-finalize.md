@@ -45,7 +45,27 @@
 
 - `flutter analyze`: **No issues found** (0/0/0).
 - `flutter test`: **374/374**.
-- Device tests POCO X3: ⏳ θα συμπληρωθούν μετά το build.
+- Device tests POCO X3: ✅ **PASS** (28/11/2026) — λεπτομέρειες παρακάτω.
+
+### Device tests (POCO X3, Android 12/API 31)
+
+| Σενάριο | Αποτέλεσμα |
+|---|---|
+| 1. Retry μετά από Auth failure (dark) | ✅ Πρώτη `finalizeDeletion` αποτυγχάνει μετά το root delete → marker `deleted:true` + Auth ενεργό → διάλογος «Η διαγραφή δεν ολοκληρώθηκε» → «Συνέχισε τη διαγραφή» → root/Auth διαγράφηκαν, επιστροφή στο login |
+| 2. «Κλείσιμο» → re-login resume (dark) | ✅ Το «Κλείσιμο» αποσυνδέει και δείχνει το μήνυμα· το επόμενο login βρίσκει `deleted:true` → διάλογος «Εκκρεμεί διαγραφή» → συνέχεια → ολοκλήρωση και «✅ Ο λογαριασμός διαγράφηκε οριστικά» |
+| 3. Light theme | ✅ Ο διάλογος και η ροή retry είναι ευανάγνωστα σε light mode· επαναφορά dark μετά το τεστ |
+| 4. Release smoke `2.3.18+25` | ✅ Εγκατάσταση πάνω από debug, demo login, αρχική με δεδομένα/γραφήματα, «Έκδοση 2.3.18 (build 25)» |
+
+- Disposable λογαριασμοί (Auth + user doc μέσω REST): `sec005b.retry.*`,
+  `sec005b.close.*`, `sec005b.light.*`· **όλοι διαγράφηκαν**.
+- Επαλήθευση: REST sign-in → `INVALID_LOGIN_CREDENTIALS` μετά τη διαγραφή·
+  πριν το retry, root doc υπήρχε με `deleted:true` και το Auth account ήταν ενεργό.
+- Αποδείξεις: `device test/screenshots/sec005b_*.png`,
+  `device test/logs/sec005b_*_state_*.txt`, `device test/SEC005b_device_tests.md`.
+- Καθαρισμός: Firestore cache μέσω clean debug + `run-as`, επανεγκατάσταση
+  release, `fingerprint_enabled=true`, rotation/font/animations/airplane/night
+  mode όπως αρχικά, temp files removed, app force-stopped, launcher foreground.
+- Ο demo λογαριασμός/δεδομένα δεν πειράχτηκαν.
 
 ### Περιορισμοί
 
@@ -56,8 +76,13 @@
 - Αν το `user.delete()` πετύχει αλλά πετάξει (π.χ. timeout), το marker restore
   αποτυγχάνει χωρίς auth και ο διάλογος λέει «εκκρεμεί» ενώ έχει ολοκληρωθεί·
   σπάνιο, η τελική κατάσταση είναι ασφαλής.
+- Μετά από καθαρισμό του Firestore cache, το πρώτο launch μπορεί να δείξει
+  «Απαιτείται ταυτοποίηση» μέχρι να ολοκληρωθεί ο online έλεγχος· το «Ξανά»
+  συνεχίζει κανονικά (παρατηρήθηκε στο release smoke test).
 
 ### Backups
 
 `backups/*.bak-20261128-sec005b` — policy, service, delete page, login page,
-pubspec, test, DESIGN, error_list, oldsessions.
+pubspec, test, DESIGN, error_list, oldsessions. Επιπλέον
+`account_deletion_service.dart.bak-20261128-sec005b-device` πριν την αφαίρεση
+του προσωρινού injection.
