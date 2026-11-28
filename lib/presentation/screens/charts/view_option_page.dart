@@ -28,6 +28,12 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
   bool _preferencesLoaded = false;
   bool _dirty = false;
 
+  /// E100: true μόνο μετά από επιτυχή ανάγνωση της διάταξης. Χωρίς αυτό
+  /// δεν επιτρέπεται καμία εγγραφή (ούτε save ούτε auto-save).
+  bool _layoutLoaded = false;
+  bool _layoutLoading = false;
+  bool _layoutLoadFailed = false;
+
   /// Metadata for charts (title & icon)
   final Map<String, Map<String, dynamic>> chartMeta = {
     'graf_1': {'title': 'Έσοδα / Έξοδα', 'icon': Icons.bar_chart},
@@ -62,6 +68,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
   ];
 
   void _moveItem(int oldIndex, int newIndex) {
+    if (!_layoutLoaded) return;
     setState(() {
       final item = charts.removeAt(oldIndex);
       charts.insert(newIndex, item);
@@ -119,16 +126,26 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
   }
 
   Future<void> _loadPreferences() async {
-    if (_userId == null) return;
+    if (_userId == null || _layoutLoading) return;
 
-    final layout =
-        await ChartLayoutPrefs.loadWithin(
-          _userId!,
-          timeout: const Duration(seconds: 2),
-        ) ??
-        ChartLayoutPrefs.fallback();
+    _layoutLoading = true;
+    _layoutLoadFailed = false;
+
+    final layout = await ChartLayoutPrefs.loadWithin(
+      _userId!,
+      timeout: const Duration(seconds: 2),
+    );
 
     if (!mounted) return;
+
+    if (layout == null) {
+      // E100: χωρίς επιτυχή ανάγνωση δεν δείχνουμε/σώζουμε προεπιλογές.
+      setState(() {
+        _layoutLoading = false;
+        _layoutLoadFailed = true;
+      });
+      return;
+    }
 
     setState(() {
       final visMap = <String, bool>{};
@@ -149,11 +166,15 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
       _chartPeriods
         ..clear()
         ..addAll(layout.periods);
+
+      _layoutLoaded = true;
+      _layoutLoading = false;
+      _layoutLoadFailed = false;
     });
   }
 
   Future<void> _savePreferences() async {
-    if (_userId == null) return;
+    if (!_layoutLoaded || _userId == null) return;
     final prefs = await SharedPreferences.getInstance();
 
     final orderList = charts.map((c) => c['id'] as String).toList();
@@ -171,7 +192,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
   }
 
   Future<void> _saveOrderAndVisibilityOnly() async {
-    if (_userId == null) return;
+    if (!_layoutLoaded || _userId == null) return;
     final prefs = await SharedPreferences.getInstance();
 
     final orderList = charts.map((c) => c['id'] as String).toList();
@@ -185,12 +206,32 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
   }
 
   Future<void> _saveChartPeriod(String chartId, String period) async {
-    if (_userId == null) return;
+    if (!_layoutLoaded || _userId == null) return;
     final keyPrefix = _periodKeyForChart(chartId);
     if (keyPrefix == null) return;
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('${keyPrefix}_period_${_userId!}', period);
+  }
+
+  /// Αποθήκευση και επιστροφή — μόνο μετά από επιτυχή φόρτωση (E100).
+  Future<void> _saveAndReturn() async {
+    DebugConfig.print('VIEW_OPTION: Save button pressed');
+
+    await _savePreferences();
+    DebugConfig.print('VIEW_OPTION: Preferences saved');
+
+    AccessibilityService.announceSuccess('Οι ρυθμίσεις αποθηκεύτηκαν');
+
+    await Future.delayed(const Duration(milliseconds: 250));
+
+    if (!mounted) {
+      DebugConfig.print('VIEW_OPTION: context not mounted, abort');
+      return;
+    }
+
+    DebugConfig.print('VIEW_OPTION: popping now...');
+    Navigator.pop(context, true);
   }
 
   Future<void> _showPeriodDialog(String chartId) async {
@@ -331,6 +372,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
               padding: const EdgeInsets.symmetric(vertical: 12),
               itemCount: charts.length,
               onReorderItem: (oldIndex, newIndex) {
+                if (!_layoutLoaded) return;
                 setState(() {
                   if (newIndex > oldIndex) newIndex -= 1;
                   final item = charts.removeAt(oldIndex);
@@ -455,17 +497,21 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
                                   activeTrackColor: color.withValues(
                                     alpha: 0.4,
                                   ),
-                                  onChanged: (val) {
-                                    setState(() => chart['visible'] = val);
-                                    _dirty = true;
-                                    _saveOrderAndVisibilityOnly();
+                                  onChanged: _layoutLoaded
+                                      ? (val) {
+                                          setState(
+                                            () => chart['visible'] = val,
+                                          );
+                                          _dirty = true;
+                                          _saveOrderAndVisibilityOnly();
 
-                                    AccessibilityService.announcePolite(
-                                      val
-                                          ? '${meta['title']} ενεργοποιήθηκε'
-                                          : '${meta['title']} απενεργοποιήθηκε',
-                                    );
-                                  },
+                                          AccessibilityService.announcePolite(
+                                            val
+                                                ? '${meta['title']} ενεργοποιήθηκε'
+                                                : '${meta['title']} απενεργοποιήθηκε',
+                                          );
+                                        }
+                                      : null,
                                 ),
                               ),
                             ),
@@ -479,7 +525,9 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
                                 excludeSemantics: true,
                                 child: IconButton(
                                   icon: const ExcludeSemantics(child: Icon(Icons.more_vert, size: 22)),
-                                  onPressed: () => _showPeriodDialog(chartId),
+                                  onPressed: _layoutLoaded
+                                      ? () => _showPeriodDialog(chartId)
+                                      : null,
                                   visualDensity: VisualDensity.compact,
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
@@ -496,6 +544,35 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
             ),
           ),
 
+          // E100: χωρίς επιτυχή ανάγνωση δεν επιτρέπεται αποθήκευση.
+          if (!_layoutLoaded)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  Text(
+                    _layoutLoadFailed
+                        ? 'Δεν φορτώθηκε η διάταξη. Δεν γίνεται αποθήκευση.'
+                        : 'Φόρτωση διάταξης…',
+                    textAlign: TextAlign.center,
+                    style: TypographyUI.bodySmall(brightness).copyWith(
+                      color: _layoutLoadFailed
+                          ? ColorsUI.getError(brightness)
+                          : ColorsUI.getTextSecondary(brightness),
+                    ),
+                  ),
+                  if (_layoutLoadFailed)
+                    TextButton(
+                      onPressed: () {
+                        setState(() => _layoutLoadFailed = false);
+                        _loadPreferences();
+                      },
+                      child: const Text('Δοκιμάστε ξανά'),
+                    ),
+                ],
+              ),
+            ),
+
           // Save button
           Padding(
             padding: EdgeInsets.only(
@@ -504,6 +581,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
             ),
             child: Semantics(
               button: true,
+              enabled: _layoutLoaded,
               label: 'Αποθήκευση και επιστροφή',
               hint: 'Αποθηκεύει τις ρυθμίσεις και επιστρέφει στην προηγούμενη σελίδα',
               excludeSemantics: true,
@@ -523,28 +601,7 @@ class _ViewOptionPageState extends State<ViewOptionPage> {
                     horizontal: 24,
                   ),
                 ),
-                onPressed: () async {
-                  DebugConfig.print('VIEW_OPTION: Save button pressed');
-
-                  await _savePreferences();
-                  DebugConfig.print('VIEW_OPTION: Preferences saved');
-
-                  AccessibilityService.announceSuccess(
-                    'Οι ρυθμίσεις αποθηκεύτηκαν',
-                  );
-
-                  await Future.delayed(const Duration(milliseconds: 250));
-
-                  if (!context.mounted) {
-                    DebugConfig.print(
-                      'VIEW_OPTION: context not mounted, abort',
-                    );
-                    return;
-                  }
-
-                  DebugConfig.print('VIEW_OPTION: popping now...');
-                  Navigator.pop(context, true);
-                },
+                onPressed: _layoutLoaded ? _saveAndReturn : null,
               ),
             ),
           ),
